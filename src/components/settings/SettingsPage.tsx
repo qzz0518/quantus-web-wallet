@@ -85,9 +85,12 @@ export function SettingsPage({
   const [panel, setPanel] = useState<SettingsPanel>(null);
   const [panelBusy, setPanelBusy] = useState(false);
   const [installError, setInstallError] = useState("");
+  const [installBusy, setInstallBusy] = useState(false);
   const [backupExported, setBackupExported] = useState(false);
+  const [backupError, setBackupError] = useState("");
   const installation = usePwaInstall();
   const deviceEnabled = unlocked && hasBiometric();
+  const visibleWallet = unlocked ? wallet : undefined;
   const secured = (action: () => void) => {
     if (unlocked) action();
     else onUnlock?.();
@@ -95,10 +98,11 @@ export function SettingsPage({
   const openPanel = (next: SettingsPanel) => {
     setInstallError("");
     setBackupExported(false);
+    setBackupError("");
     setPanel(next);
   };
   const closePanel = () => {
-    if (!panelBusy) setPanel(null);
+    if (!panelBusy && !installBusy) setPanel(null);
   };
 
   return (
@@ -106,19 +110,23 @@ export function SettingsPage({
       <button
         className="settings-profile"
         onClick={() => secured(wallet ? onManage : onWallets)}
-        aria-label={unlocked ? "查看当前钱包详情" : "解锁钱包"}
+        aria-label={
+          unlocked ? (wallet ? "查看当前钱包详情" : "添加钱包") : "解锁钱包"
+        }
       >
         <span className="settings-profile-avatar" aria-hidden="true">
-          {wallet ? (
-            wallet.name.slice(0, 1).toUpperCase()
+          {visibleWallet ? (
+            Array.from(visibleWallet.name.trim())[0]?.toUpperCase() || (
+              <WalletIcon size={29} />
+            )
           ) : (
             <WalletIcon size={29} />
           )}
         </span>
         <strong>{unlocked ? wallet?.name || "我的钱包" : "钱包已锁定"}</strong>
         <span className="settings-profile-address">
-          {wallet
-            ? shortAddress(wallet.address, 6)
+          {visibleWallet
+            ? shortAddress(visibleWallet.address, 6)
             : unlocked
               ? "添加你的第一个账户"
               : "解锁后管理账户"}
@@ -130,15 +138,15 @@ export function SettingsPage({
         <h2>账户</h2>
         <SettingsRow
           icon={<WalletCards size={19} />}
-          title="我的钱包"
-          value={`${walletCount} 个`}
+          title={unlocked && !walletCount ? "添加钱包" : "我的钱包"}
+          value={
+            unlocked
+              ? walletCount
+                ? `${walletCount} 个`
+                : undefined
+              : "解锁后查看"
+          }
           onClick={() => secured(onWallets)}
-        />
-        <SettingsRow
-          icon={<WalletIcon size={19} />}
-          title="钱包详情"
-          description={wallet?.kind === "watch" ? "观察账户" : undefined}
-          onClick={() => secured(wallet ? onManage : onWallets)}
         />
       </section>
 
@@ -152,7 +160,9 @@ export function SettingsPage({
         <SettingsRow
           icon={<Fingerprint size={19} />}
           title="设备解锁"
-          value={deviceEnabled ? "已开启" : "未开启"}
+          value={
+            unlocked ? (deviceEnabled ? "已开启" : "未开启") : "解锁后查看"
+          }
           onClick={() => secured(() => openPanel("biometric"))}
         />
         <SettingsRow
@@ -190,6 +200,7 @@ export function SettingsPage({
         <button
           className="settings-lock"
           onClick={unlocked ? onLock : onUnlock}
+          disabled={!unlocked && !onUnlock}
         >
           <LockKeyhole size={17} />
           {unlocked ? "锁定钱包" : "解锁钱包"}
@@ -201,6 +212,7 @@ export function SettingsPage({
         <Modal
           title={panel === "password" ? "解锁密码" : "设备解锁"}
           variant="flow"
+          busy={panelBusy}
           onClose={closePanel}
           onBack={closePanel}
         >
@@ -210,6 +222,7 @@ export function SettingsPage({
             onChangePassword={onChangePassword}
             onExport={onExport}
             onBusyChange={setPanelBusy}
+            onDone={closePanel}
           />
         </Modal>
       )}
@@ -243,17 +256,28 @@ export function SettingsPage({
                 备份下载已开始
               </p>
             )}
+            {backupError && (
+              <p className="error" role="alert">
+                {backupError}
+              </p>
+            )}
           </div>
           <div className="flow-footer">
             <button
               className="button primary full"
               onClick={() => {
-                onExport();
-                setBackupExported(true);
+                setBackupExported(false);
+                setBackupError("");
+                try {
+                  onExport();
+                  setBackupExported(true);
+                } catch {
+                  setBackupError("备份导出失败，请重试。");
+                }
               }}
             >
               <Download size={18} />
-              导出加密备份
+              {backupExported ? "再次导出备份" : "导出加密备份"}
             </button>
           </div>
         </Modal>
@@ -262,6 +286,7 @@ export function SettingsPage({
         <Modal
           title="添加到主屏幕"
           variant="flow"
+          busy={installBusy}
           onClose={closePanel}
           onBack={closePanel}
         >
@@ -279,21 +304,23 @@ export function SettingsPage({
                   : "像应用一样打开钱包，快速查看资产和交易。"}
               </p>
             </div>
-            {!installation.installed && !installation.canPrompt && (
-              <div className="flow-note install-instructions">
-                {!installation.secure ? (
-                  <p>请通过 HTTPS 或 localhost 打开钱包后安装。</p>
-                ) : installation.isIOS ? (
-                  <ol>
-                    <li>用 Safari 打开钱包。</li>
-                    <li>点击浏览器的分享按钮。</li>
-                    <li>选择“添加到主屏幕”。</li>
-                  </ol>
-                ) : (
-                  <p>打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。</p>
-                )}
-              </div>
-            )}
+            {!installation.installed &&
+              !installation.canPrompt &&
+              !installBusy && (
+                <div className="flow-note install-instructions">
+                  {!installation.secure ? (
+                    <p>请通过 HTTPS 或 localhost 打开钱包后安装。</p>
+                  ) : installation.isIOS ? (
+                    <ol>
+                      <li>用 Safari 打开钱包。</li>
+                      <li>点击浏览器的分享按钮。</li>
+                      <li>选择“添加到主屏幕”。</li>
+                    </ol>
+                  ) : (
+                    <p>打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。</p>
+                  )}
+                </div>
+              )}
             {installError && (
               <p className="error" role="alert">
                 {installError}
@@ -301,22 +328,28 @@ export function SettingsPage({
             )}
           </div>
           <div className="flow-footer">
-            {installation.canPrompt && !installation.installed ? (
+            {(installation.canPrompt || installBusy) &&
+            !installation.installed ? (
               <button
                 className="button primary full"
+                disabled={installBusy}
                 onClick={async () => {
+                  if (installBusy) return;
                   setInstallError("");
+                  setInstallBusy(true);
                   try {
                     await installPwa();
                   } catch {
                     setInstallError(
                       "暂时无法打开安装窗口，请从浏览器菜单安装。",
                     );
+                  } finally {
+                    setInstallBusy(false);
                   }
                 }}
               >
                 <ArrowUpRight size={18} />
-                安装钱包应用
+                {installBusy ? "请在系统窗口中确认…" : "安装钱包应用"}
               </button>
             ) : (
               <button className="button primary full" onClick={closePanel}>

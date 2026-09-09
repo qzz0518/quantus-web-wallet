@@ -31,11 +31,13 @@ export function AddWalletDialog({
   mode,
   wallets,
   onClose,
+  onBack,
   onSave,
 }: {
   mode: WalletAction;
   wallets: Wallet[];
   onClose: () => void;
+  onBack?: () => void;
   onSave: (wallet: Wallet) => Promise<void>;
 }) {
   const defaultName =
@@ -49,6 +51,10 @@ export function AddWalletDialog({
   const [answers, setAnswers] = useState<MnemonicAnswers>({});
   const [incorrect, setIncorrect] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(mode === "create");
+  const [generationFailed, setGenerationFailed] = useState(false);
+  const [generationAttempt, setGenerationAttempt] = useState(0);
+  const [pasting, setPasting] = useState(false);
   const [error, setError] = useState("");
   const [downloaded, setDownloaded] = useState(false);
   const [wormhole, setWormhole] = useState(false);
@@ -57,25 +63,51 @@ export function AddWalletDialog({
   );
   const busyRef = useRef(false);
   const savedRef = useRef(false);
+  const mounted = useRef(true);
+  const pasteRequest = useRef(0);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      pasteRequest.current++;
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "create") return;
     let alive = true;
+    setGenerating(true);
+    setGenerationFailed(false);
+    setError("");
     generateMnemonic()
       .then((value) => {
+        if (!alive) return;
         const quiz = createMnemonicQuiz(value);
         if (alive) {
           setPhrase(value);
           setQuestions(quiz);
         }
       })
-      .catch((cause) => {
-        if (alive) setError(errorText(cause));
+      .catch(() => {
+        if (alive) {
+          setError("暂时无法生成助记词，请重试");
+          setGenerationFailed(true);
+        }
+      })
+      .finally(() => {
+        if (alive) setGenerating(false);
       });
     return () => {
       alive = false;
     };
-  }, [mode]);
+  }, [mode, generationAttempt]);
+
+  function close() {
+    if (busyRef.current) return;
+    pasteRequest.current++;
+    onClose();
+  }
 
   function back() {
     if (busyRef.current) return;
@@ -83,18 +115,46 @@ export function AddWalletDialog({
       setStep(0);
       setError("");
       setIncorrect([]);
-    } else onClose();
+    } else {
+      pasteRequest.current++;
+      (onBack || onClose)();
+    }
   }
 
   async function paste() {
+    if (busyRef.current || savedRef.current || pasting) return;
+    const request = ++pasteRequest.current;
+    setPasting(true);
     setError("");
     try {
       const value = await navigator.clipboard.readText();
-      if (busyRef.current || savedRef.current) return;
+      if (
+        !mounted.current ||
+        request !== pasteRequest.current ||
+        busyRef.current ||
+        savedRef.current
+      )
+        return;
+      if (!value.trim()) {
+        setError("剪贴板为空，请先复制助记词或地址");
+        return;
+      }
+      if (value.length > (mode === "watch" ? 256 : 1000)) {
+        setError(
+          mode === "watch"
+            ? "内容过长，请只粘贴钱包地址"
+            : "内容过长，请只粘贴助记词",
+        );
+        return;
+      }
       if (mode === "watch") setAddress(value);
       else setPhrase(value);
     } catch {
-      setError("无法读取剪贴板，请在输入框中手动粘贴");
+      if (mounted.current && request === pasteRequest.current)
+        setError("无法读取剪贴板，请在输入框中手动粘贴");
+    } finally {
+      if (mounted.current && request === pasteRequest.current)
+        setPasting(false);
     }
   }
 
@@ -110,9 +170,15 @@ export function AddWalletDialog({
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (busyRef.current || savedRef.current) return;
+    if (busyRef.current || savedRef.current || pasting) return;
     setError("");
     if (mode === "create" && step === 0) {
+      if (generationFailed && !phrase) {
+        setGenerating(true);
+        setGenerationFailed(false);
+        setGenerationAttempt((attempt) => attempt + 1);
+        return;
+      }
       if (phrase && questions.length === 3) setStep(1);
       return;
     }
@@ -140,6 +206,7 @@ export function AddWalletDialog({
         mode === "watch"
           ? validateAddress(address.trim())
           : (await deriveAccount(normalized, accountIndex)).address;
+      if (!mounted.current) return;
       if (wallets.some((wallet) => wallet.address === target))
         throw new Error("这个地址已经在钱包列表中");
       const walletName = name.trim() || defaultName;
@@ -160,20 +227,25 @@ export function AddWalletDialog({
         createdAt: Date.now(),
       });
       savedRef.current = true;
+      if (!mounted.current) return;
       setSaved({ name: walletName, address: target });
       setPhrase("");
       setQuestions([]);
       setAnswers({});
       setIncorrect([]);
     } catch (cause) {
-      setError(errorText(cause));
+      if (mounted.current) setError(errorText(cause));
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
-  const words = phrase ? normalizeMnemonic(phrase).split(" ") : [];
+  const normalizedPhrase = normalizeMnemonic(phrase);
+  const words = normalizedPhrase ? normalizedPhrase.split(" ") : [];
+  const answeredCount = questions.filter(
+    (question) => !!answers[question.position],
+  ).length;
   const allAnswered =
     questions.length === 3 &&
     questions.every((question) => !!answers[question.position]);
@@ -189,14 +261,13 @@ export function AddWalletDialog({
       title={title}
       variant="flow"
       stepKey={step}
+      busy={busy}
       onBack={saved ? undefined : back}
-      onClose={() => {
-        if (!busyRef.current) onClose();
-      }}
+      onClose={close}
     >
       {saved ? (
         <div className="flow-form">
-          <div className="flow-body flow-success">
+          <div className="flow-body flow-success" role="status">
             <div className="flow-success-mark">
               <Check size={36} strokeWidth={2} />
             </div>
@@ -204,7 +275,9 @@ export function AddWalletDialog({
               <h3>钱包已准备好</h3>
               <p>
                 {mode === "watch"
-                  ? "现在可以查看这个地址的余额与交易。"
+                  ? wormhole
+                    ? "现在可以查看这个地址的公开入账记录。"
+                    : "现在可以查看这个地址的余额与交易。"
                   : "现在可以接收 QTC，管理你的资产。"}
               </p>
             </div>
@@ -219,14 +292,18 @@ export function AddWalletDialog({
             </div>
           </div>
           <div className="flow-footer">
-            <button className="button primary full" onClick={onClose}>
+            <button className="button primary full" onClick={onClose} autoFocus>
               进入钱包
               <ArrowRight size={17} />
             </button>
           </div>
         </div>
       ) : (
-        <form className="flow-form" onSubmit={save}>
+        <form
+          className="flow-form"
+          onSubmit={save}
+          aria-busy={busy || generating || pasting}
+        >
           <div className="flow-body">
             {mode === "create" ? (
               <>
@@ -260,7 +337,11 @@ export function AddWalletDialog({
                           </div>
                         ))
                       ) : (
-                        <p className="muted">正在生成助记词…</p>
+                        <p className="muted">
+                          {generating
+                            ? "正在生成助记词…"
+                            : "助记词暂未生成，请重试。"}
+                        </p>
                       )}
                     </div>
                     <div className="mnemonic-actions">
@@ -282,11 +363,17 @@ export function AddWalletDialog({
                   </>
                 ) : (
                   <div className="word-questions" data-private="true">
+                    <p className="hint" role="status">
+                      已选择 {answeredCount} / 3 个单词
+                    </p>
                     {questions.map((question) => (
                       <fieldset
                         className="word-question"
                         key={question.position}
                         data-invalid={
+                          incorrect.includes(question.position) || undefined
+                        }
+                        aria-invalid={
                           incorrect.includes(question.position) || undefined
                         }
                       >
@@ -345,11 +432,11 @@ export function AddWalletDialog({
                     <button
                       type="button"
                       className="text-button"
-                      disabled={busy}
+                      disabled={busy || pasting}
                       onClick={paste}
                     >
                       <ClipboardPaste size={15} />
-                      粘贴
+                      {pasting ? "正在读取…" : "粘贴"}
                     </button>
                   </span>
                   <textarea
@@ -360,13 +447,17 @@ export function AddWalletDialog({
                     autoCapitalize="none"
                     spellCheck={false}
                     required
+                    maxLength={mode === "import" ? 1000 : 256}
                     disabled={busy}
                     value={mode === "import" ? phrase : address}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      pasteRequest.current++;
+                      setPasting(false);
+                      setError("");
                       mode === "import"
                         ? setPhrase(event.target.value)
-                        : setAddress(event.target.value)
-                    }
+                        : setAddress(event.target.value);
+                    }}
                     placeholder={
                       mode === "import"
                         ? "按顺序输入单词，以空格分隔"
@@ -390,7 +481,10 @@ export function AddWalletDialog({
                     maxLength={60}
                     value={name}
                     disabled={busy}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      setError("");
+                    }}
                     placeholder={defaultName}
                   />
                 </label>
@@ -406,7 +500,10 @@ export function AddWalletDialog({
                         step="1"
                         value={index}
                         disabled={busy}
-                        onChange={(event) => setIndex(event.target.value)}
+                        onChange={(event) => {
+                          setIndex(event.target.value);
+                          setError("");
+                        }}
                       />
                       <small>
                         通常为 0。路径 m/44′/189189′/{index || "0"}′/0′/0′
@@ -420,7 +517,10 @@ export function AddWalletDialog({
                         type="checkbox"
                         checked={wormhole}
                         disabled={busy}
-                        onChange={(event) => setWormhole(event.target.checked)}
+                        onChange={(event) => {
+                          setWormhole(event.target.checked);
+                          setError("");
+                        }}
                       />
                       这是 Wormhole 隐私地址
                     </label>
@@ -447,14 +547,25 @@ export function AddWalletDialog({
               className="button primary full"
               disabled={
                 busy ||
-                (mode === "create" && (step === 0 ? !phrase : !allAnswered))
+                pasting ||
+                (mode === "create"
+                  ? step === 0
+                    ? generating || (!phrase && !generationFailed)
+                    : !allAnswered
+                  : mode === "import"
+                    ? !normalizedPhrase
+                    : !address.trim())
               }
             >
               {busy
                 ? "正在准备钱包…"
                 : mode === "create"
                   ? step === 0
-                    ? "我已备份，继续"
+                    ? generating
+                      ? "正在生成助记词…"
+                      : generationFailed
+                        ? "重新生成助记词"
+                        : "我已备份，继续"
                     : "验证并创建钱包"
                   : mode === "import"
                     ? "导入钱包"

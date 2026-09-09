@@ -3,6 +3,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  CircleHelp,
+  Copy,
   Wallet as WalletIcon,
   LoaderCircle,
   ShieldCheck,
@@ -26,6 +28,7 @@ import {
 import { blake2AsHex } from "@polkadot/util-crypto";
 import { hexToU8a } from "@polkadot/util";
 import { signCall } from "../crypto";
+import { copyText } from "../lib/browser";
 const mainnetServices = {
   prepareTransfer,
   estimateFee,
@@ -59,6 +62,7 @@ export function SendDialog({
   services?: TransferServices;
 }) {
   const active = useRef(true);
+  const processing = useRef(false);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -73,17 +77,20 @@ export function SendDialog({
     [error, setError] = useState(""),
     [ack, setAck] = useState(false),
     [hash, setHash] = useState(""),
+    [copied, setCopied] = useState(false),
+    [copyError, setCopyError] = useState(""),
     [expired, setExpired] = useState(false);
   useEffect(() => {
     if (!quote) return;
-    const id = setInterval(
-      () => setExpired(Date.now() - quote.at > 60_000),
-      1000,
-    );
+    const id = setInterval(() => {
+      if (Date.now() - quote.at > 60_000) setExpired(true);
+    }, 1000);
     return () => clearInterval(id);
   }, [quote]);
-  async function review(e: FormEvent) {
-    e.preventDefault();
+  async function review(e?: FormEvent) {
+    e?.preventDefault();
+    if (processing.current) return;
+    processing.current = true;
     setBusy(true);
     setError("");
     try {
@@ -129,17 +136,21 @@ export function SendDialog({
     } catch (e) {
       setError(errorText(e));
     } finally {
+      processing.current = false;
       setBusy(false);
     }
   }
   async function confirm() {
-    if (!quote || busy || !ack) return;
+    if (!quote || processing.current || !ack) return;
+    processing.current = true;
     setBusy(true);
     setError("");
     let journal: Pending | undefined;
     try {
-      if (Date.now() - quote.at > 60_000)
-        throw new Error("费用报价已过期，请返回重新预览");
+      if (Date.now() - quote.at > 60_000) {
+        setExpired(true);
+        throw new Error("费用报价已过期，请更新费用后重新确认");
+      }
       const prepared = await services.prepareTransfer(
         wallet.address,
         quote.recipient,
@@ -148,8 +159,10 @@ export function SendDialog({
       if (
         prepared.ctx.nonce !== quote.nonce ||
         prepared.ctx.blockNumber - quote.block >= 48
-      )
-        throw new Error("账户或网络状态已变化，请返回重新预览");
+      ) {
+        setExpired(true);
+        throw new Error("账户或网络状态已变化，请更新费用后重新确认");
+      }
       const balance = await services.readBalance(wallet.address),
         freshFee = await services.estimateFee(quote.hex);
       if (
@@ -157,8 +170,10 @@ export function SendDialog({
         BigInt(balance.spendable) < BigInt(quote.amount) + BigInt(freshFee) ||
         BigInt(balance.free) - BigInt(quote.amount) - BigInt(freshFee) <
           BigInt(prepared.existentialDeposit)
-      )
-        throw new Error("余额或手续费已变化，请返回重新预览");
+      ) {
+        setExpired(true);
+        throw new Error("余额或手续费已变化，请更新费用后重新确认");
+      }
       if (!active.current) return;
       journal = {
         hash: blake2AsHex(hexToU8a(quote.hex)),
@@ -215,6 +230,7 @@ export function SendDialog({
         setError(errorText(e));
       }
     } finally {
+      processing.current = false;
       setBusy(false);
     }
   }
@@ -252,6 +268,7 @@ export function SendDialog({
               : `发送 ${services.symbol}`
       }
       variant="flow"
+      busy={busy}
       onBack={back}
       onClose={() => {
         if (!busy) onClose();
@@ -261,10 +278,10 @@ export function SendDialog({
         <>
           <div className="flow-body">
             <div className="success-emblem">
-              {error ? <LoaderCircle size={29} /> : <Check size={29} />}
+              {error ? <CircleHelp size={29} /> : <Check size={29} />}
             </div>
             <div className="flow-heading centered">
-              <h2>{error ? "正在核对交易结果" : "已发送至网络"}</h2>
+              <h2>{error ? "请核对交易结果" : "已发送至网络"}</h2>
               <p>
                 {error
                   ? "请核对链上状态，暂勿重复发送。"
@@ -273,6 +290,27 @@ export function SendDialog({
             </div>
             <p className="label">交易哈希</p>
             <p className="address-block">{hash}</p>
+            <button
+              className="text-button full"
+              onClick={async () => {
+                setCopyError("");
+                setCopied(false);
+                try {
+                  await copyText(hash);
+                  setCopied(true);
+                } catch {
+                  setCopyError("复制失败，请手动复制上方哈希");
+                }
+              }}
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              {copied ? "哈希已复制" : "复制交易哈希"}
+            </button>
+            {copyError && (
+              <p className="error" role="alert">
+                {copyError}
+              </p>
+            )}
             {error && (
               <p className="error" role="alert">
                 {error}
@@ -297,7 +335,9 @@ export function SendDialog({
       ) : quote ? (
         <>
           <div className="flow-body">
-            <div className="send-amount">
+            <div
+              className={`send-amount ${formatAmount(quote.amount).length > 13 ? "long-value" : ""}`}
+            >
               {formatAmount(quote.amount)} <span>{services.symbol}</span>
             </div>
             <dl className="review-details">
@@ -341,7 +381,9 @@ export function SendDialog({
             </label>
           </div>
           <div className="flow-footer">
-            {expired && <p className="error">报价已过期，请返回更新费用。</p>}
+            {expired && !error && (
+              <p className="flow-note">费用需要更新，更新后请重新核对。</p>
+            )}
             {error && (
               <p className="error" role="alert">
                 {error}
@@ -349,11 +391,17 @@ export function SendDialog({
             )}
             <button
               className="button primary full"
-              disabled={!ack || busy || expired}
-              onClick={confirm}
+              disabled={busy || (!expired && !ack)}
+              onClick={expired ? () => void review() : confirm}
             >
               {busy && <LoaderCircle className="spin" size={18} />}{" "}
-              {busy ? "正在提交…" : "确认并发送"}
+              {busy
+                ? expired
+                  ? "正在更新费用…"
+                  : "正在提交…"
+                : expired
+                  ? "更新费用"
+                  : "确认并发送"}
             </button>
           </div>
         </>
@@ -377,7 +425,10 @@ export function SendDialog({
                     spellCheck={false}
                     autoComplete="off"
                     value={recipient}
-                    onChange={(event) => setRecipient(event.target.value)}
+                    onChange={(event) => {
+                      setRecipient(event.target.value);
+                      setError("");
+                    }}
                     placeholder="输入或粘贴 Quantus 地址"
                     autoFocus
                   />
@@ -387,7 +438,10 @@ export function SendDialog({
                     我的其他钱包
                     <select
                       value=""
-                      onChange={(event) => setRecipient(event.target.value)}
+                      onChange={(event) => {
+                        setRecipient(event.target.value);
+                        setError("");
+                      }}
                     >
                       <option value="">选择一个钱包</option>
                       {wallets
@@ -421,13 +475,15 @@ export function SendDialog({
                     <strong>收款地址</strong>
                     <small>{recipient}</small>
                   </span>
-                  <button type="button" onClick={back}>
+                  <button type="button" disabled={busy} onClick={back}>
                     修改
                   </button>
                 </div>
                 <label className="field">
                   <span className="sr-only">发送金额</span>
-                  <div className="amount-input">
+                  <div
+                    className={`amount-input ${amount.length > 12 ? "long-value" : ""}`}
+                  >
                     <input
                       key="send-amount"
                       required
@@ -436,7 +492,10 @@ export function SendDialog({
                       autoComplete="off"
                       value={amount}
                       disabled={busy}
-                      onChange={(event) => setAmount(event.target.value)}
+                      onChange={(event) => {
+                        setAmount(event.target.value);
+                        setError("");
+                      }}
                       autoFocus
                     />
                     <span>{services.symbol}</span>

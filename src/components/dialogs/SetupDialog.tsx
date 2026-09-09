@@ -19,6 +19,7 @@ import {
 import { deriveAccount } from "../../crypto";
 import { validateAddress } from "../../lib/chain";
 import { errorText } from "../../lib/amount";
+import { persistNewVault } from "../../lib/vault-storage";
 import {
   hasBiometric,
   unlockBiometric,
@@ -42,60 +43,87 @@ export function SetupDialog({
   const [file, setFile] = useState("");
   const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deviceBusy, setDeviceBusy] = useState(false);
+  const [readingFile, setReadingFile] = useState(false);
   const [error, setError] = useState("");
   const [deviceEnabled, setDeviceEnabled] = useState(
     () => mode === "unlock" && hasBiometric(),
   );
   const abort = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
-  useEffect(
-    () => () => {
+  const mounted = useRef(true);
+  const fileRead = useRef(0);
+  const passwordInput = useRef<HTMLInputElement>(null);
+  const confirmationInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      fileRead.current++;
       abort.current?.abort();
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function deviceUnlock() {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setDeviceBusy(true);
     setError("");
     abort.current = new AbortController();
     try {
       const { session, data } = await unlockBiometric(abort.current.signal);
-      if (!abort.current.signal.aborted) onOpen(session, data);
+      if (mounted.current && !abort.current.signal.aborted)
+        onOpen(session, data);
     } catch (cause) {
-      setDeviceEnabled(hasBiometric());
-      setError(deviceError(cause));
+      if (mounted.current) {
+        setDeviceEnabled(hasBiometric());
+        setError(deviceError(cause));
+        requestAnimationFrame(() => passwordInput.current?.focus());
+      }
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      if (mounted.current) {
+        setBusy(false);
+        setDeviceBusy(false);
+      }
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busyRef.current) return;
+    if (busyRef.current || readingFile) return;
+    if (mode === "create" && password !== confirmation) {
+      setError("两次输入的密码不一致，请检查确认密码");
+      confirmationInput.current?.focus();
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
     setError("");
     try {
       if (mode === "create") {
-        if (password !== confirmation) throw new Error("两次输入的密码不一致");
-        if (localStorage.getItem(STORAGE_KEY))
+        if (localStorage.getItem(STORAGE_KEY) !== null)
           throw new Error("已有钱包，请先解锁");
         const session = await createSession(password);
         const data = emptyVault();
-        localStorage.setItem(STORAGE_KEY, await encryptVault(session, data));
+        const encrypted = await encryptVault(session, data);
+        if (!mounted.current) return;
+        persistNewVault(encrypted);
         onOpen(session, data);
       } else {
-        if (mode === "restore" && localStorage.getItem(STORAGE_KEY))
+        if (mode === "restore" && localStorage.getItem(STORAGE_KEY) !== null)
           throw new Error(
             "当前浏览器已有钱包，请在独立浏览器配置中恢复，避免覆盖",
           );
         const raw =
           mode === "restore" ? file : localStorage.getItem(STORAGE_KEY);
-        if (!raw) throw new Error("请先选择加密备份文件");
+        if (!raw)
+          throw new Error(
+            mode === "unlock"
+              ? "未找到本机钱包，请返回创建钱包或恢复备份"
+              : "请先选择加密备份文件",
+          );
         const { session, data } = await unlockVault(password, raw);
         for (const wallet of data.wallets) {
           validateAddress(wallet.address);
@@ -106,26 +134,31 @@ export function SetupDialog({
           )
             throw new Error("备份中的账户地址与密钥不一致");
         }
+        if (!mounted.current) return;
         if (mode === "unlock" && localStorage.getItem(STORAGE_KEY) !== raw)
           throw new Error("钱包数据已变化，请重新解锁");
         if (mode === "restore") {
-          disableBiometric();
-          localStorage.setItem(STORAGE_KEY, raw);
+          persistNewVault(raw, disableBiometric);
         }
         onOpen(session, data);
       }
     } catch (cause) {
-      setError(errorText(cause));
+      if (mounted.current) setError(errorText(cause));
     } finally {
-      setPassword("");
-      setConfirmation("");
       busyRef.current = false;
-      setBusy(false);
+      if (mounted.current) {
+        setPassword("");
+        setConfirmation("");
+        setBusy(false);
+      }
     }
   }
 
   const close = () => {
-    if (!busyRef.current) onClose();
+    if (!busyRef.current) {
+      fileRead.current++;
+      onClose();
+    }
   };
   const title =
     mode === "unlock"
@@ -134,8 +167,18 @@ export function SetupDialog({
         ? "恢复备份"
         : "保护钱包";
   return (
-    <Modal title={title} variant="flow" onBack={close} onClose={close}>
-      <form className="flow-form" onSubmit={submit}>
+    <Modal
+      title={title}
+      variant="flow"
+      onBack={close}
+      onClose={close}
+      busy={busy}
+    >
+      <form
+        className="flow-form"
+        onSubmit={submit}
+        aria-busy={busy || readingFile}
+      >
         <div className="flow-body">
           <div className="flow-symbol">
             <LockKeyhole size={30} strokeWidth={1.6} />
@@ -169,7 +212,7 @@ export function SetupDialog({
                 onClick={deviceUnlock}
               >
                 <Fingerprint size={19} />
-                {busy ? "等待系统验证…" : "指纹 / 面容解锁"}
+                {deviceBusy ? "等待系统验证…" : "指纹 / 面容解锁"}
               </button>
               <p className="hint centered">或使用密码解锁</p>
             </>
@@ -177,26 +220,44 @@ export function SetupDialog({
           {mode === "restore" && (
             <label className="file-picker">
               <Upload size={20} />
-              <span>{file ? fileName : "选择 .json 加密备份"}</span>
+              <span>
+                {readingFile
+                  ? "正在读取备份…"
+                  : file
+                    ? fileName
+                    : "选择 .json 加密备份"}
+              </span>
               <input
                 type="file"
                 accept=".json,application/json"
                 aria-label="加密备份文件"
                 disabled={busy}
                 onChange={async (event) => {
+                  const selected = event.target.files?.[0];
+                  event.currentTarget.value = "";
+                  const request = ++fileRead.current;
                   setFile("");
                   setFileName("");
                   setError("");
+                  setReadingFile(!!selected);
                   try {
-                    const selected = event.target.files?.[0];
                     if (selected && selected.size > 5_000_000)
                       throw new Error("备份文件过大");
                     if (selected) {
-                      setFile(await selected.text());
+                      const contents = await selected.text();
+                      if (!mounted.current || request !== fileRead.current)
+                        return;
+                      if (!contents.trim())
+                        throw new Error("备份文件为空，请重新选择");
+                      setFile(contents);
                       setFileName(selected.name);
                     }
                   } catch (cause) {
-                    setError(errorText(cause));
+                    if (mounted.current && request === fileRead.current)
+                      setError(errorText(cause));
+                  } finally {
+                    if (mounted.current && request === fileRead.current)
+                      setReadingFile(false);
                   }
                 }}
               />
@@ -205,6 +266,7 @@ export function SetupDialog({
           <label className="field">
             {mode === "create" ? "设置密码" : "解锁密码"}
             <input
+              ref={passwordInput}
               type="password"
               autoComplete={
                 mode === "create" ? "new-password" : "current-password"
@@ -214,14 +276,18 @@ export function SetupDialog({
               placeholder={mode === "create" ? "至少 6 位" : "输入密码"}
               value={password}
               disabled={busy}
-              onChange={(event) => setPassword(event.target.value)}
-              autoFocus
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError("");
+              }}
+              autoFocus={mode !== "restore" && !deviceEnabled}
             />
           </label>
           {mode === "create" && (
             <label className="field">
               确认密码
               <input
+                ref={confirmationInput}
                 type="password"
                 autoComplete="new-password"
                 required
@@ -229,7 +295,10 @@ export function SetupDialog({
                 placeholder="再次输入密码"
                 value={confirmation}
                 disabled={busy}
-                onChange={(event) => setConfirmation(event.target.value)}
+                onChange={(event) => {
+                  setConfirmation(event.target.value);
+                  setError("");
+                }}
               />
             </label>
           )}
@@ -248,9 +317,15 @@ export function SetupDialog({
           )}
           <button
             className="button primary full"
-            disabled={busy || (mode === "restore" && !file)}
+            disabled={
+              busy ||
+              readingFile ||
+              !password ||
+              (mode === "create" && !confirmation) ||
+              (mode === "restore" && !file)
+            }
           >
-            {busy
+            {busy && !deviceBusy
               ? mode === "create"
                 ? "正在设置…"
                 : "正在解锁…"

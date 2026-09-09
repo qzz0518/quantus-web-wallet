@@ -149,16 +149,20 @@ export function WalletLayout({
               <span
                 className="network-label"
                 title={
-                  network
-                    ? `Quantus 主网 · 区块 #${network.block.toLocaleString()}`
-                    : "正在连接 Quantus 主网"
+                  networkError
+                    ? "连接中断，请刷新重试"
+                    : network
+                      ? `Quantus 主网 · 区块 #${network.block.toLocaleString()}`
+                      : "正在连接 Quantus 主网"
                 }
               >
-                <i className={`status-dot ${network ? "" : "offline"}`} />
-                {network
-                  ? "Quantus 主网"
-                  : networkError
-                    ? "连接中断"
+                <i
+                  className={`status-dot ${network && !networkError ? "" : "offline"}`}
+                />
+                {networkError
+                  ? "连接中断"
+                  : network
+                    ? "Quantus 主网"
                     : "正在连接"}
               </span>
               <button
@@ -175,7 +179,9 @@ export function WalletLayout({
         {unlocked && page !== "settings" && (networkError || balanceError) && (
           <div className="inline-warning" role="status">
             {networkError ? "暂时无法连接网络，请联网后刷新。" : balanceError}
-            <button onClick={onRefresh}>重试</button>
+            <button disabled={loading} onClick={onRefresh}>
+              重试
+            </button>
           </div>
         )}
         {children}

@@ -66,9 +66,11 @@ export function WalletSwitcher({
 
 export function WalletChooser({
   onClose,
+  onBack,
   onChoose,
 }: {
   onClose: () => void;
+  onBack?: () => void;
   onChoose: (mode: "create" | "import" | "watch") => void;
 }) {
   return (
@@ -77,6 +79,7 @@ export function WalletChooser({
       variant="flow"
       subtitle="选择适合你的开始方式。"
       onClose={onClose}
+      onBack={onBack}
     >
       <div className="flow-body">
         <div className="wallet-options">

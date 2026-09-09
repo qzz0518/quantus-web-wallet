@@ -43,7 +43,7 @@ export function AboutDialog({
             </span>
             <span className="settings-row-copy">
               <strong>钱包网站</strong>
-              <small>qtc.zezn.dev</small>
+              <small>{new URL(WEBSITE_URL).hostname}</small>
             </span>
             <ArrowUpRight size={17} />
           </a>
@@ -81,7 +81,7 @@ export function AboutDialog({
       </div>
       <div className="flow-footer">
         <button className="button primary full" onClick={onBack || onClose}>
-          返回设置
+          {onBack ? "返回设置" : "完成"}
         </button>
       </div>
     </Modal>

@@ -23,8 +23,13 @@ export function ReceiveDialog({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const qr = useRef<HTMLDivElement>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyBusy = useRef(false);
+  const shareBusy = useRef(false);
+  const request = useRef(0);
   const shareData = {
     title: `${wallet.name} · Quantus`,
     text: `Quantus 主网收款地址：${wallet.address}`,
@@ -33,27 +38,48 @@ export function ReceiveDialog({
     typeof navigator !== "undefined" &&
     typeof navigator.share === "function" &&
     (!navigator.canShare || navigator.canShare(shareData));
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    setCopied(false);
+    setError("");
+    setMessage("");
+    setCopying(false);
+    setSharing(false);
+    copyBusy.current = false;
+    shareBusy.current = false;
+    return () => {
+      request.current++;
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
-    },
-    [],
-  );
+    };
+  }, [wallet.address]);
 
   async function copyAddress() {
+    if (copyBusy.current) return;
+    copyBusy.current = true;
+    const savedRequest = request.current;
+    setCopying(true);
+    setCopied(false);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
     setError("");
     setMessage("");
     try {
       await copyText(wallet.address);
+      if (savedRequest !== request.current) return;
       setCopied(true);
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
       copiedTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("复制失败，请手动选中地址");
+      if (savedRequest === request.current)
+        setError("复制失败，请手动选中地址");
+    } finally {
+      if (savedRequest === request.current) {
+        copyBusy.current = false;
+        setCopying(false);
+      }
     }
   }
   function saveQr() {
     setError("");
+    setMessage("");
     try {
       const svg = qr.current?.querySelector("svg");
       if (!svg) throw new Error("二维码尚未准备好");
@@ -75,7 +101,7 @@ export function ReceiveDialog({
           <span className="receive-wallet-icon">
             <WalletIcon size={19} />
           </span>
-          <strong>{wallet.name}</strong>
+          <strong title={wallet.name}>{wallet.name}</strong>
           <span>Quantus 主网</span>
         </div>
         <div className="receive-qr-panel">
@@ -101,23 +127,35 @@ export function ReceiveDialog({
           {canShare && (
             <button
               className="text-button"
+              disabled={sharing}
               onClick={async () => {
+                if (shareBusy.current) return;
+                shareBusy.current = true;
+                setSharing(true);
+                const savedRequest = request.current;
                 setError("");
+                setMessage("");
                 try {
                   await navigator.share(shareData);
                 } catch (error) {
                   if (
+                    savedRequest === request.current &&
                     !(
                       error instanceof DOMException &&
                       error.name === "AbortError"
                     )
                   )
                     setError("分享未完成，可以复制地址后发送");
+                } finally {
+                  if (savedRequest === request.current) {
+                    shareBusy.current = false;
+                    setSharing(false);
+                  }
                 }
               }}
             >
               <Share2 size={16} />
-              分享地址
+              {sharing ? "正在分享…" : "分享地址"}
             </button>
           )}
         </div>
@@ -147,11 +185,15 @@ export function ReceiveDialog({
         </p>
         <button
           className="button primary full"
+          disabled={copying}
           onClick={() => void copyAddress()}
         >
           {copied ? <Check size={18} /> : <Copy size={18} />}
-          {copied ? "地址已复制" : "复制完整地址"}
+          {copying ? "正在复制…" : copied ? "地址已复制" : "复制完整地址"}
         </button>
+        <span className="sr-only" role="status">
+          {copied ? "地址已复制" : ""}
+        </span>
       </div>
     </Modal>
   );

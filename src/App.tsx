@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Info, X } from "lucide-react";
 import {
   readBalance,
   readHistory,
@@ -71,7 +71,9 @@ export default function App() {
     [historyLoading, setHistoryLoading] = useState(false),
     [filter, setFilter] = useState("all"),
     [query, setQuery] = useState(""),
-    [toast, setToast] = useState(""),
+    [toast, setToast] = useState<{ message: string; success: boolean } | null>(
+      null,
+    ),
     [hidden, setHidden] = useState(false),
     [wormholeInfo, setWormholeInfo] = useState<Awaited<
       ReturnType<typeof readWormholeInfo>
@@ -115,7 +117,10 @@ export default function App() {
   const wallets = data?.wallets || [],
     wallet = wallets.find((w) => w.id === selected) || wallets[0],
     balance = wallet ? balances[wallet.address] : undefined;
-  const notify = useCallback((message: string) => setToast(message), []);
+  const notify = useCallback(
+    (message: string, success = false) => setToast({ message, success }),
+    [],
+  );
   const lock = useCallback(() => {
     epoch.current++;
     setSession(null);
@@ -166,7 +171,7 @@ export default function App() {
   }, [lock, notify]);
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(""), 4500);
+    const id = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(id);
   }, [toast]);
   const persist = useCallback(
@@ -346,6 +351,7 @@ export default function App() {
               state.status === "finalized"
                 ? "交易已获得最终确认"
                 : "交易执行失败，请查看记录",
+              state.status === "finalized",
             );
           }
         },
@@ -414,7 +420,7 @@ export default function App() {
         raw,
         `quantus-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`,
       );
-      notify("已导出加密备份，请妥善保存");
+      notify("已导出加密备份，请妥善保存", true);
     }
   }
   const pending = (data?.pending || []).filter(
@@ -425,7 +431,7 @@ export default function App() {
   const filtered = transactions.filter((t) => {
     const incoming = t.to === wallet?.address,
       outgoing = t.from === wallet?.address,
-      reward = t.type === "MINER_REWARD";
+      reward = t.type === "MINER_REWARD" || t.type === "REWARD";
     return (
       (filter === "all" ||
         (filter === "in" && incoming) ||
@@ -434,7 +440,7 @@ export default function App() {
       (!query ||
         `${t.hash} ${t.from} ${t.to} ${t.type}`
           .toLowerCase()
-          .includes(query.toLowerCase()))
+          .includes(query.trim().toLowerCase()))
     );
   });
   const visibleTransactions =
@@ -446,7 +452,7 @@ export default function App() {
     }
     try {
       await copyText(wallet.address);
-      notify("地址已复制");
+      notify("地址已复制", true);
     } catch {
       notify("复制失败，请手动复制地址");
     }
@@ -477,7 +483,10 @@ export default function App() {
         loading={loading}
         unlocked={!!session}
         hasVault={hasVault}
-        pendingCount={pending.length}
+        pendingCount={
+          pending.filter((tx) => !["finalized", "failed"].includes(tx.status))
+            .length
+        }
         onPageChange={navigate}
         onOpen={open}
         onLock={lock}
@@ -555,9 +564,9 @@ export default function App() {
       )}
       {toast && (
         <div className="toast" role="status">
-          <Check size={16} />
-          {toast}
-          <button aria-label="关闭提示" onClick={() => setToast("")}>
+          {toast.success ? <Check size={16} /> : <Info size={16} />}
+          {toast.message}
+          <button aria-label="关闭提示" onClick={() => setToast(null)}>
             <X size={14} />
           </button>
         </div>
@@ -574,7 +583,11 @@ export default function App() {
         />
       )}
       {dialog === "choose" && session && (
-        <WalletChooser onClose={() => setDialog(null)} onChoose={setDialog} />
+        <WalletChooser
+          onClose={() => setDialog(null)}
+          onBack={wallets.length ? () => setDialog("wallets") : undefined}
+          onChoose={setDialog}
+        />
       )}
       {(dialog === "create" || dialog === "import" || dialog === "watch") &&
         session && (
@@ -582,6 +595,7 @@ export default function App() {
             mode={dialog}
             wallets={wallets}
             onClose={() => setDialog(null)}
+            onBack={() => setDialog("choose")}
             onSave={saveWallet}
           />
         )}

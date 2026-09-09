@@ -14,6 +14,7 @@ coverage/
 *.local
 *wallet-backup*.json
 quantus-backup-*.json
+quantus-mnemonic-*.txt
 *.pem
 *.key
 

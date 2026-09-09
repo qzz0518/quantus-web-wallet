@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -53,11 +53,42 @@ export function ManageDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [copying, setCopying] = useState(false);
+  const busyRef = useRef(false);
+  const copyAttempt = useRef(0);
+  const passwordInput = useRef<HTMLInputElement>(null);
+  const overview = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<ManageView | null>(null);
+
+  useEffect(
+    () => () => {
+      copyAttempt.current++;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (view === "seed" && !secret && error && !busy)
+      passwordInput.current?.focus();
+  }, [view, secret, error, busy]);
+  useEffect(() => {
+    if (view !== "overview" || !returnFocus.current) return;
+    const target = returnFocus.current;
+    returnFocus.current = null;
+    const frame = requestAnimationFrame(() => {
+      overview.current
+        ?.querySelector<HTMLButtonElement>(`[data-manage-view="${target}"]`)
+        ?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
 
   function navigate(next: ManageView) {
-    if (busy) return;
+    if (busyRef.current) return;
+    copyAttempt.current++;
+    setCopying(false);
     if (next === "rename") setName(wallet.name);
     if (next === "type") setWatchKind(wallet.watchKind ?? "");
+    if (next === "overview") returnFocus.current = view;
     setView(next);
     setPassword("");
     setSecret(null);
@@ -66,10 +97,12 @@ export function ManageDialog({
     setMessage("");
   }
   function close() {
-    if (!busy) onClose();
+    if (!busyRef.current) onClose();
   }
   const back = () => (view === "overview" ? close() : navigate("overview"));
   async function action(fn: () => Promise<void>) {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     setMessage("");
@@ -78,6 +111,7 @@ export function ManageDialog({
     } catch (error) {
       setError(errorText(error));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -110,11 +144,33 @@ export function ManageDialog({
           ? "普通观察账户"
           : "观察账户 · 类型待确认"
       : "自主保管账户";
+  const feedback = (error || message) && (
+    <div className="flow-feedback">
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="flow-success" role="status">
+          <Check size={17} />
+          {message}
+        </p>
+      )}
+    </div>
+  );
 
   return (
-    <Modal title={titles[view]} variant="flow" onClose={close} onBack={back}>
+    <Modal
+      title={titles[view]}
+      variant="flow"
+      busy={busy}
+      stepKey={`${view}:${!!secret}`}
+      onClose={close}
+      onBack={back}
+    >
       {view === "overview" && (
-        <div className="flow-body manage-overview">
+        <div className="flow-body manage-overview" ref={overview}>
           <div className="settings-profile manage-profile">
             <span className="settings-profile-avatar" aria-hidden="true">
               {wallet.kind === "watch" ? (
@@ -132,18 +188,26 @@ export function ManageDialog({
             <div className="account-detail-actions">
               <button
                 className="text-button"
+                disabled={copying}
                 onClick={async () => {
+                  const attempt = ++copyAttempt.current;
                   setError("");
+                  setMessage("");
+                  setCopying(true);
                   try {
                     await copyText(wallet.address);
-                    setMessage("地址已复制");
+                    if (attempt === copyAttempt.current)
+                      setMessage("地址已复制");
                   } catch {
-                    setError("复制失败，请手动选中地址");
+                    if (attempt === copyAttempt.current)
+                      setError("复制失败，请手动选中地址");
+                  } finally {
+                    if (attempt === copyAttempt.current) setCopying(false);
                   }
                 }}
               >
                 <Copy size={15} />
-                复制地址
+                {copying ? "正在复制…" : "复制地址"}
               </button>
               <a
                 className="text-button"
@@ -157,7 +221,11 @@ export function ManageDialog({
             </div>
           </div>
           <section className="settings-group" aria-label="管理钱包">
-            <button className="settings-row" onClick={() => navigate("rename")}>
+            <button
+              className="settings-row"
+              data-manage-view="rename"
+              onClick={() => navigate("rename")}
+            >
               <span className="settings-row-icon">
                 <Pencil size={19} />
               </span>
@@ -167,7 +235,11 @@ export function ManageDialog({
               <ChevronRight size={17} />
             </button>
             {wallet.kind !== "watch" && (
-              <button className="settings-row" onClick={() => navigate("seed")}>
+              <button
+                className="settings-row"
+                data-manage-view="seed"
+                onClick={() => navigate("seed")}
+              >
                 <span className="settings-row-icon">
                   <KeyRound size={19} />
                 </span>
@@ -178,7 +250,11 @@ export function ManageDialog({
               </button>
             )}
             {wallet.kind === "watch" && onWatchKindChange && (
-              <button className="settings-row" onClick={() => navigate("type")}>
+              <button
+                className="settings-row"
+                data-manage-view="type"
+                onClick={() => navigate("type")}
+              >
                 <span className="settings-row-icon">
                   <SlidersHorizontal size={19} />
                 </span>
@@ -190,6 +266,7 @@ export function ManageDialog({
             )}
             <button
               className="settings-row danger-text"
+              data-manage-view="remove"
               onClick={() => navigate("remove")}
             >
               <span className="settings-row-icon">
@@ -201,6 +278,7 @@ export function ManageDialog({
               <ChevronRight size={17} />
             </button>
           </section>
+          {feedback}
         </div>
       )}
       {view === "rename" && (
@@ -208,8 +286,10 @@ export function ManageDialog({
           className="flow-form"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!name.trim() || name.trim() === wallet.name) return;
             void action(async () => {
               await onUpdate(name.trim());
+              returnFocus.current = "rename";
               setView("overview");
               setMessage("钱包名称已更新");
             });
@@ -235,6 +315,7 @@ export function ManageDialog({
                 onChange={(event) => setName(event.target.value)}
               />
             </label>
+            {feedback}
           </div>
           <div className="flow-footer">
             <button
@@ -253,11 +334,13 @@ export function ManageDialog({
             event.preventDefault();
             if (
               !onWatchKindChange ||
+              watchKind === wallet.watchKind ||
               (watchKind !== "standard" && watchKind !== "wormhole")
             )
               return;
             void action(async () => {
               await onWatchKindChange(watchKind);
+              returnFocus.current = "type";
               setView("overview");
               setMessage("观察账户类型已更新");
             });
@@ -278,6 +361,8 @@ export function ManageDialog({
               账户类型
               <select
                 aria-label="观察账户类型"
+                autoFocus
+                required
                 value={watchKind}
                 disabled={busy}
                 onChange={(event) => {
@@ -295,6 +380,7 @@ export function ManageDialog({
                 <option value="wormhole">Wormhole 隐私账户</option>
               </select>
             </label>
+            {feedback}
           </div>
           <div className="flow-footer">
             <button
@@ -335,17 +421,20 @@ export function ManageDialog({
                 onClick={() => {
                   setSecret(null);
                   setMessage("");
+                  setError("");
                 }}
               >
                 <EyeOff size={16} />
                 隐藏助记词
               </button>
+              {feedback}
             </div>
             <div className="flow-footer">
               <button
                 className="button primary full"
                 onClick={() => {
                   setError("");
+                  setMessage("");
                   try {
                     downloadMnemonicBackup(secret, wallet.name, wallet.index);
                     setMessage("助记词备份下载已开始");
@@ -376,12 +465,15 @@ export function ManageDialog({
                   autoComplete="current-password"
                   autoFocus
                   aria-label="查看助记词的密码"
+                  ref={passwordInput}
+                  aria-invalid={!!error || undefined}
                   required
                   value={password}
                   disabled={busy}
                   onChange={(event) => setPassword(event.target.value)}
                 />
               </label>
+              {feedback}
             </div>
             <div className="flow-footer">
               <button
@@ -418,6 +510,7 @@ export function ManageDialog({
               />
               我已保存恢复此钱包所需的信息
             </label>
+            {feedback}
           </div>
           <div className="flow-footer">
             <button
@@ -434,21 +527,6 @@ export function ManageDialog({
             </button>
           </div>
         </>
-      )}
-      {(error || message) && (
-        <div className="flow-feedback">
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          {message && (
-            <p className="flow-success" role="status">
-              <Check size={17} />
-              {message}
-            </p>
-          )}
-        </div>
       )}
     </Modal>
   );

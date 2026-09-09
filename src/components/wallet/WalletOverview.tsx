@@ -1,4 +1,5 @@
 import { ChevronRight, Copy, Eye, EyeOff, Ellipsis } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { Balance, WormholeInfo } from "../../lib/chain";
 import type { Wallet } from "../../lib/vault";
 import { formatAmount, shortAddress } from "../../lib/amount";
@@ -64,6 +65,11 @@ export function WalletOverview({
         </div>
         <div
           className={`hero-balance ${amount.length > 13 ? "long-value" : ""}`}
+          style={
+            {
+              "--balance-width": Math.max(amount.length * 0.57, 1),
+            } as CSSProperties
+          }
         >
           <span>
             {whole}

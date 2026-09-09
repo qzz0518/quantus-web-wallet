@@ -542,6 +542,7 @@ textarea {
 .wallet-hero {
   text-align: center;
   min-width: 0;
+  container-type: inline-size;
 }
 .hero-balance-label {
   display: flex;
@@ -572,7 +573,7 @@ textarea {
 }
 .hero-balance > span {
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 .hero-balance > small {
   font-size: 17px;
@@ -583,8 +584,8 @@ textarea {
   color: var(--muted);
 }
 .hero-balance.long-value {
-  font-size: 40px;
-  letter-spacing: -1.8px;
+  font-size: min(40px, calc((100cqw - 48px) / var(--balance-width)));
+  letter-spacing: -0.5px;
 }
 .hero-available {
   margin-top: 12px;
@@ -858,11 +859,25 @@ textarea {
   color: var(--muted);
 }
 .search-field input {
+  min-width: 0;
+  flex: 1;
   width: 175px;
   font-size: 14px;
   background: none;
   padding: 12px 0;
   border-radius: 0;
+}
+.search-field .clear-search {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  min-height: 44px;
+  margin-right: -10px;
+  color: var(--muted);
+}
+.transaction-date::before {
+  content: " · ";
 }
 .wallet-transactions,
 .pending-list {
@@ -933,6 +948,15 @@ textarea {
 .wallet-transaction-amount > strong > small {
   font-size: 11px;
   font-weight: 400;
+}
+.wallet-transaction-amount.long-value {
+  max-width: 58%;
+}
+.wallet-transaction-amount.long-value > strong {
+  font-size: 12px;
+}
+.wallet-transaction-amount.long-value > strong > small {
+  display: block;
 }
 .positive {
   color: var(--green);
@@ -1033,7 +1057,7 @@ textarea {
   width: min(480px, calc(100% - 40px));
   max-height: calc(100dvh - 64px);
   box-shadow: 0 28px 100px #0003;
-  overflow: auto;
+  overflow: hidden;
 }
 .modal.wide {
   width: min(520px, calc(100% - 40px));
@@ -1046,7 +1070,8 @@ textarea {
   background: #0009;
 }
 .modal-inner {
-  min-height: 550px;
+  min-height: min(550px, calc(100dvh - 64px));
+  max-height: calc(100dvh - 64px);
   display: flex;
   flex-direction: column;
 }
@@ -1056,8 +1081,7 @@ textarea {
   gap: 9px;
   align-items: center;
   padding: 20px 24px 16px;
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 2;
   background: var(--bg);
 }
@@ -1076,6 +1100,8 @@ textarea {
   color: var(--muted);
 }
 .modal-content {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1104,13 +1130,18 @@ textarea {
 }
 .flow-form,
 .device-settings {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
 }
 .flow-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding: 16px 28px 26px;
   min-width: 0;
 }
@@ -1119,6 +1150,7 @@ textarea {
 }
 .flow-heading h2,
 .flow-heading h3 {
+  overflow-wrap: anywhere;
   font-size: 25px;
   font-weight: 550;
   line-height: 1.4;
@@ -1140,12 +1172,14 @@ textarea {
   margin: 0 0 26px;
 }
 .flow-footer {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   padding: 16px 28px 28px;
   background: var(--bg);
   z-index: 1;
   margin-top: auto;
+}
+.flow-footer > .button + .button {
+  margin-top: 10px;
 }
 .flow-footer > .flow-note {
   margin-bottom: 14px;
@@ -1187,7 +1221,9 @@ p.flow-success {
   align-items: center;
   justify-content: center;
   text-align: center;
-  min-height: 410px;
+  min-height: 0;
+  padding-top: 40px;
+  padding-bottom: 40px;
 }
 .flow-success-mark,
 .success-emblem {
@@ -1412,7 +1448,7 @@ p.flow-success {
   font-size: 12px;
 }
 .settings-group {
-  background: var(--surface);
+  background: transparent;
   border-radius: 18px;
   margin: 28px 0;
 }
@@ -1426,6 +1462,7 @@ p.flow-success {
   letter-spacing: 0;
 }
 .settings-row {
+  background: var(--surface);
   display: flex;
   align-items: center;
   gap: 13px;
@@ -1434,9 +1471,14 @@ p.flow-success {
   width: 100%;
   text-align: left;
 }
+.settings-group > .settings-row:first-child,
 .settings-group > h2 + .settings-row {
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
+}
+.settings-group > .settings-row:last-child {
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
 }
 .settings-row:not(:last-child) {
   border-bottom: 1px solid var(--line);
@@ -1444,7 +1486,6 @@ p.flow-success {
 button.settings-row:hover,
 a.settings-row:hover {
   background: var(--surface-soft);
-  border-radius: inherit;
 }
 .settings-row-icon {
   display: grid;
@@ -1663,6 +1704,7 @@ a.settings-row:hover {
   margin: 40px 0;
 }
 .amount-input > input {
+  min-width: 0;
   width: 100%;
   background: transparent;
   font-size: 54px;
@@ -1670,6 +1712,10 @@ a.settings-row:hover {
   letter-spacing: -2px;
   padding: 0;
   text-align: center;
+}
+.amount-input.long-value > input {
+  font-size: 30px;
+  letter-spacing: -0.7px;
 }
 .amount-input > span {
   color: var(--muted);
@@ -1682,6 +1728,10 @@ a.settings-row:hover {
   font-weight: 500;
   margin: 20px 0 32px;
   overflow-wrap: anywhere;
+}
+.send-amount.long-value {
+  font-size: 28px;
+  letter-spacing: -0.7px;
 }
 .send-amount > span {
   font-size: 15px;
@@ -1871,9 +1921,6 @@ a.settings-row:hover {
   .hero-balance {
     font-size: 54px;
   }
-  .hero-balance.long-value {
-    font-size: 33px;
-  }
   .wallet-account-panel {
     padding: 18px 21px 10px;
   }
@@ -2001,10 +2048,6 @@ a.settings-row:hover {
   .hero-balance > small {
     font-size: 16px;
   }
-  .hero-balance.long-value {
-    font-size: clamp(28px, 8.6vw, 42px);
-    letter-spacing: -1.6px;
-  }
   .hero-available {
     margin-top: 10px;
     font-size: 12px;
@@ -2110,6 +2153,9 @@ a.settings-row:hover {
   .transaction-date {
     display: block;
     margin-top: 2px;
+  }
+  .transaction-date::before {
+    content: none;
   }
   .transaction-external {
     display: none;
@@ -2244,7 +2290,9 @@ a.settings-row:hover {
     box-shadow: none;
   }
   .modal-inner {
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
   }
   .modal-head {
     padding: max(17px, env(safe-area-inset-top)) 22px 15px;
@@ -2326,6 +2374,24 @@ a.settings-row:hover {
     bottom: calc(98px + env(safe-area-inset-bottom));
   }
 }
+@media (max-width: 700px) and (max-height: 650px) {
+  .receive-wallet {
+    margin-bottom: 16px;
+  }
+  .receive-wallet strong {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 18px;
+  }
+  .receive-qr-panel {
+    padding: 12px;
+  }
+  .receive-qr > svg {
+    width: clamp(144px, calc(100dvh - 360px), 240px);
+  }
+}
 @media (max-width: 360px) {
   .wallet-topbar {
     padding-left: 18px;
@@ -2344,9 +2410,6 @@ a.settings-row:hover {
   }
   .hero-balance {
     font-size: 54px;
-  }
-  .hero-balance.long-value {
-    font-size: 28px;
   }
   .flow-body {
     padding-left: 20px;
