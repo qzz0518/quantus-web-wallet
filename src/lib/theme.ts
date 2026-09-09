@@ -19,7 +19,19 @@ export function readThemePreference(): ThemePreference {
 
 export function applyTheme(preference: ThemePreference, systemDark: boolean) {
   const theme = resolveTheme(preference, systemDark);
-  document.documentElement.dataset.theme = theme;
+  const root = document.documentElement;
+  if (
+    root.dataset.theme !== theme &&
+    typeof requestAnimationFrame === "function"
+  ) {
+    root.dataset.themeChanging = "true";
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        delete root.dataset.themeChanging;
+      }),
+    );
+  }
+  root.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
   document.documentElement.style.backgroundColor =
     theme === "dark" ? "#111412" : "#f5f5f4";

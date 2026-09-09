@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   ShieldCheck,
 } from "lucide-react";
+import { SwapIcon } from "./SwapIcon";
 import { Modal } from "./Modal";
 import type { Wallet, Pending } from "../lib/vault";
 import {
@@ -236,6 +237,8 @@ export function SendDialog({
   }
   function back() {
     if (busy) return;
+    const dialog = document.querySelector<HTMLDialogElement>("dialog[open]");
+    if (dialog) dialog.dataset.stepDirection = "back";
     setError("");
     if (hash) onClose();
     else if (quote) setQuote(null);
@@ -303,7 +306,12 @@ export function SendDialog({
                 }
               }}
             >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+              <SwapIcon
+                active={copied}
+                size={16}
+                idle={<Copy size={16} />}
+                done={<Check size={16} />}
+              />
               {copied ? "哈希已复制" : "复制交易哈希"}
             </button>
             {copyError && (

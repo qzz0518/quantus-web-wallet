@@ -1,6 +1,9 @@
 @import url("/fonts.css");
 
 :root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-enter: 240ms;
+  --motion-exit: 180ms;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
@@ -384,7 +387,9 @@ textarea {
   grid-column: 3;
 }
 .wallet-navigation {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   align-items: center;
   padding: 5px;
@@ -405,9 +410,22 @@ textarea {
   position: relative;
 }
 .wallet-navigation > button.active {
-  background: var(--surface-soft);
+  background: transparent;
   color: var(--text);
   font-weight: 550;
+}
+.wallet-navigation::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 26px) / 3);
+  background: var(--surface-soft);
+  border-radius: 26px;
+  transform: translateX(calc(var(--active-tab) * (100% + 8px)));
+  transition: transform var(--motion-enter) var(--motion-ease);
+  pointer-events: none;
 }
 .wallet-navigation > button > svg {
   width: 18px;
@@ -1058,16 +1076,45 @@ textarea {
   max-height: calc(100dvh - 64px);
   box-shadow: 0 28px 100px #0003;
   overflow: hidden;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity var(--motion-enter) var(--motion-ease),
+    transform var(--motion-enter) var(--motion-ease);
 }
 .modal.wide {
   width: min(520px, calc(100% - 40px));
 }
 .modal::backdrop {
+  opacity: 1;
+  transition: opacity var(--motion-enter) var(--motion-ease);
   background: #0a15124d;
   backdrop-filter: blur(5px);
 }
 :root[data-theme="dark"] .modal::backdrop {
   background: #0009;
+}
+.modal[data-exiting] {
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+  transition-duration: var(--motion-exit);
+}
+.modal[data-exiting]::backdrop {
+  opacity: 0;
+  transition-duration: var(--motion-exit);
+}
+.modal[data-exiting] [data-private],
+.modal[data-exiting] input[type="password"] {
+  visibility: hidden;
+}
+@starting-style {
+  .modal[open] {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  .modal[open]::backdrop {
+    opacity: 0;
+  }
 }
 .modal-inner {
   min-height: min(550px, calc(100dvh - 64px));
@@ -1311,14 +1358,25 @@ p.flow-success {
   margin: 0 0 26px;
 }
 .step-progress span {
+  position: relative;
+  overflow: hidden;
   display: block;
   height: 3px;
   flex: 1;
   border-radius: 3px;
   background: var(--line);
 }
-.step-progress span.active {
+.step-progress span::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-enter) var(--motion-ease);
+}
+.step-progress span.active::before {
+  transform: scaleX(1);
 }
 .mnemonic-grid {
   list-style: none;
@@ -2176,11 +2234,24 @@ a.settings-row:hover {
     transform: translateX(-50%);
     bottom: 0;
     width: min(100%, 520px);
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     align-items: center;
-    justify-content: space-around;
     padding: 12px 20px max(16px, env(safe-area-inset-bottom));
     background: var(--bg);
+  }
+  .wallet-bottom-nav::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 28px;
+    width: calc((100% - 40px) / 3 - 16px);
+    border-radius: 30px;
+    background: var(--surface);
+    transform: translateX(calc(var(--active-tab) * (100% + 16px)));
+    transition: transform var(--motion-enter) var(--motion-ease);
+    pointer-events: none;
   }
   .wallet-bottom-nav > button {
     position: relative;
@@ -2189,7 +2260,7 @@ a.settings-row:hover {
     align-items: center;
     justify-content: center;
     gap: 7px;
-    min-width: 89px;
+    min-width: 0;
     min-height: 54px;
     padding: 9px 18px;
     border-radius: 30px;
@@ -2198,7 +2269,7 @@ a.settings-row:hover {
   }
   .wallet-bottom-nav > button.active {
     color: var(--text);
-    background: var(--surface);
+    background: transparent;
   }
   .wallet-bottom-nav .nav-notification {
     right: 24px;
@@ -2288,6 +2359,14 @@ a.settings-row:hover {
     max-height: 100dvh;
     border-radius: 0;
     box-shadow: none;
+  }
+  .modal[data-exiting] {
+    transform: translateY(24px);
+  }
+  @starting-style {
+    .modal[open] {
+      transform: translateY(28px);
+    }
   }
   .modal-inner {
     height: 100%;
@@ -2438,10 +2517,141 @@ a.settings-row:hover {
     padding-right: 16px;
   }
 }
+.icon-swap {
+  display: inline-grid;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.icon-swap > span {
+  display: grid;
+  place-items: center;
+  grid-area: 1 / 1;
+  transition:
+    opacity 160ms var(--motion-ease),
+    transform 160ms var(--motion-ease);
+}
+.icon-swap-done {
+  opacity: 0;
+  transform: scale(0.75);
+}
+.icon-swap[data-active="true"] .icon-swap-done {
+  opacity: 1;
+  transform: scale(1);
+}
+.icon-swap[data-active="true"] .icon-swap-idle {
+  opacity: 0;
+  transform: scale(0.75);
+}
+/* Feedback stays local to the control the user just operated. */
+:where(
+  .button,
+  .circle-button,
+  .icon-button,
+  .word-option,
+  .wallet-options > button,
+  .wallet-switcher-item,
+  .settings-row,
+  .card-menu,
+  .balance-visibility
+) {
+  transition:
+    scale 140ms var(--motion-ease),
+    opacity 140ms ease;
+}
+:root:not([data-input-mode="keyboard"])
+  :where(
+    .button,
+    .circle-button,
+    .icon-button,
+    .word-option,
+    .wallet-options > button,
+    .wallet-switcher-item,
+    .settings-row,
+    .card-menu,
+    .balance-visibility
+  ):active:not(:disabled) {
+  scale: 0.97;
+}
+:where(
+    .text-button,
+    .settings-row,
+    .wallet-options > button,
+    .account-card-footer button
+  )
+  > svg:last-child {
+  transition: transform 160ms var(--motion-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .text-button:hover > .lucide-arrow-up-right,
+  .account-card-footer button:hover > .lucide-chevron-right,
+  .settings-row:hover > .lucide-chevron-right,
+  .wallet-options > button:hover > .lucide-arrow-right {
+    transform: translateX(2px);
+  }
+}
+.flow-success-mark,
+.success-emblem {
+  animation: completion-in 280ms var(--motion-ease);
+}
+.flow-success-mark > svg,
+.success-emblem > svg {
+  animation: completion-mark 220ms var(--motion-ease) 70ms both;
+}
+:where(.button, .text-button) > .lucide-check,
+.flow-success,
+.error,
+.device-enabled-state {
+  animation: feedback-in 180ms var(--motion-ease);
+}
+@keyframes feedback-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes completion-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes completion-mark {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+:root[data-input-mode="keyboard"] *,
+:root[data-input-mode="keyboard"] *::before,
+:root[data-input-mode="keyboard"] *::after,
+:root[data-input-mode="keyboard"] .modal::backdrop {
+  animation: none !important;
+  transition: none !important;
+}
+
+:root[data-theme-changing] *,
+:root[data-theme-changing] *::before,
+:root[data-theme-changing] *::after,
+:root[data-theme-changing] .modal::backdrop {
+  transition: none !important;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  .modal::backdrop {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

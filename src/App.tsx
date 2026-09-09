@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Info, X } from "lucide-react";
+import { Toast } from "./components/Toast";
+import { dismissModal, useMotionPreferences } from "./lib/motion";
 import {
   readBalance,
   readHistory,
@@ -46,6 +47,7 @@ type Balance = Awaited<ReturnType<typeof readBalance>>;
 type Network = Awaited<ReturnType<typeof readNetwork>>;
 
 export default function App() {
+  useMotionPreferences();
   const [session, setSession] = useState<VaultSession | null>(null),
     [data, setData] = useState<VaultData | null>(null),
     [hasVault, setHasVault] = useState(
@@ -380,6 +382,12 @@ export default function App() {
       active = false;
     };
   }, [wallet?.address, wallet?.watchKind]);
+  const closeDialog = () => {
+    const generation = epoch.current;
+    dismissModal(() => {
+      if (epoch.current === generation) setDialog(null);
+    });
+  };
   const open = (target: WalletDialog) => {
     nextAction.current =
       target === "create" || target === "import" || target === "watch"
@@ -558,33 +566,25 @@ export default function App() {
           wallets={wallets}
           wallet={wallet}
           onSelect={setSelected}
-          onClose={() => setDialog(null)}
+          onClose={closeDialog}
           onAdd={() => setDialog("choose")}
         />
       )}
-      {toast && (
-        <div className="toast" role="status">
-          {toast.success ? <Check size={16} /> : <Info size={16} />}
-          {toast.message}
-          <button aria-label="关闭提示" onClick={() => setToast(null)}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <Toast notice={toast} onDismiss={() => setToast(null)} />
       {(dialog === "setup" || dialog === "unlock" || dialog === "restore") && (
         <SetupDialog
           mode={dialog === "setup" ? "create" : dialog}
           initialAction={nextAction.current || undefined}
           onClose={() => {
             nextAction.current = null;
-            setDialog(null);
+            closeDialog();
           }}
           onOpen={opened}
         />
       )}
       {dialog === "choose" && session && (
         <WalletChooser
-          onClose={() => setDialog(null)}
+          onClose={closeDialog}
           onBack={wallets.length ? () => setDialog("wallets") : undefined}
           onChoose={setDialog}
         />
@@ -594,19 +594,19 @@ export default function App() {
           <AddWalletDialog
             mode={dialog}
             wallets={wallets}
-            onClose={() => setDialog(null)}
+            onClose={closeDialog}
             onBack={() => setDialog("choose")}
             onSave={saveWallet}
           />
         )}
       {dialog === "receive" && wallet && (
-        <ReceiveDialog wallet={wallet} onClose={() => setDialog(null)} />
+        <ReceiveDialog wallet={wallet} onClose={closeDialog} />
       )}
       {dialog === "manage" && wallet && (
         <ManageDialog
           key={wallet.id}
           wallet={wallet}
-          onClose={() => setDialog(null)}
+          onClose={closeDialog}
           onUpdate={(name) =>
             persist((d) => ({
               ...d,
@@ -638,7 +638,7 @@ export default function App() {
           key={wallet.id}
           wallet={wallet}
           wallets={wallets}
-          onClose={() => setDialog(null)}
+          onClose={closeDialog}
           onSubmitted={(tx) =>
             persist((d) => ({
               ...d,

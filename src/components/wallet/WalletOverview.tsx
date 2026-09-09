@@ -1,5 +1,6 @@
 import { ChevronRight, Copy, Eye, EyeOff, Ellipsis } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
+import { useReveal } from "../../lib/motion";
 import type { Balance, WormholeInfo } from "../../lib/chain";
 import type { Wallet } from "../../lib/vault";
 import { formatAmount, shortAddress } from "../../lib/amount";
@@ -8,6 +9,7 @@ import {
   isWormhole,
   walletBalanceKind,
 } from "../../lib/wallet";
+import { SwapIcon } from "../SwapIcon";
 import { WalletLogo } from "./WalletLogo";
 import type { WalletDialog } from "./types";
 
@@ -33,6 +35,10 @@ export function WalletOverview({
   onOpen,
   onCopyAddress,
 }: Props) {
+  const card = useRef<HTMLDivElement>(null);
+  const hero = useRef<HTMLDivElement>(null);
+  useReveal(card, wallet.id, 10);
+  useReveal(hero, wallet.id, 6);
   const kind = walletBalanceKind(wallet);
   const amount = hidden
     ? "••••"
@@ -44,7 +50,7 @@ export function WalletOverview({
   const [whole, decimal] = amount.split(".");
   return (
     <section className="wallet-overview">
-      <div className="wallet-hero" aria-label="钱包余额">
+      <div className="wallet-hero" aria-label="钱包余额" ref={hero}>
         <div className="hero-balance-label">
           <span>
             {kind === "unknown"
@@ -60,7 +66,12 @@ export function WalletOverview({
             aria-label={hidden ? "显示余额" : "隐藏余额"}
             onClick={onToggleHidden}
           >
-            {hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+            <SwapIcon
+              active={hidden}
+              size={16}
+              idle={<Eye size={16} />}
+              done={<EyeOff size={16} />}
+            />
           </button>
         </div>
         <div
@@ -113,7 +124,7 @@ export function WalletOverview({
           </button>
         </div>
       </div>
-      <div className="account-card-wrapper">
+      <div className="account-card-wrapper" ref={card}>
         <section className="wallet-account-panel" aria-label="当前钱包卡片">
           <div className="account-panel-top">
             <span className="account-card-brand">

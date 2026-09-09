@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { reveal } from "../../lib/motion";
 import {
   ChevronDown,
   History,
@@ -53,10 +59,36 @@ export function WalletLayout({
   onLock,
   onRefresh,
 }: Props) {
+  const content = useRef<HTMLElement>(null);
+  const previous = useRef({ page, unlocked });
+  useLayoutEffect(() => {
+    const before = previous.current;
+    previous.current = { page, unlocked };
+    if (
+      (before.page === page && before.unlocked === unlocked) ||
+      (before.unlocked && !unlocked)
+    )
+      return;
+    const direction =
+      tabs.findIndex((t) => t.id === page) <
+      tabs.findIndex((t) => t.id === before.page)
+        ? -1
+        : 1;
+    const animations = [...(content.current?.children || [])].map(
+      (element, index) =>
+        reveal(element, direction * 12, 0, 220 + Math.min(index, 2) * 20),
+    );
+    return () => animations.forEach((a) => a?.cancel());
+  }, [page, unlocked]);
   const navigation = (mobile: boolean) => (
     <nav
       className={mobile ? "wallet-bottom-nav" : "wallet-navigation"}
       aria-label={mobile ? "移动端导航" : "主要导航"}
+      style={
+        {
+          "--active-tab": tabs.findIndex((t) => t.id === page),
+        } as CSSProperties
+      }
     >
       {tabs.map(({ id, label, Icon }) => (
         <button
@@ -140,6 +172,7 @@ export function WalletLayout({
         </div>
       </header>
       <main
+        ref={content}
         className={`wallet-content ${!unlocked && page !== "settings" ? "welcome-content" : ""}`}
       >
         {unlocked && page !== "settings" && (

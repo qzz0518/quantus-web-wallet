@@ -20,6 +20,7 @@ import { PROJECT_NAME } from "../../lib/project";
 import { shortAddress } from "../../lib/amount";
 import { DeviceUnlockSettings } from "../DeviceUnlockSettings";
 import { ThemePicker } from "../ThemePicker";
+import { dismissModal } from "../../lib/motion";
 import { Modal } from "../Modal";
 import { AboutDialog } from "../dialogs/AboutDialog";
 
@@ -102,7 +103,7 @@ export function SettingsPage({
     setPanel(next);
   };
   const closePanel = () => {
-    if (!panelBusy && !installBusy) setPanel(null);
+    if (!panelBusy && !installBusy) dismissModal(() => setPanel(null));
   };
 
   return (

@@ -8,6 +8,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { SwapIcon } from "../SwapIcon";
 import { Modal } from "../Modal";
 import type { Wallet } from "../../lib/vault";
 import { copyText, download } from "../../lib/browser";
@@ -188,7 +189,11 @@ export function ReceiveDialog({
           disabled={copying}
           onClick={() => void copyAddress()}
         >
-          {copied ? <Check size={18} /> : <Copy size={18} />}
+          <SwapIcon
+            active={copied}
+            idle={<Copy size={18} />}
+            done={<Check size={18} />}
+          />
           {copying ? "正在复制…" : copied ? "地址已复制" : "复制完整地址"}
         </button>
         <span className="sr-only" role="status">

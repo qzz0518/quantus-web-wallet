@@ -1,5 +1,6 @@
-import { useEffect, useRef, useId, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useId, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
+import { dismissModal, reveal } from "../lib/motion";
 
 export function Modal({
   title,
@@ -25,7 +26,8 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const subtitleId = useId();
-  useEffect(() => {
+  const previousStep = useRef(`${title}:${stepKey}`);
+  useLayoutEffect(() => {
     const el = ref.current;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -35,10 +37,38 @@ export function Modal({
       document.body.style.overflow = overflow;
     };
   }, []);
-  useEffect(() => {
-    ref.current?.scrollTo({ top: 0 });
-    ref.current?.querySelector(".flow-body")?.scrollTo({ top: 0 });
+  useLayoutEffect(() => {
+    const element = ref.current;
+    const key = `${title}:${stepKey}`;
+    const body = element?.querySelector(".flow-body");
+    element?.scrollTo({ top: 0 });
+    body?.scrollTo({ top: 0 });
+    if (previousStep.current === key) return;
+    previousStep.current = key;
+    const direction = element?.dataset.stepDirection === "back" ? -1 : 1;
+    if (element) delete element.dataset.stepDirection;
+    const animation = reveal(body || null, direction * 16, 0, 240);
+    const footer = reveal(
+      element?.querySelector(".flow-footer") || null,
+      0,
+      5,
+      180,
+    );
+    return () => {
+      animation?.cancel();
+      footer?.cancel();
+    };
   }, [title, stepKey]);
+  const unavailable = () => busy || !!ref.current?.dataset.exiting;
+  const close = () => {
+    if (!unavailable()) dismissModal(onClose);
+  };
+  const back = () => {
+    if (unavailable()) return;
+    if (ref.current) ref.current.dataset.stepDirection = "back";
+    if (!onBack || onBack === onClose) dismissModal(onClose);
+    else onBack();
+  };
   return (
     <dialog
       ref={ref}
@@ -48,10 +78,22 @@ export function Modal({
       className={`modal ${wide ? "wide" : ""} modal-${variant}`}
       onCancel={(event) => {
         event.preventDefault();
-        if (!busy) (onBack || onClose)();
+        back();
+      }}
+      onClickCapture={(event) => {
+        if (ref.current?.dataset.exiting) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+      onSubmitCapture={(event) => {
+        if (ref.current?.dataset.exiting) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
       }}
       onClick={(event) => {
-        if (!busy && event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) close();
       }}
     >
       <div className="modal-inner">
@@ -60,7 +102,7 @@ export function Modal({
             className="circle-button"
             aria-label="返回"
             disabled={busy}
-            onClick={onBack || onClose}
+            onClick={back}
           >
             <ArrowLeft size={20} />
           </button>
@@ -70,7 +112,7 @@ export function Modal({
               className="circle-button subtle"
               aria-label="关闭"
               disabled={busy}
-              onClick={onClose}
+              onClick={close}
             >
               <X size={19} />
             </button>
