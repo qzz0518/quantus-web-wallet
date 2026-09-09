@@ -1,0 +1,38 @@
+# Dependencies and generated output
+node_modules/
+dist/
+target/
+.cache/
+.wrangler/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Local configuration and wallet exports
+.env*
+!.env.example
+*.local
+*wallet-backup*.json
+quantus-backup-*.json
+*.pem
+*.key
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Local upstream audit evidence
+/vendor/chain-signing-reference/
+/vendor/verification-*.json
+
+# Upstream release tooling (not used by this app)
+/vendor/quantus-wasm/.github/
+/vendor/quantus-wasm/CREATE_RELEASE.md
+/vendor/quantus-wasm/scripts/
+/vendor/quantus-wasm/examples/
+/vendor/quantus-wasm/test/
+/vendor/quantus-wasm/js/
+/vendor/quantus-wasm/package.json
+/vendor/quantus-wasm/package-lock.json
+/vendor/quantus-wasm/tsconfig.json

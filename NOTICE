@@ -1,0 +1,14 @@
+Quantus Web Wallet
+Copyright (c) 2026 qzz0518
+
+The application is distributed under GPL-3.0-only; see LICENSE.
+Third-party code retains its original copyright and license notices.
+
+The browser signing module is adapted from Quantus Network's quantus-wasm
+(MIT). Its linked qp-rusty-crystals-dilithium and
+qp-rusty-crystals-hdwallet crates are GPL-3.0. Upstream notices are preserved
+in vendor/quantus-wasm/LICENSE and vendor/licenses/.
+
+Source revisions, local changes, dependency versions and reproduction
+instructions are recorded in vendor/PROVENANCE.md. Other dependencies
+retain the licenses distributed with their packages.

@@ -1,0 +1,49 @@
+[package]
+name = "quantus-wasm"
+version = "0.2.0"
+edition = "2021"
+description = "WASM bindings for Quantus account derivation and ML-DSA-87 extrinsic signing"
+license = "MIT"
+repository = "https://github.com/Quantus-Network/quantus-wasm"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Chain crypto, pinned to the exact versions the Quantus runtime uses so that
+# addresses (Poseidon) and signatures (ML-DSA-87) are byte-identical.
+qp-poseidon-core = { version = "=3.1.0", default-features = false }
+qp-rusty-crystals-dilithium = { version = "=4.1.1", default-features = false, features = ["ml-dsa-87"] }
+qp-rusty-crystals-hdwallet = { version = "=4.1.1", optional = true }
+zeroize = { version = "1.8", default-features = false, features = ["alloc"] }
+
+# SCALE codec + AccountId32/SS58 (sp-core does not pull sp-io/sp-runtime, so it
+# stays wasm-friendly).
+parity-scale-codec = { version = "3.7", default-features = false, features = ["derive"] }
+sp-core = { version = "39.0.0", default-features = false, features = ["serde"] }
+
+# WASM glue
+wasm-bindgen = "0.2"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde-wasm-bindgen = "0.6"
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
+
+# Browser/Node RNG backend so transitive getrandom users link on wasm32.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[features]
+default = ["mnemonic"]
+# BIP39 mnemonic -> account/signing helpers (Quantus HD path).
+mnemonic = ["dep:qp-rusty-crystals-hdwallet"]
+
+# Canonical references used ONLY in tests to prove the lightweight SCALE
+# encoding matches the runtime byte-for-byte. Not shipped in the wasm.
+[dev-dependencies]
+sp-runtime = "45.0.0"
+qp-dilithium-crypto = { version = "=0.7.0", features = ["std"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

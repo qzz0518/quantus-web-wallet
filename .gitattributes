@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.wasm binary
+# Unified patches preserve a leading space on blank context lines.
+*.patch whitespace=-blank-at-eol

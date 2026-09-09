@@ -1,0 +1,328 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 1da524a..f45ac17 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -455,6 +455,7 @@ dependencies = [
+  "rand_core",
+  "serde",
+  "unicode-normalization",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -1956,27 +1957,22 @@ dependencies = [
+ 
+ [[package]]
+ name = "qp-dilithium-crypto"
+-version = "0.4.0"
++version = "0.7.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f99d71b1b1ba2c8ecc882e76cf5b300d7e411238d749f34429b4af82aeda3b9c"
++checksum = "19433e2050defb54611ff7361d25964c874f239065a49fd35cef19502ccc3a93"
+ dependencies = [
+  "log",
+  "parity-scale-codec",
+- "qp-poseidon-core 2.1.0",
++ "qp-poseidon-core",
+  "qp-rusty-crystals-dilithium",
+  "qp-rusty-crystals-hdwallet",
+  "scale-info",
+  "sp-core",
+  "sp-runtime",
+  "thiserror 2.0.18",
++ "zeroize",
+ ]
+ 
+-[[package]]
+-name = "qp-poseidon-core"
+-version = "2.1.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "78172860cd960773c72e97fba07ead9e5a1c13086c5746283744933e2e4a577b"
+-
+ [[package]]
+ name = "qp-poseidon-core"
+ version = "3.1.0"
+@@ -1985,30 +1981,30 @@ checksum = "5872607e25ea4ee5fb37e64bf1462168e1a36a4e719cdc8a105533c708253918"
+ 
+ [[package]]
+ name = "qp-rusty-crystals-dilithium"
+-version = "2.5.0"
++version = "4.1.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "a6c16ed4031406f6d8ff14a4822a35f766b62617324c75931db7df8c3631a701"
++checksum = "789877c169226a35d2ea686bbd9d506becc693f7bb0ee91acc03f74491e80c0f"
+ dependencies = [
+  "zeroize",
+ ]
+ 
+ [[package]]
+ name = "qp-rusty-crystals-hdwallet"
+-version = "2.4.0"
++version = "4.1.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "e2e068be8021f2bebbabeab77ee9107a359d6e537397323ae92aae8178922fab"
++checksum = "51ec6c3db4055c217a503c45d0c101cf3c10d4fc1e562f0588aa55dda4f60a4d"
+ dependencies = [
+  "bip39",
+  "getrandom 0.2.17",
+  "hex",
+  "hex-literal",
+- "hmac",
+- "qp-poseidon-core 2.1.0",
++ "qp-poseidon-core",
+  "qp-rusty-crystals-dilithium",
+  "serde",
+  "serde_json",
+  "sha2 0.10.9",
+  "thiserror 2.0.18",
++ "unicode-normalization",
+  "zeroize",
+ ]
+ 
+@@ -2020,7 +2016,7 @@ dependencies = [
+  "hex",
+  "parity-scale-codec",
+  "qp-dilithium-crypto",
+- "qp-poseidon-core 3.1.0",
++ "qp-poseidon-core",
+  "qp-rusty-crystals-dilithium",
+  "qp-rusty-crystals-hdwallet",
+  "serde",
+@@ -2028,6 +2024,7 @@ dependencies = [
+  "sp-core",
+  "sp-runtime",
+  "wasm-bindgen",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -2348,9 +2345,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "serde_json"
+-version = "1.0.149"
++version = "1.0.150"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
++checksum = "e8014e44b4736ed0538adeecded0fce2a272f22dc9578a7eb6b2d9993c74cfb9"
+ dependencies = [
+  "itoa",
+  "memchr",
+diff --git a/Cargo.toml b/Cargo.toml
+index 49c3888..2f52ced 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -12,9 +12,10 @@ crate-type = ["cdylib", "rlib"]
+ [dependencies]
+ # Chain crypto, pinned to the exact versions the Quantus runtime uses so that
+ # addresses (Poseidon) and signatures (ML-DSA-87) are byte-identical.
+-qp-poseidon-core = { version = "3.1.0", default-features = false }
+-qp-rusty-crystals-dilithium = { version = "2.4.0", default-features = false }
+-qp-rusty-crystals-hdwallet = { version = "2.4.0", optional = true }
++qp-poseidon-core = { version = "=3.1.0", default-features = false }
++qp-rusty-crystals-dilithium = { version = "=4.1.1", default-features = false, features = ["ml-dsa-87"] }
++qp-rusty-crystals-hdwallet = { version = "=4.1.1", optional = true }
++zeroize = { version = "1.8", default-features = false, features = ["alloc"] }
+ 
+ # SCALE codec + AccountId32/SS58 (sp-core does not pull sp-io/sp-runtime, so it
+ # stays wasm-friendly).
+@@ -40,7 +41,7 @@ mnemonic = ["dep:qp-rusty-crystals-hdwallet"]
+ # encoding matches the runtime byte-for-byte. Not shipped in the wasm.
+ [dev-dependencies]
+ sp-runtime = "45.0.0"
+-qp-dilithium-crypto = { version = "0.4.0", features = ["std"] }
++qp-dilithium-crypto = { version = "=0.7.0", features = ["std"] }
+ 
+ [profile.release]
+ opt-level = "s"
+diff --git a/src/ext.rs b/src/ext.rs
+index 1417878..aaa3cdb 100644
+--- a/src/ext.rs
++++ b/src/ext.rs
+@@ -97,7 +97,8 @@ fn keypair_from_seed(seed: &[u8]) -> Result<ml_dsa_87::Keypair, Error> {
+     }
+     let mut seed_array = [0u8; 32];
+     seed_array.copy_from_slice(&seed[..32]);
+-    Ok(ml_dsa_87::Keypair::generate(SensitiveBytes32::new(&mut seed_array)))
++    let mut entropy = SensitiveBytes32::from(&mut seed_array);
++    Ok(ml_dsa_87::Keypair::generate(&mut entropy))
+ }
+ 
+ /// Quantus account id = Poseidon hash of the ML-DSA-87 public key.
+@@ -112,13 +113,13 @@ pub fn derive_account(seed: &[u8]) -> Result<AccountKeys, Error> {
+ 
+ /// Account material for an already-derived keypair (seed or HD mnemonic path).
+ pub fn derive_account_from_keypair(keypair: &ml_dsa_87::Keypair) -> AccountKeys {
+-    let public_key = keypair.public.to_bytes();
++    let public_key = keypair.public().to_bytes();
+     let account = account_id_from_public(&public_key);
+     let mut account_id = [0u8; 32];
+     account_id.copy_from_slice(account.as_ref());
+     AccountKeys {
+         public_key: public_key.to_vec(),
+-        secret_key: keypair.secret.to_bytes().to_vec(),
++        secret_key: keypair.secret().to_bytes().to_vec(),
+         account_id,
+         address: account.to_ss58check_with_version(Ss58AddressFormat::custom(SS58_PREFIX)),
+     }
+@@ -138,7 +139,7 @@ pub fn sign_call_with_keypair(
+     call: &[u8],
+     ctx: &SignContext,
+ ) -> Result<Vec<u8>, Error> {
+-    let public_key = keypair.public.to_bytes();
++    let public_key = keypair.public().to_bytes();
+     let account = account_id_from_public(&public_key);
+ 
+     let (era, era_checkpoint_hash) = resolve_era(ctx)?;
+@@ -155,7 +156,7 @@ pub fn sign_call_with_keypair(
+ 
+     let signature = sign_payload(keypair, &payload)?;
+ 
+-    // DilithiumSignatureScheme::Dilithium(sig || public) encoding.
++    // DilithiumSignatureScheme::Dilithium87(sig || public) encoding.
+     let mut signature_field = Vec::with_capacity(1 + signature.len() + public_key.len());
+     signature_field.push(SIG_VARIANT_DILITHIUM);
+     signature_field.extend_from_slice(&signature);
+@@ -191,10 +192,13 @@ pub fn sign_transfer_with_keypair(
+ }
+ 
+ fn sign_payload(keypair: &ml_dsa_87::Keypair, payload: &[u8]) -> Result<Vec<u8>, Error> {
++    // Current mainnet requires FIPS 204 domain separation. See chain
++    // f5828f0/primitives/dilithium-crypto/src/signing_context.rs.
++    const CONTEXT: &[u8] = b"QUANTUS_EXTRINSIC";
+     let signature = if payload.len() > PAYLOAD_HASH_THRESHOLD {
+-        keypair.sign(&blake2_256(payload), None, None)
++        keypair.sign(&blake2_256(payload), Some(CONTEXT), None)
+     } else {
+-        keypair.sign(payload, None, None)
++        keypair.sign(payload, Some(CONTEXT), None)
+     };
+     signature.map(|s| s.to_vec()).map_err(|_| Error::SigningFailed)
+ }
+@@ -344,7 +348,7 @@ mod tests {
+         for seed_byte in [0u8, 1, 2, 42, 255] {
+             let seed = [seed_byte; 32];
+             let ours = derive_account(&seed).unwrap();
+-            let pair = qp_dilithium_crypto::DilithiumPair::from_seed(&seed).unwrap();
++            let pair = qp_dilithium_crypto::Dilithium87Pair::from_seed(&seed).unwrap();
+             let canonical: AccountId32 =
+                 sp_runtime::traits::IdentifyAccount::into_account(
+                     sp_core::Pair::public(&pair),
+@@ -379,7 +383,7 @@ mod tests {
+         use sp_core::ByteArray;
+         let seed = [3u8; 32];
+         let keypair = keypair_from_seed(&seed).unwrap();
+-        let public_key = keypair.public.to_bytes();
++        let public_key = keypair.public().to_bytes();
+         let msg = b"quantus signing payload";
+         let sig = sign_payload(&keypair, msg).unwrap();
+ 
+@@ -388,10 +392,10 @@ mod tests {
+         ours.extend_from_slice(&sig);
+         ours.extend_from_slice(&public_key);
+ 
+-        let canonical = qp_dilithium_crypto::DilithiumSignatureScheme::Dilithium(
+-            qp_dilithium_crypto::DilithiumSignatureWithPublic::new(
+-                qp_dilithium_crypto::DilithiumSignature::from_slice(&sig).unwrap(),
+-                qp_dilithium_crypto::DilithiumPublic::from_slice(&public_key).unwrap(),
++        let canonical = qp_dilithium_crypto::DilithiumSignatureScheme::Dilithium87(
++            qp_dilithium_crypto::Dilithium87SignatureWithPublic::new(
++                qp_dilithium_crypto::Dilithium87Signature::from_slice(&sig).unwrap(),
++                qp_dilithium_crypto::Dilithium87Public::from_slice(&public_key).unwrap(),
+             ),
+         )
+         .encode();
+@@ -407,20 +411,25 @@ mod tests {
+         let seed = [7u8; 32];
+         let message = b"quantus deterministic signature vector";
+         let keypair = keypair_from_seed(&seed).unwrap();
+-        let sig = keypair.sign(message, None, None).unwrap();
++        let sig = sign_payload(&keypair, message).unwrap();
+         assert_eq!(sig.len(), ml_dsa_87::SIGNBYTES);
+ 
+         // Same input signs identically across calls (determinism).
+-        let sig_again = keypair_from_seed(&seed).unwrap().sign(message, None, None).unwrap();
++        let sig_again = sign_payload(&keypair_from_seed(&seed).unwrap(), message).unwrap();
+         assert_eq!(sig, sig_again);
+ 
+         // Frozen digest of the 4627-byte signature (kept compact).
+         let digest = hex::encode(blake2_256(&sig));
+-        assert_eq!(digest, "097b20da8c51a47c6ae7f160f3e5c504a8333c92fa0eba77e110fcb4c5b1d1cc");
++        assert_eq!(digest, "2ddb9d1e2fffa950cb7bd003bd34abf35b56cc0c99f1a703a77b5c54f4de017e");
+ 
+         // The signature verifies under the canonical chain crate.
+-        let public_key = keypair.public.to_bytes();
+-        assert!(qp_dilithium_crypto::verify(&public_key, message, &sig));
++        let public_key = keypair.public().to_bytes();
++        assert!(qp_dilithium_crypto::verify_ml_dsa_87(&public_key, message, &sig));
++        assert!(!qp_dilithium_crypto::verify_ml_dsa_87_with_context(
++            &public_key, message, &sig, b""
++        ));
++        let legacy = keypair.sign(message, None, None).unwrap();
++        assert!(!qp_dilithium_crypto::verify_ml_dsa_87(&public_key, message, &legacy));
+     }
+ 
+     #[test]
+@@ -449,7 +458,10 @@ mod tests {
+         let keys = derive_account(&seed).unwrap();
+         let sig_start = 1 + 1 + 32 + 1;
+         let sig_bytes = &input[sig_start..sig_start + ml_dsa_87::SIGNBYTES];
+-        assert!(qp_dilithium_crypto::verify(&keys.public_key, &signable, sig_bytes));
++        assert!(qp_dilithium_crypto::verify_ml_dsa_87(&keys.public_key, &signable, sig_bytes));
++        let mut tampered = signable.clone();
++        tampered[0] ^= 1;
++        assert!(!qp_dilithium_crypto::verify_ml_dsa_87(&keys.public_key, &tampered, sig_bytes));
+     }
+ 
+     #[test]
+diff --git a/src/lib.rs b/src/lib.rs
+index 03719b1..f6cdf5b 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -26,6 +26,13 @@ pub struct Account {
+     address: String,
+ }
+ 
++impl Drop for Account {
++    fn drop(&mut self) {
++        use zeroize::Zeroize;
++        self.secret_key.zeroize();
++    }
++}
++
+ #[wasm_bindgen]
+ impl Account {
+     /// ML-DSA-87 public key (2592 bytes).
+@@ -122,6 +129,16 @@ pub fn sign_call(seed: &[u8], call: &[u8], context: JsValue) -> Result<Vec<u8>,
+     ext::sign_call(seed, call, &ctx).map_err(to_js_error)
+ }
+ 
++/// Verify a raw ML-DSA-87 signature using the mainnet extrinsic domain.
++/// Used to check browser signing against native runtime compatibility tests.
++#[wasm_bindgen(js_name = verifySignature)]
++pub fn verify_signature(public_key: &[u8], message: &[u8], signature: &[u8]) -> bool {
++    match qp_rusty_crystals_dilithium::ml_dsa_87::PublicKey::from_bytes(public_key) {
++        Ok(public) => public.verify(message, signature, Some(b"QUANTUS_EXTRINSIC")),
++        Err(_) => false,
++    }
++}
++
+ pub(crate) fn build_transfer_params(params: JsValue) -> Result<ext::TransferParams, JsError> {
+     let p: JsTransferParams = serde_wasm_bindgen::from_value(params)
+         .map_err(|e| JsError::new(&alloc::format!("invalid params: {e}")))?;
+diff --git a/src/mnemonic.rs b/src/mnemonic.rs
+index 2ea90b9..dc82560 100644
+--- a/src/mnemonic.rs
++++ b/src/mnemonic.rs
+@@ -77,7 +77,8 @@ pub fn sign_call_from_mnemonic(
+ /// BIP39 mnemonic -> 64-byte seed (bridge to the seed-based API).
+ #[wasm_bindgen(js_name = mnemonicToSeed)]
+ pub fn mnemonic_to_seed_js(mnemonic: String, passphrase: Option<String>) -> Result<Vec<u8>, JsError> {
+-    mnemonic_to_seed(mnemonic, passphrase.as_deref())
+-        .map(|seed| seed.to_vec())
+-        .map_err(|e| JsError::new(&alloc::format!("mnemonic_to_seed failed: {e}")))
++    let mut seed = qp_rusty_crystals_hdwallet::SensitiveBytes64::zeroed();
++    mnemonic_to_seed(mnemonic, passphrase.as_deref(), &mut seed)
++        .map_err(|e| JsError::new(&alloc::format!("mnemonic_to_seed failed: {e}")))?;
++    Ok(seed.as_bytes().to_vec())
+ }
