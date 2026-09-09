@@ -20,7 +20,6 @@ import {
 } from "./lib/vault";
 import { errorText } from "./lib/amount";
 import {
-  AboutDialog,
   AddWalletDialog,
   ManageDialog,
   ReceiveDialog,
@@ -33,6 +32,9 @@ import { disableBiometric } from "./lib/biometric";
 import { hasPublicBalance, isWormhole } from "./lib/wallet";
 import { WalletLayout } from "./components/wallet/WalletLayout";
 import { WalletOverview } from "./components/wallet/WalletOverview";
+import { Welcome } from "./components/wallet/Welcome";
+import { SettingsPage } from "./components/settings/SettingsPage";
+import { applyTheme, readThemePreference } from "./lib/theme";
 import { ActivityPanel } from "./components/wallet/ActivityPanel";
 import {
   WalletChooser,
@@ -51,7 +53,13 @@ export default function App() {
     ),
     [selected, setSelected] = useState(""),
     [dialog, setDialog] = useState<WalletDialog>(null),
-    [page, setPage] = useState<WalletPage>("overview"),
+    [page, setPage] = useState<WalletPage>(() =>
+      location.hash === "#settings"
+        ? "settings"
+        : location.hash === "#activity"
+          ? "activity"
+          : "overview",
+    ),
     [balances, setBalances] = useState<Record<string, Balance>>({}),
     [network, setNetwork] = useState<Network | null>(null),
     [networkError, setNetworkError] = useState(""),
@@ -69,6 +77,30 @@ export default function App() {
       ReturnType<typeof readWormholeInfo>
     > | null>(null),
     [trackingRetry, setTrackingRetry] = useState(0);
+  const nextAction = useRef<"create" | "import" | "watch" | null>(null);
+  const navigate = useCallback((next: WalletPage) => {
+    setPage(next);
+    if (location.hash !== `#${next}`) history.pushState(null, "", `#${next}`);
+    window.scrollTo({ top: 0 });
+  }, []);
+  useEffect(() => {
+    const restore = () =>
+      setPage(
+        location.hash === "#settings"
+          ? "settings"
+          : location.hash === "#activity"
+            ? "activity"
+            : "overview",
+      );
+    const system = matchMedia("(prefers-color-scheme: dark)");
+    const theme = () => applyTheme(readThemePreference(), system.matches);
+    window.addEventListener("popstate", restore);
+    system.addEventListener("change", theme);
+    return () => {
+      window.removeEventListener("popstate", restore);
+      system.removeEventListener("change", theme);
+    };
+  }, []);
   const sessionRef = useRef(session),
     dataRef = useRef(data),
     epoch = useRef(0),
@@ -343,6 +375,10 @@ export default function App() {
     };
   }, [wallet?.address, wallet?.watchKind]);
   const open = (target: WalletDialog) => {
+    nextAction.current =
+      target === "create" || target === "import" || target === "watch"
+        ? target
+        : null;
     if (!session) {
       setDialog(hasVault ? "unlock" : "setup");
       return;
@@ -359,7 +395,9 @@ export default function App() {
     setHasVault(true);
     lastActivity.current = Date.now();
     setSelected(d.wallets[0]?.id || "");
-    setDialog(d.wallets.length ? null : "choose");
+    const action = nextAction.current;
+    nextAction.current = null;
+    setDialog(action || (d.wallets.length ? null : "choose"));
   }
   async function saveWallet(w: Wallet) {
     await persist((d) => {
@@ -368,7 +406,6 @@ export default function App() {
       return { ...d, wallets: [...d.wallets, w] };
     });
     setSelected(w.id);
-    notify(w.kind === "watch" ? "观察钱包已添加" : "钱包已准备就绪");
   }
   function exportVault() {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -402,18 +439,6 @@ export default function App() {
   });
   const visibleTransactions =
     page === "overview" ? transactions.slice(0, 5) : filtered;
-  const transparentWallets = wallets.filter((w) => w.kind === "mldsa87");
-  const total =
-    transparentWallets.length &&
-    transparentWallets.every((w) => balances[w.address])
-      ? transparentWallets.reduce(
-          (v, w) =>
-            v +
-            BigInt(balances[w.address].free) +
-            BigInt(balances[w.address].reserved),
-          0n,
-        )
-      : null;
   async function copyAddress() {
     if (!wallet) {
       open("choose");
@@ -453,52 +478,71 @@ export default function App() {
         unlocked={!!session}
         hasVault={hasVault}
         pendingCount={pending.length}
-        onPageChange={setPage}
-        onSelectWallet={setSelected}
+        onPageChange={navigate}
         onOpen={open}
         onLock={lock}
         onRefresh={refresh}
-        onExport={exportVault}
       >
-        {page === "overview" && (
-          <WalletOverview
+        {page === "settings" ? (
+          <SettingsPage
+            key={session ? "unlocked" : "locked"}
             wallet={wallet}
             walletCount={wallets.length}
-            balance={balance}
+            unlocked={!!session}
+            onManage={() => open("manage")}
+            onWallets={() => open(wallets.length ? "wallets" : "choose")}
+            onExport={exportVault}
+            onChangePassword={changePassword}
+            onLock={lock}
+            onUnlock={() => open("unlock")}
+          />
+        ) : !session || !wallet ? (
+          <Welcome
             hasVault={hasVault}
             unlocked={!!session}
-            hidden={hidden}
-            loading={loading}
-            wormholeInfo={wormholeInfo}
-            transparentWalletCount={transparentWallets.length}
-            total={total}
-            onToggleHidden={() => setHidden((value) => !value)}
             onOpen={open}
-            onRestore={() => setDialog("restore")}
-            onCopyAddress={copyAddress}
-            onRefresh={refresh}
+            onRestore={() => {
+              nextAction.current = null;
+              setDialog("restore");
+            }}
           />
+        ) : (
+          <>
+            {page === "overview" && (
+              <WalletOverview
+                wallet={wallet}
+                balance={balance}
+                hidden={hidden}
+                loading={loading}
+                balanceError={balanceError}
+                wormholeInfo={wormholeInfo}
+                onToggleHidden={() => setHidden((value) => !value)}
+                onOpen={open}
+                onCopyAddress={copyAddress}
+              />
+            )}
+            <ActivityPanel
+              page={page}
+              wallet={wallet}
+              unlocked={!!session}
+              pending={pending}
+              transactions={transactions}
+              visibleTransactions={visibleTransactions}
+              filter={filter}
+              query={query}
+              historyError={historyError}
+              historyLoading={historyLoading}
+              more={more}
+              onFilterChange={setFilter}
+              onQueryChange={setQuery}
+              onShowAll={() => navigate("activity")}
+              onReload={() => wallet && void loadHistory(wallet.address)}
+              onLoadMore={() =>
+                wallet && void loadHistory(wallet.address, transactions.length)
+              }
+            />
+          </>
         )}
-        <ActivityPanel
-          page={page}
-          wallet={wallet}
-          unlocked={!!session}
-          pending={pending}
-          transactions={transactions}
-          visibleTransactions={visibleTransactions}
-          filter={filter}
-          query={query}
-          historyError={historyError}
-          historyLoading={historyLoading}
-          more={more}
-          onFilterChange={setFilter}
-          onQueryChange={setQuery}
-          onShowAll={() => setPage("activity")}
-          onReload={() => wallet && void loadHistory(wallet.address)}
-          onLoadMore={() =>
-            wallet && void loadHistory(wallet.address, transactions.length)
-          }
-        />
       </WalletLayout>
       {dialog === "wallets" && session && (
         <WalletSwitcher
@@ -521,7 +565,11 @@ export default function App() {
       {(dialog === "setup" || dialog === "unlock" || dialog === "restore") && (
         <SetupDialog
           mode={dialog === "setup" ? "create" : dialog}
-          onClose={() => setDialog(null)}
+          initialAction={nextAction.current || undefined}
+          onClose={() => {
+            nextAction.current = null;
+            setDialog(null);
+          }}
           onOpen={opened}
         />
       )}
@@ -569,13 +617,6 @@ export default function App() {
               wallets: d.wallets.filter((w) => w.id !== wallet.id),
             }))
           }
-        />
-      )}
-      {dialog === "about" && session && (
-        <AboutDialog
-          onClose={() => setDialog(null)}
-          onExport={exportVault}
-          onChangePassword={changePassword}
         />
       )}
       {dialog === "send" && wallet && wallet.kind !== "watch" && (

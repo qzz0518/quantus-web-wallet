@@ -8,6 +8,7 @@ A browser wallet for Quantus.
 
 - Create, import and manage multiple ML-DSA-87 wallets and watch-only accounts.
 - View balances, send QTC, receive with a QR code, and browse transaction history.
+- Download recovery words and confirm backups with a word-selection check.
 - Open accounts and transactions in the Quantus explorer.
 - Encrypt wallets locally with a password of at least 6 characters; export and restore encrypted backups.
 - Unlock with your device's fingerprint, face or screen lock on browsers that support WebAuthn PRF.

@@ -3,13 +3,18 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  ChevronLeft,
+  Wallet as WalletIcon,
   LoaderCircle,
   ShieldCheck,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import type { Wallet, Pending } from "../lib/vault";
-import { parseAmount, formatAmount, errorText } from "../lib/amount";
+import {
+  parseAmount,
+  formatAmount,
+  errorText,
+  shortAddress,
+} from "../lib/amount";
 import {
   prepareTransfer,
   estimateFee,
@@ -62,6 +67,7 @@ export function SendDialog({
   }, []);
   const [recipient, setRecipient] = useState(""),
     [amount, setAmount] = useState(""),
+    [step, setStep] = useState<"recipient" | "amount">("recipient"),
     [quote, setQuote] = useState<Quote | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -212,6 +218,26 @@ export function SendDialog({
       setBusy(false);
     }
   }
+  function back() {
+    if (busy) return;
+    setError("");
+    if (hash) onClose();
+    else if (quote) setQuote(null);
+    else if (step === "amount") setStep("recipient");
+    else onClose();
+  }
+  function nextRecipient(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      const to = validateAddress(recipient.trim());
+      if (to === wallet.address) throw new Error("收款地址与当前钱包相同");
+      setRecipient(to);
+      setStep("amount");
+    } catch (cause) {
+      setError(errorText(cause));
+    }
+  }
   return (
     <Modal
       title={
@@ -220,179 +246,230 @@ export function SendDialog({
             ? "交易状态待确认"
             : "交易已提交"
           : quote
-            ? "确认这笔转账"
-            : `发送 ${services.symbol}`
+            ? "确认转账"
+            : step === "amount"
+              ? "发送金额"
+              : `发送 ${services.symbol}`
       }
-      subtitle={
-        hash
-          ? error
-            ? "请用交易哈希核对结果，暂勿重复发送。"
-            : "交易正在等待网络确认，请在活动记录中查看结果。"
-          : `付款钱包 · ${wallet.name}`
-      }
+      variant="flow"
+      onBack={back}
       onClose={() => {
         if (!busy) onClose();
       }}
     >
       {hash ? (
         <>
-          <div className="success-emblem">
-            {error ? <LoaderCircle size={28} /> : <Check size={28} />}
+          <div className="flow-body">
+            <div className="success-emblem">
+              {error ? <LoaderCircle size={29} /> : <Check size={29} />}
+            </div>
+            <div className="flow-heading centered">
+              <h2>{error ? "正在核对交易结果" : "已发送至网络"}</h2>
+              <p>
+                {error
+                  ? "请核对链上状态，暂勿重复发送。"
+                  : "交易正在等待确认，可在活动记录中查看进度。"}
+              </p>
+            </div>
+            <p className="label">交易哈希</p>
+            <p className="address-block">{hash}</p>
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            <a
+              className="text-button full"
+              target="_blank"
+              rel="noopener noreferrer"
+              href={`https://explorer.quantus.com/transactions/${hash}`}
+            >
+              在 Explorer 查看
+              <ArrowUpRight size={16} />
+            </a>
           </div>
-          <p className="label">交易哈希</p>
-          <p className="address-block">{hash}</p>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <a
-            className="button full"
-            target="_blank"
-            rel="noopener noreferrer"
-            href={`https://explorer.quantus.com/transactions/${hash}`}
-          >
-            在 Explorer 中查看
-            <ArrowUpRight size={16} />
-          </a>
-          <button className="button primary full spaced" onClick={onClose}>
-            完成
-          </button>
+          <div className="flow-footer">
+            <button className="button primary full" onClick={onClose}>
+              完成
+            </button>
+          </div>
         </>
       ) : quote ? (
         <>
-          <div className="send-amount">
-            {formatAmount(quote.amount)} <span>{services.symbol}</span>
+          <div className="flow-body">
+            <div className="send-amount">
+              {formatAmount(quote.amount)} <span>{services.symbol}</span>
+            </div>
+            <dl className="review-details">
+              <div>
+                <dt>付款钱包</dt>
+                <dd>
+                  {wallet.name}
+                  <small>{wallet.address}</small>
+                </dd>
+              </div>
+              <div>
+                <dt>收款地址</dt>
+                <dd className="mono">{quote.recipient}</dd>
+              </div>
+              <div>
+                <dt>网络</dt>
+                <dd>{services.networkName}</dd>
+              </div>
+              <div>
+                <dt>预估手续费</dt>
+                <dd>
+                  {formatAmount(quote.fee)} {services.symbol}
+                </dd>
+              </div>
+              <div className="review-total">
+                <dt>预计总支出</dt>
+                <dd>
+                  {formatAmount(BigInt(quote.amount) + BigInt(quote.fee))}{" "}
+                  {services.symbol}
+                </dd>
+              </div>
+            </dl>
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={ack}
+                disabled={busy}
+                onChange={(event) => setAck(event.target.checked)}
+              />
+              我已核对完整收款地址与金额
+            </label>
           </div>
-          <dl className="review-details">
-            <div>
-              <dt>付款钱包</dt>
-              <dd>
-                {wallet.name}
-                <small>{wallet.address}</small>
-              </dd>
-            </div>
-            <div>
-              <dt>收款地址</dt>
-              <dd className="mono">{quote.recipient}</dd>
-            </div>
-            <div>
-              <dt>网络</dt>
-              <dd>{services.networkName}</dd>
-            </div>
-            <div>
-              <dt>预估手续费</dt>
-              <dd>
-                {formatAmount(quote.fee)} {services.symbol}
-              </dd>
-            </div>
-            <div className="review-total">
-              <dt>预计总支出</dt>
-              <dd>
-                {formatAmount(BigInt(quote.amount) + BigInt(quote.fee))}{" "}
-                {services.symbol}
-              </dd>
-            </div>
-          </dl>
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={ack}
-              onChange={(e) => setAck(e.target.checked)}
-            />
-            我已核对完整收款地址与金额
-          </label>
-          {expired && <p className="error">报价已过期，请返回更新费用。</p>}
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="button-row">
+          <div className="flow-footer">
+            {expired && <p className="error">报价已过期，请返回更新费用。</p>}
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
             <button
-              className="button"
-              disabled={busy}
-              onClick={() => {
-                setQuote(null);
-                setError("");
-              }}
-            >
-              <ChevronLeft size={16} />
-              返回
-            </button>
-            <button
-              className="button primary grow"
+              className="button primary full"
               disabled={!ack || busy || expired}
               onClick={confirm}
             >
-              {busy ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <ArrowUpRight size={16} />
-              )}{" "}
+              {busy && <LoaderCircle className="spin" size={18} />}{" "}
               {busy ? "正在提交…" : "确认并发送"}
             </button>
           </div>
         </>
       ) : (
-        <form onSubmit={review}>
-          <label className="field">
-            收款地址
-            <textarea
-              rows={3}
-              required
-              spellCheck={false}
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="输入或粘贴 Quantus 主网地址"
-              autoFocus
-            />
-          </label>
-          {wallets.some((w) => w.id !== wallet.id) && (
-            <label className="field compact-field">
-              或转至我的钱包
-              <select value="" onChange={(e) => setRecipient(e.target.value)}>
-                <option value="">选择另一个钱包</option>
-                {wallets
-                  .filter((w) => w.id !== wallet.id)
-                  .map((w) => (
-                    <option key={w.id} value={w.address}>
-                      {w.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          )}
-          <label className="field">
-            发送金额
-            <div className="amount-input">
-              <input
-                required
-                inputMode="decimal"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              <span>{services.symbol}</span>
-            </div>
-          </label>
-          <div className="soft-note">
-            <ShieldCheck size={17} />
-            <p>
-              下一步核对地址与手续费。确认后，交易将提交到{" "}
-              {services.networkName}。
-            </p>
+        <form
+          className="flow-form"
+          onSubmit={step === "recipient" ? nextRecipient : review}
+        >
+          <div className="flow-body">
+            {step === "recipient" ? (
+              <>
+                <div className="flow-heading">
+                  <h2>发送给谁？</h2>
+                  <p>输入收款人的 Quantus 主网地址。</p>
+                </div>
+                <label className="field">
+                  收款地址
+                  <textarea
+                    rows={3}
+                    required
+                    spellCheck={false}
+                    autoComplete="off"
+                    value={recipient}
+                    onChange={(event) => setRecipient(event.target.value)}
+                    placeholder="输入或粘贴 Quantus 地址"
+                    autoFocus
+                  />
+                </label>
+                {wallets.some((w) => w.id !== wallet.id) && (
+                  <label className="field">
+                    我的其他钱包
+                    <select
+                      value=""
+                      onChange={(event) => setRecipient(event.target.value)}
+                    >
+                      <option value="">选择一个钱包</option>
+                      {wallets
+                        .filter((w) => w.id !== wallet.id)
+                        .map((w) => (
+                          <option key={w.id} value={w.address}>
+                            {w.name} · {shortAddress(w.address, 4)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+                <div className="soft-note">
+                  <ShieldCheck size={17} />
+                  <p>
+                    请确认对方使用 Quantus 主网。下一步输入金额，再核对手续费。
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flow-heading">
+                  <h2>发送多少？</h2>
+                  <p>
+                    从 {wallet.name} 发送 {services.symbol}。
+                  </p>
+                </div>
+                <div className="send-recipient-chip">
+                  <WalletIcon size={20} />
+                  <span>
+                    <strong>收款地址</strong>
+                    <small>{recipient}</small>
+                  </span>
+                  <button type="button" onClick={back}>
+                    修改
+                  </button>
+                </div>
+                <label className="field">
+                  <span className="sr-only">发送金额</span>
+                  <div className="amount-input">
+                    <input
+                      key="send-amount"
+                      required
+                      inputMode="decimal"
+                      placeholder="0"
+                      autoComplete="off"
+                      value={amount}
+                      disabled={busy}
+                      onChange={(event) => setAmount(event.target.value)}
+                      autoFocus
+                    />
+                    <span>{services.symbol}</span>
+                  </div>
+                </label>
+                <p className="flow-note centered">
+                  下一步预览网络手续费与总支出。
+                </p>
+              </>
+            )}
           </div>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <button className="button primary full" disabled={busy}>
-            {busy ? <LoaderCircle size={16} className="spin" /> : null}
-            {busy ? "正在计算费用…" : "预览转账"}
-            {!busy && <ArrowRight size={16} />}
-          </button>
+          <div className="flow-footer">
+            {error && (
+              <p role="alert" className="error">
+                {error}
+              </p>
+            )}
+            <button
+              className="button primary full"
+              disabled={
+                busy ||
+                (step === "recipient" ? !recipient.trim() : !amount.trim())
+              }
+            >
+              {busy && <LoaderCircle size={18} className="spin" />}
+              {busy
+                ? "正在计算费用…"
+                : step === "recipient"
+                  ? "继续"
+                  : "预览转账"}
+              {!busy && <ArrowRight size={17} />}
+            </button>
+          </div>
         </form>
       )}
     </Modal>

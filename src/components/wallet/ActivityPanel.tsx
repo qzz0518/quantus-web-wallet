@@ -305,7 +305,7 @@ export function ActivityPanel({
           <ChevronDown size={14} />
         </button>
       )}
-      {wallet && (
+      {wallet && page === "activity" && (
         <div className="wallet-indexer-note">
           <span className="status-dot" />
           Explorer 索引可能稍有延迟

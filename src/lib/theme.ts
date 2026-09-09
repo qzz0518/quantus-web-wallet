@@ -21,9 +21,9 @@ export function applyTheme(preference: ThemePreference, systemDark: boolean) {
   const theme = resolveTheme(preference, systemDark);
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
-  document.documentElement.style.backgroundColor = theme === "dark" ? "#101412" : "#fcfcfc";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute(
-    "content",
-    theme === "dark" ? "#101412" : "#fcfcfc",
-  );
+  document.documentElement.style.backgroundColor =
+    theme === "dark" ? "#111412" : "#f5f5f4";
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", theme === "dark" ? "#111412" : "#f5f5f4");
 }

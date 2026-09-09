@@ -42,8 +42,8 @@ describe("wallet appearance", () => {
     const state = firstPaint(null, true);
     expect(state.dataset.theme).toBe("dark");
     expect(state.style.colorScheme).toBe("dark");
-    expect(state.style.backgroundColor).toBe("#101412");
-    expect(state.chromeColor).toBe("#101412");
+    expect(state.style.backgroundColor).toBe("#111412");
+    expect(state.chromeColor).toBe("#111412");
   });
 
   it("preserves the explicit choice across refreshes in either OS appearance", () => {

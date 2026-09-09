@@ -1,4 +1,4 @@
-export type WalletPage = "overview" | "activity";
+export type WalletPage = "overview" | "activity" | "settings";
 
 export type WalletDialog =
   | "wallets"
