@@ -3,7 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { useT } from "../../lib/i18n";
 import type { PoolLuck, PoolStats } from "../../lib/mining/data";
 import type { Gpu, PoolTerms } from "../../lib/mining/gpus";
-import { formatFiat, formatHashrate, formatPercent, formatQtc, trimNumber } from "../../lib/mining/format";
+import { formatFiat, formatHashrate, formatInteger, formatPercent, formatQtc, trimNumber } from "../../lib/mining/format";
 import type { Model, Software } from "../../lib/mining/inputs";
 import {
   DAYS_PER_MONTH,
@@ -314,7 +314,12 @@ export function MiningResults({ network, model, result, terms, pool, luck, loadi
               hint={
                 perGh.ratePerDay === null
                   ? t("填写 QTC 价格")
-                  : t("每 GH/s 每小时；每天 {0}", bare(perGh.ratePerDay))
+                  : t(
+                      "每 GH/s 每小时；每天 {0}；折合 {1} MH/({2}·小时)",
+                      bare(perGh.ratePerDay),
+                      formatInteger(1000 / (perGh.ratePerHour ?? 1)),
+                      currency,
+                    )
               }
             />
           </dl>

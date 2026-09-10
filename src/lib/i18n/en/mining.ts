@@ -96,6 +96,7 @@ export const mining: Record<string, string> = {
   "本轮进度": "Current round",
   "算价比 {0} {1}/GH·小时": "{0} {1} per GH·hour",
   "每 GH/s 每小时；每天 {0}": "Per GH/s per hour; {0} per day",
+  "每 GH/s 每小时；每天 {0}；折合 {1} MH/({2}·小时)": "Per GH/s per hour; {0} per day; {1} MH per {2}·hour",
   "{0} / 天": "{0} / day",
   "共 {0} 张卡 · 合计 {1} {2}": "{0} cards · {1} {2} in total",
   "租金周期": "Rent period",

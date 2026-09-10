@@ -7,16 +7,23 @@ import { walletPwa } from "./vite/pwa";
 const { version } = JSON.parse(readFileSync("./package.json", "utf8")) as {
   version: string;
 };
+
+function git(args: string[], fallback: string): string {
+  try {
+    return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** `0.1.<commits>`: the number moves on its own with every commit. */
+function releaseVersion(): string {
+  const [major = "0", minor = "0"] = version.split(".");
+  return `${major}.${minor}.${git(["rev-list", "--count", "HEAD"], "0")}`;
+}
 /** The commit a build came from, so a deployment can be told apart from the last. */
 function commit(): string {
-  try {
-    return execFileSync("git", ["rev-parse", "--short=8", "HEAD"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return "unknown";
-  }
+  return git(["rev-parse", "--short=8", "HEAD"], "unknown");
 }
 export default defineConfig(({ command }) => ({
   plugins: [
@@ -37,7 +44,7 @@ export default defineConfig(({ command }) => ({
       : []),
   ],
   define: {
-    __APP_VERSION__: JSON.stringify(version),
+    __APP_VERSION__: JSON.stringify(releaseVersion()),
     __APP_COMMIT__: JSON.stringify(commit()),
     __APP_BUILT_AT__: JSON.stringify(new Date().toISOString()),
   },
