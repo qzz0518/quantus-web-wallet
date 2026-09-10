@@ -578,32 +578,36 @@ textarea {
   color: var(--muted);
 }
 .hero-balance {
+  --balance-font-size: 68px;
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 10px;
   margin-top: 5px;
-  font-size: 68px;
+  /* Fit every amount, including values just below the old length cutoff. */
+  font-size: clamp(
+    24px,
+    calc((100cqw - 56px) / (var(--amount-characters) * 0.65)),
+    var(--balance-font-size)
+  );
   font-weight: 550;
-  letter-spacing: -3px;
+  letter-spacing: -0.035em;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 .hero-balance > span {
   min-width: 0;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .hero-balance > small {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 17px;
   letter-spacing: -0.4px;
   font-weight: 450;
 }
 .balance-fraction {
   color: var(--muted);
-}
-.hero-balance.long-value {
-  font-size: min(40px, calc((100cqw - 48px) / var(--balance-width)));
-  letter-spacing: -0.5px;
 }
 .hero-available {
   margin-top: 12px;
@@ -1755,6 +1759,7 @@ a.settings-row:hover {
   color: var(--muted);
 }
 .amount-input {
+  container-type: inline-size;
   display: flex;
   align-items: baseline;
   justify-content: center;
@@ -1765,17 +1770,19 @@ a.settings-row:hover {
   min-width: 0;
   width: 100%;
   background: transparent;
-  font-size: 54px;
+  font-size: clamp(
+    18px,
+    calc((100cqw - 56px) / (var(--amount-characters) * 0.65)),
+    54px
+  );
   font-weight: 500;
-  letter-spacing: -2px;
+  letter-spacing: -0.035em;
   padding: 0;
   text-align: center;
 }
-.amount-input.long-value > input {
-  font-size: 30px;
-  letter-spacing: -0.7px;
-}
 .amount-input > span {
+  flex-shrink: 0;
+  white-space: nowrap;
   color: var(--muted);
   font-size: 17px;
 }
@@ -1977,7 +1984,7 @@ a.settings-row:hover {
     grid-template-columns: 1fr 1fr;
   }
   .hero-balance {
-    font-size: 54px;
+    --balance-font-size: 54px;
   }
   .wallet-account-panel {
     padding: 18px 21px 10px;
@@ -2099,7 +2106,7 @@ a.settings-row:hover {
     font-size: 14px;
   }
   .hero-balance {
-    font-size: 58px;
+    --balance-font-size: 58px;
     margin-top: 1px;
     line-height: 1.15;
   }
@@ -2488,7 +2495,7 @@ a.settings-row:hover {
     padding-right: 19px;
   }
   .hero-balance {
-    font-size: 54px;
+    --balance-font-size: 54px;
   }
   .flow-body {
     padding-left: 20px;

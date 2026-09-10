@@ -1,5 +1,5 @@
 import { ChevronRight, Copy, Eye, EyeOff, Ellipsis } from "lucide-react";
-import { useRef, type CSSProperties } from "react";
+import { Fragment, useRef, type CSSProperties } from "react";
 import { useReveal } from "../../lib/motion";
 import type { Balance, WormholeInfo } from "../../lib/chain";
 import type { Wallet } from "../../lib/vault";
@@ -48,6 +48,7 @@ export function WalletOverview({
         ? formatAmount(BigInt(balance.free) + BigInt(balance.reserved))
         : "—";
   const [whole, decimal] = amount.split(".");
+  const groups = whole.split(",");
   return (
     <section className="wallet-overview">
       <div className="wallet-hero" aria-label="钱包余额" ref={hero}>
@@ -75,16 +76,27 @@ export function WalletOverview({
           </button>
         </div>
         <div
-          className={`hero-balance ${amount.length > 13 ? "long-value" : ""}`}
+          className="hero-balance"
           style={
             {
-              "--balance-width": Math.max(amount.length * 0.57, 1),
+              "--amount-characters": Math.max(amount.length, 1),
             } as CSSProperties
           }
         >
           <span>
-            {whole}
-            {decimal && <span className="balance-fraction">.{decimal}</span>}
+            {groups.map((group, index) => (
+              <Fragment key={index}>
+                {index > 0 && <wbr />}
+                {group}
+                {index < groups.length - 1 && ","}
+              </Fragment>
+            ))}
+            {decimal && (
+              <>
+                <wbr />
+                <span className="balance-fraction">.{decimal}</span>
+              </>
+            )}
           </span>
           <small>QTC</small>
         </div>

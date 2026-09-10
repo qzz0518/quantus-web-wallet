@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type CSSProperties,
+} from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -490,7 +496,12 @@ export function SendDialog({
                 <label className="field">
                   <span className="sr-only">发送金额</span>
                   <div
-                    className={`amount-input ${amount.length > 12 ? "long-value" : ""}`}
+                    className="amount-input"
+                    style={
+                      {
+                        "--amount-characters": Math.max(amount.length, 1),
+                      } as CSSProperties
+                    }
                   >
                     <input
                       key="send-amount"
