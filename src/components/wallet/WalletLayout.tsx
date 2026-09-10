@@ -12,6 +12,7 @@ import {
   LockKeyhole,
   RefreshCw,
   Settings2,
+  Wrench,
 } from "lucide-react";
 import type { NetworkState } from "../../lib/chain";
 import type { Wallet } from "../../lib/vault";
@@ -42,6 +43,7 @@ type Props = {
 const tabs = [
   { id: "overview", label: "钱包", Icon: House },
   { id: "activity", label: "活动", Icon: History },
+  { id: "tools", label: "工具", Icon: Wrench },
   { id: "settings", label: "设置", Icon: Settings2 },
 ] as const;
 
@@ -63,6 +65,8 @@ export function WalletLayout({
   onRefresh,
 }: Props) {
   const t = useT();
+  // Tools and settings are full pages without the wallet toolbar.
+  const plainPage = page === "settings" || page === "tools";
   const content = useRef<HTMLElement>(null);
   const previous = useRef({ page, unlocked });
   useLayoutEffect(() => {
@@ -142,7 +146,7 @@ export function WalletLayout({
           {unlocked && <div className="mobile-wallet-selector">{selector}</div>}
           {unlocked && navigation(false)}
           <div className="wallet-header-actions">
-            {unlocked && page !== "settings" && (
+            {unlocked && !plainPage && (
               <button
                 className="circle-button mobile-refresh"
                 aria-label={t("刷新余额与交易")}
@@ -182,9 +186,9 @@ export function WalletLayout({
       </header>
       <main
         ref={content}
-        className={`wallet-content ${!unlocked && page !== "settings" ? "welcome-content" : ""}`}
+        className={`wallet-content ${!unlocked && !plainPage ? "welcome-content" : ""}`}
       >
-        {unlocked && page !== "settings" && (
+        {unlocked && !plainPage && (
           <div className="wallet-page-toolbar">
             <div className="desktop-wallet-selector">{selector}</div>
             <div className="toolbar-status">
@@ -221,7 +225,7 @@ export function WalletLayout({
             </div>
           </div>
         )}
-        {unlocked && page !== "settings" && (networkError || balanceError) && (
+        {unlocked && !plainPage && (networkError || balanceError) && (
           <div className="inline-warning" role="status">
             {networkError ? t("暂时无法连接网络，请联网后刷新。") : balanceError}
             <button disabled={loading} onClick={onRefresh}>

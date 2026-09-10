@@ -36,6 +36,7 @@ import { WalletLayout } from "./components/wallet/WalletLayout";
 import { WalletOverview } from "./components/wallet/WalletOverview";
 import { Welcome } from "./components/wallet/Welcome";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { ToolsPage } from "./components/tools/ToolsPage";
 import { applyTheme, readThemePreference } from "./lib/theme";
 import { ActivityPanel } from "./components/wallet/ActivityPanel";
 import {
@@ -60,9 +61,11 @@ export default function App() {
     [page, setPage] = useState<WalletPage>(() =>
       location.hash === "#settings"
         ? "settings"
-        : location.hash === "#activity"
-          ? "activity"
-          : "overview",
+        : location.hash === "#tools"
+          ? "tools"
+          : location.hash === "#activity"
+            ? "activity"
+            : "overview",
     ),
     [balances, setBalances] = useState<Record<string, Balance>>({}),
     [network, setNetwork] = useState<Network | null>(null),
@@ -94,9 +97,11 @@ export default function App() {
       setPage(
         location.hash === "#settings"
           ? "settings"
-          : location.hash === "#activity"
-            ? "activity"
-            : "overview",
+          : location.hash === "#tools"
+            ? "tools"
+            : location.hash === "#activity"
+              ? "activity"
+              : "overview",
       );
     const system = matchMedia("(prefers-color-scheme: dark)");
     const theme = () => applyTheme(readThemePreference(), system.matches);
@@ -514,6 +519,13 @@ export default function App() {
             onExport={exportVault}
             onChangePassword={changePassword}
             onLock={lock}
+            onUnlock={() => open("unlock")}
+          />
+        ) : page === "tools" ? (
+          <ToolsPage
+            key={session ? "unlocked" : "locked"}
+            wallets={wallets}
+            unlocked={!!session}
             onUnlock={() => open("unlock")}
           />
         ) : !session || !wallet ? (

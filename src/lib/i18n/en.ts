@@ -25,6 +25,11 @@ export const en: Record<string, string> = {
   关闭: "Close",
   语言: "Language",
   切换语言: "Switch language",
+  挖矿计算: "Mining calculator",
+  "按显卡算力估算产量、成本、保本价和利润": "Estimate output, cost, break-even price and profit from GPU hashrate",
+  "和钱包主功能分开的辅助工具，每个都附带说明。": "Helpers kept apart from the wallet's main screens, each with its own guide.",
+  工具列表: "Tools",
+  "挖矿计算即将推出。": "The mining calculator is coming soon.",
   "这是你标记为 Wormhole 隐私账户的观察地址。": "This is a watch-only address you marked as an encrypted (Wormhole) account.",
   "该地址只收到过挖矿奖励、从未发出过交易，很可能是官方钱包的加密账户（Wormhole）地址。":
     "This address has only received mining rewards and has never sent a transaction. It is most likely an encrypted (Wormhole) account address from the official wallet.",
