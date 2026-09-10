@@ -3,13 +3,22 @@ import {
   decodeLeUint,
   fetchBlockReward,
   fetchChainStats,
+  fetchMarketPrice,
   fetchPoolStats,
   fetchPoolTerms,
   STORAGE_KEYS,
   storageKey,
 } from "../src/lib/mining/data";
 import { BUILT_IN_GPUS, BUILT_IN_TERMS, gpuId, shortName } from "../src/lib/mining/gpus";
-import { defaultInputs, loadInputs, normalizeInputs, parseNumber, saveInputs, toModel } from "../src/lib/mining/inputs";
+import {
+  defaultInputs,
+  loadInputs,
+  normalizeInputs,
+  parseNumber,
+  priceFieldText,
+  saveInputs,
+  toModel,
+} from "../src/lib/mining/inputs";
 
 // Real values read from the mainnet RPC on 2026-09-10.
 const HEAD_HASH = "0x" + "11".repeat(32);
@@ -177,6 +186,65 @@ describe("pool terms", () => {
   });
 });
 
+// The shape SafeTrade answers with for the QUAN/USDT market.
+const TICKER = {
+  at: "1789049651",
+  ticker: {
+    at: "1789049651",
+    avg_price: "45.62",
+    buy: "47",
+    high: "88",
+    last: "47",
+    low: "20",
+    open: "30",
+    price_change_percent: "+56.67%",
+    sell: "44.88",
+    vol: "41192.427432",
+    amount: "907.281",
+    volume: "41192.427432",
+  },
+};
+
+describe("market price", () => {
+  test("reads the last trade and keeps the exchange's own digits", async () => {
+    const market = await fetchMarketPrice({ fetcher: jsonFetcher(TICKER) });
+    expect(market.last).toBe(47);
+    expect(market.lastText).toBe("47");
+    expect(market.bid).toBe(47);
+    expect(market.ask).toBe(44.88);
+    expect(market.changePercent).toBe("+56.67%");
+    expect(market.quoteVolume).toBeCloseTo(41192.427432, 6);
+    expect(market.fetchedAt).toBeGreaterThan(0);
+  });
+  test("keeps the decimals as written so the price field shows them back", async () => {
+    const market = await fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...TICKER.ticker, last: "0.004500" } }) });
+    expect(market.lastText).toBe("0.004500");
+    expect(market.last).toBe(0.0045);
+  });
+  test("refuses a price that is not a positive decimal string", async () => {
+    for (const last of [47, "0", "-3", "", "abc", "1e3", null, "1,5", "9999999999"]) {
+      await expect(fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...TICKER.ticker, last } }) })).rejects.toThrow();
+    }
+    await expect(fetchMarketPrice({ fetcher: jsonFetcher({}) })).rejects.toThrow();
+    await expect(fetchMarketPrice({ fetcher: jsonFetcher({ ticker: "nope" }) })).rejects.toThrow();
+    await expect(fetchMarketPrice({ fetcher: jsonFetcher(TICKER, 403) })).rejects.toThrow("403");
+  });
+  test("drops the extras it cannot trust but keeps the price", async () => {
+    const market = await fetchMarketPrice({
+      fetcher: jsonFetcher({ ticker: { last: "47", buy: "0", sell: "x", price_change_percent: "up a lot", vol: "-1" } }),
+    });
+    expect(market.last).toBe(47);
+    expect(market.bid).toBeNull();
+    expect(market.ask).toBeNull();
+    expect(market.changePercent).toBeNull();
+    expect(market.quoteVolume).toBeNull();
+  });
+  test("a zero-volume market is still a market", async () => {
+    const market = await fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { last: "47", vol: "0" } }) });
+    expect(market.quoteVolume).toBe(0);
+  });
+});
+
 describe("built-in table", () => {
   test("matches the snapshot captured from the pool", () => {
     expect(BUILT_IN_GPUS.map((gpu) => [gpu.id, gpu.ours, gpu.stock, gpu.powerW])).toEqual([
@@ -214,6 +282,32 @@ describe("inputs", () => {
     expect(inputs.devices[0].powerW).toBe("380");
     expect(inputs.devices[0].minerFee).toBe("5");
     expect(inputs.poolFee).toBeNull();
+    // No price of its own: the market's last trade fills the field.
+    expect(inputs.price).toBeNull();
+    expect(inputs.currency).toBe("USDT");
+  });
+  test("the price follows the market until the reader overrides it", () => {
+    const inputs = defaultInputs(BUILT_IN_TERMS);
+    expect(priceFieldText(inputs, "47")).toBe("47");
+    expect(priceFieldText(inputs, null)).toBe("");
+    expect(toModel(inputs, BUILT_IN_TERMS, 47).assumptions.price).toBe(47);
+    expect(toModel(inputs, BUILT_IN_TERMS, 47).priceSource).toBe("market");
+    expect(toModel(inputs, BUILT_IN_TERMS, null).assumptions.price).toBe(0);
+    expect(toModel(inputs, BUILT_IN_TERMS, null).priceSource).toBe("none");
+    // A broken quote must never reach the model.
+    expect(toModel(inputs, BUILT_IN_TERMS, 0).priceSource).toBe("none");
+    expect(toModel(inputs, BUILT_IN_TERMS, NaN).assumptions.price).toBe(0);
+
+    inputs.price = "20";
+    expect(priceFieldText(inputs, "47")).toBe("20");
+    const manual = toModel(inputs, BUILT_IN_TERMS, 47);
+    expect(manual.assumptions.price).toBe(20);
+    expect(manual.priceSource).toBe("manual");
+    // Clearing the field is an override too, and it means "no price".
+    inputs.price = "";
+    expect(priceFieldText(inputs, "47")).toBe("");
+    expect(toModel(inputs, BUILT_IN_TERMS, 47).assumptions.price).toBe(0);
+    expect(toModel(inputs, BUILT_IN_TERMS, 47).priceSource).toBe("none");
   });
   test("converts inputs to the model with fees, units and cost modes", () => {
     const inputs = defaultInputs(BUILT_IN_TERMS);
@@ -267,7 +361,7 @@ describe("inputs", () => {
     expect(restored.uptime).toBe("100");
     expect(restored.poolFee).toBe("1.5");
     expect(restored.rentPer).toBe("day");
-    expect(restored.currency).toBe("USD");
+    expect(restored.currency).toBe("USDT");
     expect(restored.price).toBe("0.42");
   });
   test("round-trips through storage without the session keys", () => {
@@ -282,6 +376,6 @@ describe("inputs", () => {
     expect(back.price).toBe("1.25");
     expect(back.devices[0].gpu).toBe("rtx-4090");
     store.set("quantus-wallet-mining-v1", "{not json");
-    expect(loadInputs(BUILT_IN_TERMS, storage).price).toBe("");
+    expect(loadInputs(BUILT_IN_TERMS, storage).price).toBeNull();
   });
 });

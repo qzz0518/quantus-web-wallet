@@ -12,7 +12,20 @@ import { BUILT_IN_TERMS, gpuId, shortName, typicalPower, type Gpu, type PoolTerm
  * last good value instead of showing a fabricated number.
  */
 export const QUANPOOL_URL = "https://quanpool.com";
+/**
+ * Where QTC trades: SafeTrade lists it as QUAN/USDT — QUAN and QTC are the
+ * same asset, and the quote asset is USDT, so every market figure is in
+ * USDT. The ticker endpoint answers cross-origin, but the exchange sits
+ * behind a bot challenge that turns some visitors away, so the calculator
+ * treats a live price as a bonus and always keeps manual entry working.
+ */
+export const SAFETRADE_MARKET_URL = "https://safetrade.com/exchange/QUAN-USDT?type=basic";
+export const SAFETRADE_TICKER_URL = "https://safetrade.com/api/v2/peatio/public/markets/quanusdt/tickers";
+export const MARKET_PAIR = "QUAN/USDT";
+export const MARKET_QUOTE = "USDT";
 export const REQUEST_TIMEOUT_MS = 15_000;
+/** The exchange is optional data, so it waits shorter than the chain does. */
+export const MARKET_TIMEOUT_MS = 10_000;
 /** Blocks averaged for the block time; enough to smooth luck, short enough to follow difficulty. */
 export const BLOCK_TIME_SAMPLE = 200;
 export const REWARD_SAMPLE = 50;
@@ -34,6 +47,21 @@ export type RewardStats = {
   blockRewardPlanck: bigint;
   samples: number;
   latestHeight: number;
+  fetchedAt: number;
+};
+
+export type MarketPrice = {
+  /** Last traded price in the quote asset. */
+  last: number;
+  /** The exchange's own digits, so the price field shows exactly what it said. */
+  lastText: string;
+  /** Best bid and ask; null when the book is empty or the field is malformed. */
+  bid: number | null;
+  ask: number | null;
+  /** 24 h change, formatted by the exchange, e.g. "+56.67%". */
+  changePercent: string | null;
+  /** 24 h volume in the quote asset. */
+  quoteVolume: number | null;
   fetchedAt: number;
 };
 
@@ -67,8 +95,8 @@ export function decodeLeUint(hex: unknown, bytes: number): bigint {
   return value;
 }
 
-function withTimeout(signal?: AbortSignal): AbortSignal {
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+function withTimeout(signal?: AbortSignal, ms = REQUEST_TIMEOUT_MS): AbortSignal {
+  const timeout = AbortSignal.timeout(ms);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
@@ -86,11 +114,11 @@ async function post<T>(fetcher: Fetcher, url: string, body: unknown, signal?: Ab
   return (await response.json()) as T;
 }
 
-async function get<T>(fetcher: Fetcher, url: string, signal?: AbortSignal): Promise<T> {
+async function get<T>(fetcher: Fetcher, url: string, signal?: AbortSignal, timeoutMs?: number): Promise<T> {
   const response = await fetcher(url, {
     method: "GET",
     headers: { accept: "application/json" },
-    signal: withTimeout(signal),
+    signal: withTimeout(signal, timeoutMs),
     credentials: "omit",
     referrerPolicy: "no-referrer",
     cache: "no-store",
@@ -242,6 +270,51 @@ export async function fetchPoolTerms(options: Options & { baseUrl?: string } = {
   }
   if (!gpus.length) throw new Error(t("矿池接口返回的数据无效。"));
   return { poolFeePercent, minerDevFeePercent, gpus, capturedAt: Date.now(), source: "live" };
+}
+
+/** The exchange writes every figure as a decimal string; anything else is a broken payload. */
+const DECIMAL = /^\d{1,18}(\.\d{1,18})?$/;
+const CHANGE = /^[+-]?\d{1,6}(\.\d{1,6})?%$/;
+
+function decimal(value: unknown, { positive }: { positive: boolean }): number | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!DECIMAL.test(text)) return null;
+  const number = Number(text);
+  if (!Number.isFinite(number) || number < 0 || (positive && number <= 0)) return null;
+  // A quote well past a million per coin is a decimal-point accident, not a market.
+  return number > 1e9 ? null : number;
+}
+
+/**
+ * The last traded price of QUAN/USDT on SafeTrade. Only the reader's browser
+ * asks, and only from the calculator, so the exchange learns nothing but that
+ * one visit; the answer is validated field by field and a malformed or
+ * unreachable market simply leaves the price to the user. Prices are in USDT
+ * because that is the quote asset of the market.
+ */
+export async function fetchMarketPrice(options: Options & { url?: string } = {}): Promise<MarketPrice> {
+  const fetcher = options.fetcher ?? fetch;
+  const reply = await get<{ ticker?: Record<string, unknown> }>(
+    fetcher,
+    options.url ?? SAFETRADE_TICKER_URL,
+    options.signal,
+    MARKET_TIMEOUT_MS,
+  );
+  const ticker = reply && typeof reply === "object" ? reply.ticker : null;
+  if (!ticker || typeof ticker !== "object") throw new Error(t("行情接口返回的数据无效。"));
+  const lastText = typeof ticker.last === "string" ? ticker.last.trim() : "";
+  const last = decimal(lastText, { positive: true });
+  if (last === null) throw new Error(t("行情接口返回的数据无效。"));
+  const change = typeof ticker.price_change_percent === "string" ? ticker.price_change_percent.trim() : "";
+  return {
+    last,
+    lastText,
+    bid: decimal(ticker.buy, { positive: true }),
+    ask: decimal(ticker.sell, { positive: true }),
+    changePercent: CHANGE.test(change) ? change : null,
+    quoteVolume: decimal(ticker.vol ?? ticker.volume, { positive: false }),
+    fetchedAt: Date.now(),
+  };
 }
 
 type StatsReply = { hashrate_windows?: unknown; blocks_24h?: unknown; network_miners?: unknown };

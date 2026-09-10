@@ -72,6 +72,10 @@ export type Yield = {
   breakEvenPrice: number | null;
   /** Fiat per QTC at which running costs and amortisation are covered. */
   breakEvenPriceWithHardware: number | null;
+  /** Highest rent per day that still breaks even; null without a price, or without a power figure when the rent excludes electricity. */
+  breakEvenRentPerDay: number | null;
+  /** The same budget stated per hour. */
+  breakEvenRentPerHour: number | null;
   electricityPerQtc: number | null;
   costPerQtc: number | null;
   qtcPerKwh: number | null;
@@ -139,6 +143,27 @@ function ratio(numerator: number | null, denominator: number | null): number | n
 }
 
 /**
+ * The most rent a setup can pay per day and still break even: what its
+ * output is worth, minus the running costs the rent does not already cover.
+ * Renting a whole rig includes the electricity, so the entire revenue is
+ * available for rent; on own hardware the electricity bill comes off first.
+ * Null when there is no price to value the output with, or when the power
+ * draw is unknown and the electricity therefore is — the caller shows an em
+ * dash rather than a number that pretends to know. The result is negative
+ * when electricity alone already costs more than the output is worth: that
+ * rig cannot pay any rent at all.
+ */
+export function breakEvenRentPerDay(qtcPerDay: number, price: number, electricityPerDay: number | null): number | null {
+  if (!(positive(price) > 0) || electricityPerDay === null) return null;
+  return positive(qtcPerDay) * positive(price) - electricityPerDay;
+}
+
+/** The same budget stated per hour, so it can be compared with hourly rig rates. */
+export function breakEvenRentPerHour(perDay: number | null): number | null {
+  return perDay === null ? null : perDay / 24;
+}
+
+/**
  * Expected yield of one row. `allocation` is this row's share of costs that
  * are given for the whole setup (rent, hardware); the caller passes the row's
  * fraction of the total hashrate.
@@ -172,6 +197,7 @@ export function estimateDevice(
   const revenuePerDay = qtcPerDay * price;
   const profitPerDay = costPerDay === null ? null : revenuePerDay - costPerDay;
   const cashFlow = runningCostPerDay === null ? null : revenuePerDay - runningCostPerDay;
+  const rentBudget = breakEvenRentPerDay(qtcPerDay, price, electricityPerDay);
 
   return {
     device,
@@ -191,6 +217,8 @@ export function estimateDevice(
     margin: ratio(profitPerDay, revenuePerDay),
     breakEvenPrice: ratio(runningCostPerDay, qtcPerDay),
     breakEvenPriceWithHardware: ratio(costPerDay, qtcPerDay),
+    breakEvenRentPerDay: rentBudget,
+    breakEvenRentPerHour: breakEvenRentPerHour(rentBudget),
     electricityPerQtc: ratio(electricityPerDay, qtcPerDay),
     costPerQtc: ratio(costPerDay, qtcPerDay),
     qtcPerKwh: ratio(qtcPerDay, kwhPerDay),
@@ -227,6 +255,7 @@ export function estimate(network: Network, devices: Device[], assumptions: Assum
   const revenuePerDay = qtcPerDay * positive(assumptions.price);
   const profitPerDay = costPerDay === null ? null : revenuePerDay - costPerDay;
   const cashFlow = runningCostPerDay === null ? null : revenuePerDay - runningCostPerDay;
+  const rentBudget = breakEvenRentPerDay(qtcPerDay, positive(assumptions.price), electricityPerDay);
   const total: Yield = {
     hashrate: totalHashrate,
     share: derived.hashrate > 0 ? totalHashrate / derived.hashrate : 0,
@@ -244,6 +273,8 @@ export function estimate(network: Network, devices: Device[], assumptions: Assum
     margin: ratio(profitPerDay, revenuePerDay),
     breakEvenPrice: ratio(runningCostPerDay, qtcPerDay),
     breakEvenPriceWithHardware: ratio(costPerDay, qtcPerDay),
+    breakEvenRentPerDay: rentBudget,
+    breakEvenRentPerHour: breakEvenRentPerHour(rentBudget),
     electricityPerQtc: ratio(electricityPerDay, qtcPerDay),
     costPerQtc: ratio(costPerDay, qtcPerDay),
     qtcPerKwh: ratio(qtcPerDay, kwhPerDay),

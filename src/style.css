@@ -1836,10 +1836,9 @@ button.account-type-notice {
 .tools-heading > h1 {
   font-size: 22px;
 }
-/* Mining calculator: inputs stacked on phones, inputs left and results right from 900px. */
-.mining-intro {
-  margin: 12px 0 0;
-}
+/* Mining calculator. The answer sits at the top and stays there on wide
+   screens; the short form is next; tables and assumptions are folded away.
+   One column on phones, form left and results right from 900px. */
 .mining-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1848,28 +1847,179 @@ button.account-type-notice {
 .mining-column {
   min-width: 0;
 }
+
+/* The four figures that decide everything. */
+.mining-summary {
+  margin: 16px 0 20px;
+  background: var(--bg);
+}
+.mining-summary-card {
+  padding: 17px 20px 15px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-variant-numeric: tabular-nums;
+}
+.mining-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+  margin: 0;
+}
+.mining-metric {
+  min-width: 0;
+}
+.mining-metric dt {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.mining-metric dd {
+  margin: 3px 0 0;
+  min-width: 0;
+}
+.mining-metric strong {
+  display: block;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.mining-metric strong > em {
+  margin-left: 5px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mining-metric strong.positive {
+  color: var(--green);
+}
+.mining-metric strong.negative {
+  color: var(--danger);
+}
+.mining-metric dd > small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+.mining-summary-note {
+  margin: 15px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+/* Anything the reader opens only when they want it. */
+.mining-fold {
+  margin: 12px 0;
+  border-radius: 16px;
+  background: var(--surface);
+}
+.mining-fold > summary {
+  gap: 10px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.mining-fold > summary::after {
+  margin-left: 0;
+  color: var(--muted);
+}
+.mining-fold-title {
+  flex: 1;
+  min-width: 0;
+}
+.mining-fold-meta {
+  max-width: 52%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.mining-fold-body {
+  padding: 0 18px 18px;
+  font-variant-numeric: tabular-nums;
+}
+.mining-fold-body > *:first-child {
+  margin-top: 0;
+}
+.mining-fold-body .mining-table-wrap {
+  margin: 0 -18px;
+  padding: 0 18px;
+}
+
+/* The network state the estimate rests on, in one line. */
+.mining-network {
+  margin: 0 0 22px;
+}
+.mining-network-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 16px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+.mining-network-strip > .mining-fold {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+}
+.mining-network-strip > .mining-fold > summary {
+  padding: 11px 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+.mining-network-strip .mining-fold-body {
+  padding: 2px 0 16px;
+}
+.mining-network-line {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+.mining-network-item > span {
+  margin-right: 5px;
+  color: var(--faint);
+}
+.mining-updated {
+  font-size: 12px;
+  color: var(--faint);
+}
+.mining-error {
+  margin: 12px 0 0;
+}
+
 .mining-card {
   background: var(--surface);
   border-radius: 18px;
   padding: 18px 20px;
   font-variant-numeric: tabular-nums;
 }
-.mining-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: -6px 0 2px;
-}
-.mining-updated {
-  font-size: 12px;
-  color: var(--muted);
-}
 .mining-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 16px;
-  margin: 14px 0 0;
+  margin: 16px 0 0;
 }
 .mining-stats > div {
   min-width: 0;
@@ -1900,6 +2050,9 @@ button.account-type-notice {
   font-size: 12px;
   line-height: 1.7;
   color: var(--muted);
+}
+.mining-note.warn {
+  color: var(--warning);
 }
 .mining-callout {
   margin: 14px 0 0;
@@ -1983,12 +2136,16 @@ button.account-type-notice {
   margin-bottom: 4px;
 }
 .mining-card > .mining-segmented + .mining-fields,
-.mining-card > .mining-segmented + .field {
+.mining-card > .mining-segmented + .field,
+.mining-card > .mining-segmented + .mining-device {
   margin-top: 16px;
 }
 .mining-device {
-  padding: 16px 0 18px;
+  padding: 6px 0 18px;
   border-bottom: 1px solid var(--line);
+}
+.mining-device + .mining-device {
+  padding-top: 16px;
 }
 .mining-device-head {
   display: flex;
@@ -2006,51 +2163,227 @@ button.account-type-notice {
 .mining-inline-button {
   min-height: 0;
   padding: 0;
+  font-size: inherit;
   font-weight: 400;
   text-decoration: underline;
 }
-.mining-hero {
+
+/* What one row can pay in rent: the number a renter decides on. */
+.mining-rent-line {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-.mining-hero > span {
+.mining-rent-label {
+  color: var(--muted);
+}
+.mining-rent-values {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  text-align: right;
+}
+.mining-rent-values b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mining-rent-values em {
+  margin-left: 3px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.mining-rent-values.positive b {
+  color: var(--green);
+}
+.mining-rent-values.negative b {
+  color: var(--danger);
+}
+.mining-rent-empty {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--faint);
+}
+.mining-rent-empty > span {
+  font-size: 15px;
+}
+.mining-row-more {
+  margin: 14px 0 0;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+.mining-row-more > summary {
+  min-height: 40px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.mining-row-more .mining-fold-body {
+  padding: 0 14px 14px;
+}
+
+/* The whole rig's rent budget, at the top of the result detail. */
+.mining-budget {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+.mining-budget-head strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.mining-budget-head small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.mining-budget-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.mining-budget-figures strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.mining-budget-figures strong.positive {
+  color: var(--green);
+}
+.mining-budget-figures strong.negative {
+  color: var(--danger);
+}
+.mining-budget-figures em {
+  margin-left: 4px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mining-budget-figures span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--faint);
+}
+.mining-budget-empty {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 10px 0 0;
   font-size: 12px;
   color: var(--muted);
 }
-.mining-hero > strong {
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
+.mining-budget-empty > span {
+  font-size: 20px;
+  color: var(--faint);
 }
-.mining-hero em {
-  font-style: normal;
-  font-size: 14px;
+
+/* Where the price comes from. */
+.mining-market {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  font-variant-numeric: tabular-nums;
+  transition: background 160ms ease;
+}
+.mining-market:hover {
+  background: var(--surface-hover);
+}
+.mining-market-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+}
+.mining-market-copy {
+  flex: 1;
+  min-width: 0;
+}
+.mining-market-copy strong {
+  display: block;
+  font-size: 13px;
   font-weight: 500;
+}
+.mining-market-copy small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
   color: var(--muted);
 }
-.mining-hero > small {
-  color: var(--muted);
-  line-height: 1.6;
+.mining-market-price {
+  text-align: right;
 }
+.mining-market-price b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mining-market-price em {
+  margin-left: 3px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.mining-market-price small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+.mining-market-price .positive {
+  color: var(--green);
+}
+.mining-market-price .negative {
+  color: var(--danger);
+}
+.mining-market > svg:last-child {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.mining-market.quiet .mining-market-icon {
+  color: var(--faint);
+}
+
 .mining-table-wrap {
   overflow-x: auto;
   margin: 0 -20px;
   padding: 0 20px;
   -webkit-overflow-scrolling: touch;
 }
-.mining-card.mining-table-wrap {
-  margin: 0;
-  padding: 6px 20px;
-}
 .mining-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .mining-table th,
 .mining-table td {
@@ -2125,6 +2458,12 @@ button.account-type-notice {
 .mining-method li + li {
   margin-top: 8px;
 }
+@media (max-width: 480px) {
+  /* The market name needs the room the decorative icon was taking. */
+  .mining-market-icon {
+    display: none;
+  }
+}
 @media (max-width: 700px) {
   .mining-fields {
     grid-template-columns: minmax(0, 1fr);
@@ -2136,6 +2475,20 @@ button.account-type-notice {
   .mining-fields:not(.split) > .field + .field {
     margin-top: 16px;
   }
+  .mining-rent-line {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+  .mining-rent-values {
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+@media (min-width: 700px) {
+  .mining-metric strong {
+    font-size: 25px;
+  }
 }
 @media (min-width: 900px) {
   .settings-page.mining-page {
@@ -2144,6 +2497,36 @@ button.account-type-notice {
   .mining-grid {
     grid-template-columns: minmax(0, 11fr) minmax(0, 12fr);
     align-items: start;
+  }
+  /* The answer follows the reader down the page. */
+  .mining-summary {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 4px 0 6px;
+    padding: 10px 0 14px;
+  }
+  /* Content dissolves under the card instead of being sliced by its edge. */
+  .mining-summary::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 16px;
+    background: linear-gradient(var(--bg), transparent);
+    pointer-events: none;
+  }
+  .mining-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+  .mining-metric + .mining-metric {
+    padding-left: 18px;
+    border-left: 1px solid var(--line);
+  }
+  .mining-metric:not(:last-child) {
+    padding-right: 18px;
   }
 }
 .settings-page {
