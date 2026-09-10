@@ -2054,6 +2054,16 @@ button.account-type-notice {
   gap: 14px 16px;
   margin: 16px 0 0;
 }
+.mining-per-gh {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 520px) {
+  .mining-per-gh {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .mining-stats > div {
   min-width: 0;
 }
@@ -2214,6 +2224,11 @@ button.account-type-notice {
 }
 
 /* What one row can pay in rent: the number a renter decides on. */
+.mining-rent-total {
+  display: block;
+  margin-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+}
 .mining-rent-line {
   display: flex;
   align-items: baseline;
@@ -2448,14 +2463,14 @@ button.account-type-notice {
     align-items: start;
   }
   .mining-grid > .mining-network {
-    grid-column: 2;
+    /* Chain state is context for both columns, so it spans them and the
+       two columns start their headings at the same line. */
+    grid-column: 1 / -1;
     grid-row: 1;
-    /* Lines up with the section heading that opens the other column. */
-    margin: 28px 0 0;
   }
   .mining-column-form {
     grid-column: 1;
-    grid-row: 1 / -1;
+    grid-row: 2 / -1;
   }
   .mining-column-results {
     grid-column: 2;

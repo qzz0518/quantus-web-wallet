@@ -7,6 +7,7 @@ import type { PoolTerms } from "../../lib/mining/gpus";
 import { formatFiat, formatHashrate } from "../../lib/mining/format";
 import type { DeviceYield } from "../../lib/mining/math";
 import {
+  cardCount,
   benchmark,
   CUSTOM_GPU,
   deviceFromGpu,
@@ -265,6 +266,18 @@ export function MiningInputs({
   const poolFeeValue = inputs.poolFee ?? String(terms.poolFeePercent);
   const following = inputs.price === null && market !== null;
   const rentMode = inputs.costMode === "rental";
+  // With more than one card, say what the per-card figure adds up to.
+  const cards = cardCount(inputs.devices);
+  const rentEach = parseNumber(inputs.rent) ?? 0;
+  const rentTotalHint =
+    inputs.mode === "total" || cards <= 1 || rentEach <= 0
+      ? undefined
+      : t(
+          "共 {0} 张卡 · 合计 {1} {2}",
+          cards,
+          formatFiat(rentEach * cards, ""),
+          `${inputs.currency.trim()}${inputs.rentPer === "hour" ? t("/小时") : t("/天")}`,
+        );
   const settingsMeta = [
     inputs.mode === "devices" ? t("按显卡") : t("总算力"),
     t("在线 {0}%", inputs.uptime || "100"),
@@ -272,7 +285,7 @@ export function MiningInputs({
   ].join(" · ");
   // One row is the whole rig, and the headline already states its rent
   // budget; several rows each carry their own share.
-  const showRent = inputs.devices.length > 1;
+  const showRent = rentMode || inputs.devices.length > 1;
 
   return (
     <>
@@ -385,7 +398,11 @@ export function MiningInputs({
             <div className="mining-fields">
               {rentMode ? (
                 <NumberField
-                  label={t("租金（全部设备，含电费）")}
+                  label={
+                    inputs.mode === "total"
+                      ? t("租金（全部设备，含电费）")
+                      : t("租金（每张卡，含电费）")
+                  }
                   value={inputs.rent}
                   onChange={(rent) => update({ rent })}
                   placeholder="0"
@@ -401,9 +418,12 @@ export function MiningInputs({
                     />
                   }
                   hint={
-                    <button type="button" className="text-button mining-inline-button" onClick={() => update({ costMode: "electricity" })}>
-                      {t("改为自有设备付电费")}
-                    </button>
+                    <>
+                      {rentTotalHint && <span className="mining-rent-total">{rentTotalHint}</span>}
+                      <button type="button" className="text-button mining-inline-button" onClick={() => update({ costMode: "electricity" })}>
+                        {t("改为自有设备付电费")}
+                      </button>
+                    </>
                   }
                 />
               ) : (

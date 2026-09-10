@@ -10,6 +10,7 @@ import {
   deriveNetwork,
   estimate,
   estimateDevice,
+  gigahashRate,
   luckDeviation,
   mulPlanck,
   planckToQtc,
@@ -58,6 +59,13 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
   const fiatIfPriced = (value: number | null) => (priced ? bare(value) : "—");
   const currencyNote = currency ? t("金额单位：{0}。", currency) + " " : "";
   const rentMode = costs.mode === "rental";
+  const perGh = useMemo(
+    () =>
+      network
+        ? gigahashRate(network, assumptions, devices[0]?.minerFeePercent ?? terms.minerDevFeePercent)
+        : null,
+    [network, assumptions, devices, terms.minerDevFeePercent],
+  );
 
   const sensitivity = useMemo(
     () =>
@@ -227,7 +235,14 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
         </Fold>
       )}
 
-      <Fold title={t("难度上涨敏感性")} meta={t("× 1.5 / × 2")}>
+      <Fold
+        title={t("难度与运气")}
+        meta={
+          perGh?.ratePerHour != null
+            ? t("算价比 {0} {1}/GH·小时", bare(perGh.ratePerHour), currency)
+            : t("× 1.5 / × 2")
+        }
+      >
         <div className="mining-table-wrap">
           <table className="mining-table">
             <thead>
@@ -263,6 +278,25 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
             ? t("按 Quanpool 当前份额，单日约 ±{0}、单周约 ±{1}（1σ）。", formatPercent(luckDay), formatPercent(luckWeek))
             : t("统计周期越短，偏离越大。")}
         </p>
+        {perGh && (
+          <dl className="mining-stats mining-per-gh">
+            <Stat label={t("1 GH/s 日产量")} value={`${formatQtc(perGh.qtcPerDay)} QTC`} />
+            <Stat
+              label={t("QTC 价格")}
+              value={priced ? `${bare(assumptions.price)} ${currency}` : "—"}
+              hint={priced ? undefined : t("填写 QTC 价格")}
+            />
+            <Stat
+              label={t("最低算价比")}
+              value={perGh.ratePerHour === null ? "—" : `${bare(perGh.ratePerHour)} ${currency}`}
+              hint={
+                perGh.ratePerDay === null
+                  ? t("填写 QTC 价格")
+                  : t("每 GH/s 每小时；每天 {0}", bare(perGh.ratePerDay))
+              }
+            />
+          </dl>
+        )}
       </Fold>
 
       <Fold title={t("显卡对比")} meta={t("{0} 款", comparison.length)}>
@@ -286,7 +320,7 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
                 <th>{t("显卡")}</th>
                 <th>{t("算力 / 功耗")}</th>
                 <th>{t("QTC / 天")}</th>
-                <th>{t("保本租金 / 天")}</th>
+                <th>{t("保本租金 / 小时")}</th>
                 {!rentMode && <th>{t("保本价")}</th>}
               </tr>
             </thead>
@@ -299,7 +333,10 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
                     <small>{powerText(gpu)}</small>
                   </td>
                   <td>{formatQtc(row.qtcPerDay)}</td>
-                  <td className={signClass(row.breakEvenRentPerDay)}>{bare(row.breakEvenRentPerDay)}</td>
+                  <td className={signClass(row.breakEvenRentPerDay)}>
+                    {bare(row.breakEvenRentPerHour)}
+                    <small>{t("{0} / 天", bare(row.breakEvenRentPerDay))}</small>
+                  </td>
                   {!rentMode && <td>{row.breakEvenPrice === null ? "—" : bare(row.breakEvenPrice)}</td>}
                 </tr>
               ))}

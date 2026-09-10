@@ -7,6 +7,13 @@ import type { Assumptions, Costs, Device } from "./math";
  * one localStorage key; every field is re-validated when read back.
  */
 export const STORAGE_KEY = "quantus-wallet-mining-v1";
+/** Bumped when a stored field changes meaning; see `normalizeInputs`. */
+const SCHEMA = 2;
+
+/** Cards in a rig, which is what a rent quote is per. */
+export function cardCount(devices: DeviceInput[]): number {
+  return devices.reduce((sum, row) => sum + Math.max(0, Math.floor(Number(row.quantity) || 0)), 0);
+}
 export const CUSTOM_GPU = "custom";
 /** The quote asset of the market the price comes from; kept in sync with data.ts. */
 export const DEFAULT_CURRENCY = "USDT";
@@ -140,6 +147,14 @@ function normalizeDevice(raw: unknown, fallback: DeviceInput): DeviceInput | nul
   };
 }
 
+function migrateRent(rent: string, data: Record<string, unknown>, devices: DeviceInput[]): string {
+  const version = typeof data.version === "number" ? data.version : 1;
+  const cards = cardCount(devices);
+  if (version >= SCHEMA || data.mode === "total" || !rent || cards <= 1) return rent;
+  const perCard = (Number(rent) || 0) / cards;
+  return perCard > 0 ? String(Number(perCard.toFixed(6))) : rent;
+}
+
 /** Bring anything found in storage back to a well-formed input set. */
 export function normalizeInputs(raw: unknown, terms: PoolTerms): MiningInputs {
   const base = defaultInputs(terms);
@@ -164,7 +179,8 @@ export function normalizeInputs(raw: unknown, terms: PoolTerms): MiningInputs {
     poolFee: data.poolFee === null ? null : typeof data.poolFee === "string" && data.poolFee.length <= 32 ? data.poolFee : null,
     costMode: oneOf(data.costMode, ["electricity", "rental"] as const, base.costMode),
     electricity: text(data.electricity, base.electricity),
-    rent: text(data.rent, ""),
+    // Version 1 stored the rent for the whole rig; it is per card now.
+    rent: migrateRent(text(data.rent, ""), data, devices.length ? devices : base.devices),
     rentPer: oneOf(data.rentPer, ["day", "hour"] as const, "day"),
     hardwareCost: text(data.hardwareCost, ""),
     amortiseDays: text(data.amortiseDays, base.amortiseDays),
@@ -187,7 +203,7 @@ export function saveInputs(inputs: MiningInputs, storage: Pick<Storage, "setItem
   try {
     // Row keys are session-local; everything else is what the user typed.
     const devices = inputs.devices.map(({ key: _key, ...row }) => row);
-    storage?.setItem(STORAGE_KEY, JSON.stringify({ ...inputs, devices }));
+    storage?.setItem(STORAGE_KEY, JSON.stringify({ ...inputs, devices, version: SCHEMA }));
   } catch {
     // Storage restrictions must not break the calculator.
   }
@@ -255,7 +271,9 @@ export function toModel(inputs: MiningInputs, terms: PoolTerms, marketPrice: num
       minerFeePercent: num(row.minerFee),
     }));
   }
-  const rent = num(inputs.rent);
+  // A rent quote is per card; the model wants what the whole rig costs.
+  const rentUnits = inputs.mode === "total" ? 1 : Math.max(1, cardCount(inputs.devices));
+  const rent = num(inputs.rent) * rentUnits;
   const market = marketPrice !== null && Number.isFinite(marketPrice) && marketPrice > 0 ? marketPrice : null;
   const price = inputs.price === null ? (market ?? 0) : num(inputs.price);
   const priceSource: PriceSource = price <= 0 ? "none" : inputs.price === null ? "market" : "manual";

@@ -236,6 +236,32 @@ function sumNullable(values: (number | null)[]): number | null {
   return total;
 }
 
+/** One GH/s of the same setup: output per day, and what it may cost to rent. */
+export interface GigahashRate {
+  /** QTC a single GH/s earns per day, after uptime and fees. */
+  qtcPerDay: number;
+  /** Most that GH/s can cost per day and still break even; null without a price. */
+  ratePerDay: number | null;
+  ratePerHour: number | null;
+}
+
+export function gigahashRate(
+  network: Network,
+  assumptions: Assumptions,
+  minerFeePercent: number,
+): GigahashRate {
+  const derived = deriveNetwork(network);
+  const one: Device = { id: "gh", label: "1 GH/s", hashrate: 1e9, quantity: 1, powerW: null, minerFeePercent };
+  const row = estimateDevice(derived, one, assumptions, { mode: "rental", rentPerDay: 0 });
+  const price = positive(assumptions.price);
+  const ratePerDay = price > 0 ? row.qtcPerDay * price : null;
+  return {
+    qtcPerDay: row.qtcPerDay,
+    ratePerDay,
+    ratePerHour: ratePerDay === null ? null : ratePerDay / 24,
+  };
+}
+
 export function estimate(network: Network, devices: Device[], assumptions: Assumptions, costs: Costs): Estimate {
   const derived = deriveNetwork(network);
   const rowHashrate = devices.map((device) => positive(device.hashrate) * Math.max(0, Math.floor(finite(device.quantity))));

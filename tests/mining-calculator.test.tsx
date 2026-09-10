@@ -130,7 +130,7 @@ describe("mining results", () => {
     expect(html).toContain("15.91");
     expect(html).toContain("68.19");
     expect(html).toContain("每日用电");
-    expect(html).toContain("难度上涨敏感性");
+    expect(html).toContain("难度与运气");
     expect(html).toContain("× 1.5");
     expect(html).toContain("显卡对比");
     for (const gpu of ["RTX 5090", "RTX 4070 Ti", "RTX 3080 Ti", "RTX 5060 Ti"]) expect(html).toContain(gpu);

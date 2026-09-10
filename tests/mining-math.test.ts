@@ -15,6 +15,8 @@ import {
   type Network,
 } from "../src/lib/mining/math";
 import { formatCompact, formatFiat, formatHashrate, formatPercent, formatQtc } from "../src/lib/mining/format";
+import { normalizeInputs, toModel } from "../src/lib/mining/inputs";
+import { BUILT_IN_TERMS } from "../src/lib/mining/gpus";
 
 // Network state captured on 2026-09-10: difficulty 2.489e14, 12.28 s blocks, 0.31 QTC.
 const NETWORK: Network = {
@@ -274,5 +276,40 @@ describe("formatting", () => {
     expect(formatFiat(12345.6, "CNY")).toBe("12,346 CNY");
     expect(formatPercent(0.05542e-3)).toBe("0.0055%");
     expect(formatPercent(-15.05)).toBe("-1,505%");
+  });
+});
+
+describe("rent is quoted per card", () => {
+  const terms = BUILT_IN_TERMS;
+  test("multiplies the per-card rent by the number of cards", () => {
+    const inputs = normalizeInputs(
+      {
+        version: 2,
+        mode: "devices",
+        costMode: "rental",
+        rent: "0.5",
+        rentPer: "hour",
+        devices: [{ gpu: BUILT_IN_TERMS.gpus[0].id, quantity: "4", hashrate: "1", unit: "GH", software: "pool", powerW: "500", minerFee: "5" }],
+      },
+      terms,
+    );
+    const model = toModel(inputs, terms, null);
+    // 0.5 per card per hour, four cards, twenty-four hours.
+    expect(model.costs).toMatchObject({ mode: "rental", rentPerDay: 48 });
+  });
+
+  test("reads a version 1 rig total as a per-card figure", () => {
+    const inputs = normalizeInputs(
+      {
+        mode: "devices",
+        costMode: "rental",
+        rent: "12",
+        rentPer: "day",
+        devices: [{ gpu: BUILT_IN_TERMS.gpus[0].id, quantity: "4", hashrate: "1", unit: "GH", software: "pool", powerW: "500", minerFee: "5" }],
+      },
+      terms,
+    );
+    expect(inputs.rent).toBe("3");
+    expect(toModel(inputs, terms, null).costs).toMatchObject({ rentPerDay: 12 });
   });
 });
