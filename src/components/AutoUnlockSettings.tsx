@@ -50,8 +50,8 @@ export function AutoUnlockSettings({
     try {
       await enableAutoUnlock(password);
       if (!mounted.current) return;
+      // The enabled state block below is the confirmation; a status line would repeat it.
       setEnabled(true);
-      setMessage(t("免密模式已开启，下次打开页面时自动解锁"));
     } catch (cause) {
       if (mounted.current) setError(errorText(cause));
     } finally {

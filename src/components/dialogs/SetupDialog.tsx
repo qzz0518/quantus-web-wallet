@@ -70,8 +70,21 @@ export function SetupDialog({
       abort.current?.abort();
     };
   }, []);
+  // Ask for the finger or face straight away; the password stays underneath.
+  const prompted = useRef(false);
+  useEffect(() => {
+    if (mode !== "unlock" || !deviceEnabled || prompted.current) return;
+    prompted.current = true;
+    void deviceUnlock(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, deviceEnabled]);
 
-  async function deviceUnlock() {
+  /**
+   * `automatic` is the prompt shown on its own when the dialog opens. A refusal
+   * there is not worth an error: the browser may withhold the prompt without a
+   * gesture, and a cancelled prompt just means the password is wanted instead.
+   */
+  async function deviceUnlock(automatic = false) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
@@ -85,7 +98,7 @@ export function SetupDialog({
     } catch (cause) {
       if (mounted.current) {
         setDeviceEnabled(hasBiometric());
-        setError(deviceError(cause));
+        if (!automatic) setError(deviceError(cause));
         requestAnimationFrame(() => passwordInput.current?.focus());
       }
     } finally {
@@ -225,7 +238,7 @@ export function SetupDialog({
                 type="button"
                 className="button primary full"
                 disabled={busy}
-                onClick={deviceUnlock}
+                onClick={() => void deviceUnlock()}
               >
                 <Fingerprint size={19} />
                 {deviceBusy ? t("等待系统验证…") : t("指纹 / 面容解锁")}

@@ -87,7 +87,7 @@ export function DeviceUnlockSettings({
     try {
       await enrollBiometric(password, controller.current.signal);
       setEnabled(true);
-      setMessage(t("设备解锁已开启，下次锁定后即可使用"));
+      // The enabled state block below is the confirmation; a status line would repeat it.
     } catch (error) {
       setError(deviceError(error));
     } finally {
