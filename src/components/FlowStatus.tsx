@@ -9,15 +9,23 @@ import { Check, TriangleAlert } from "lucide-react";
 export function FlowStatus({
   message,
   error,
+  warning,
   errorId,
   className = "",
 }: {
   message?: string;
   error?: string;
+  warning?: string;
   errorId?: string;
   className?: string;
 }) {
-  const tone = error ? "error" : message ? "success" : undefined;
+  const tone = error
+    ? "error"
+    : warning
+      ? "warning"
+      : message
+        ? "success"
+        : undefined;
   return (
     <div
       className={`flow-status ${className}`.trimEnd()}
@@ -28,12 +36,12 @@ export function FlowStatus({
     >
       {tone && (
         <p id={error ? errorId : undefined}>
-          {error ? (
-            <TriangleAlert size={16} aria-hidden="true" />
-          ) : (
+          {tone === "success" ? (
             <Check size={16} aria-hidden="true" />
+          ) : (
+            <TriangleAlert size={16} aria-hidden="true" />
           )}
-          {error || message}
+          {error || warning || message}
         </p>
       )}
     </div>

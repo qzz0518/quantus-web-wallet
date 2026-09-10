@@ -321,7 +321,7 @@ export function SendDialog({
       {hash ? (
         <>
           <div className="flow-body">
-            <div className="success-emblem">
+            <div className={`success-emblem ${error ? "uncertain" : ""}`}>
               {error ? <CircleHelp size={29} /> : <Check size={29} />}
             </div>
             <div className="flow-heading centered">
@@ -427,9 +427,10 @@ export function SendDialog({
           </div>
           <div className="flow-footer">
             {expired && !error && (
-              <p className="flow-note">
-                {t("费用需要更新，更新后请重新核对。")}
-              </p>
+              <FlowStatus
+                className="tight"
+                warning={t("费用需要更新，更新后请重新核对。")}
+              />
             )}
             {error && (
               <p className="error" role="alert">

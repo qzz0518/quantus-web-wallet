@@ -292,6 +292,16 @@ svg {
   color: var(--danger);
   background: var(--danger-bg);
 }
+.flow-status[data-tone="warning"] > p {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+/* In a footer the slot sits above the action, where reserved space would
+   push the button off its resting position. */
+.flow-status.tight {
+  min-height: 0;
+  margin: 0 0 12px;
+}
 .flow-footer > .flow-status {
   margin-top: 0;
 }
@@ -400,8 +410,15 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: space-between;
 }
 .field-label-row .text-button {
+  position: relative;
   min-height: 30px;
   padding: 0;
+}
+/* Keep the label row compact but give the action a full touch target. */
+.field-label-row .text-button::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
 }
 .check-row {
   display: flex;
@@ -478,6 +495,7 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 9px;
   align-items: center;
   justify-self: start;
+  min-height: 44px;
   font-size: 25px;
   font-weight: 650;
   letter-spacing: -1.3px;
@@ -657,6 +675,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .segmented > button:focus-visible {
   outline-offset: 0;
+}
+/* A finger needs the full target even where the control is compact. */
+@media (hover: none) {
+  .segmented > button {
+    min-height: 42px;
+  }
 }
 /* Custom select: trigger button plus a listbox, shared look with the theme menu. */
 .select {
@@ -1580,6 +1604,11 @@ button.account-type-notice {
   color: var(--green);
   border-radius: 50%;
 }
+/* An unconfirmed result is not a success: the emblem says so too. */
+.success-emblem.uncertain {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
 .flow-account {
   display: flex;
   align-items: center;
@@ -1721,6 +1750,14 @@ button.account-type-notice {
 }
 .mnemonic-grid > :is(div, li) > strong {
   font-weight: 500;
+}
+/* While the phrase is being generated the placeholder is the only child:
+   give it the whole grid instead of a third of the first row. */
+.mnemonic-grid > p {
+  grid-column: 1 / -1;
+  align-self: center;
+  text-align: center;
+  padding: 30px 0;
 }
 .mnemonic-actions {
   margin-top: 22px;
@@ -1909,7 +1946,6 @@ button.account-type-notice {
   }
   .settings-appearance .segmented > button {
     flex: 1;
-    min-height: 38px;
   }
 }
 .settings-footer {
@@ -1971,12 +2007,22 @@ button.account-type-notice {
   margin-bottom: 0;
 }
 .device-enabled-state {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
   background: var(--green-soft);
   color: var(--green);
   padding: 16px;
   border-radius: 16px;
   line-height: 1.8;
   font-size: 14px;
+}
+.device-enabled-state > p {
+  grid-column: 2;
+  font-size: 13px;
+  opacity: 0.85;
 }
 .install-instructions {
   background: var(--surface);
