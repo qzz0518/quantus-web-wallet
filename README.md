@@ -12,6 +12,8 @@ A browser wallet for Quantus.
 - Open accounts and transactions in the Quantus explorer.
 - Encrypt wallets locally with a password of at least 6 characters; export and restore encrypted backups.
 - Unlock with your device's fingerprint, face or screen lock on browsers that support WebAuthn PRF.
+- Warns before sending to an address that looks like an encrypted (Wormhole) account, and hints when a recipient has no on-chain history.
+- Chinese and English interface; the language follows the browser on first use and can be changed in settings.
 - Light, dark and system themes, with a responsive mobile layout.
 - Install as a PWA for a standalone app window and offline startup.
 - Monitor wormhole addresses as watch-only accounts.
@@ -40,4 +42,4 @@ bun run build
 bun run preview
 ```
 
-Deploy `dist/` to a static host with HTTPS. The browser signing module is included; Rust is only needed to [rebuild it](vendor/PROVENANCE.md#rebuild).
+Deploy `dist/` to a static host with HTTPS. The `_headers` file carries the Content Security Policy and HSTS for hosts that support it. After deploying, `node scripts/verify-deployment.mjs [origin]` checks that every file on the site matches the local build and that the security headers are served. The browser signing module is included; Rust is only needed to [rebuild it](vendor/PROVENANCE.md#rebuild).

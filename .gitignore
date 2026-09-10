@@ -37,3 +37,4 @@ quantus-mnemonic-*.txt
 /vendor/quantus-wasm/package.json
 /vendor/quantus-wasm/package-lock.json
 /vendor/quantus-wasm/tsconfig.json
+.claude/
