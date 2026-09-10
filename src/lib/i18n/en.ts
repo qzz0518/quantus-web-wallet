@@ -1,5 +1,6 @@
 import { activity } from "./en/activity";
 import { lib } from "./en/lib";
+import { mining } from "./en/mining";
 import { mldsa65 } from "./en/mldsa65";
 import { settings } from "./en/settings";
 import { setup } from "./en/setup";
@@ -11,6 +12,7 @@ import { wormholeExit } from "./en/wormhole-exit";
 export const en: Record<string, string> = {
   ...activity,
   ...lib,
+  ...mining,
   ...mldsa65,
   ...settings,
   ...setup,
