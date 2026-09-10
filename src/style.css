@@ -2915,3 +2915,282 @@ a.settings-row:hover {
     scroll-behavior: auto !important;
   }
 }
+
+/* Encrypted account (Wormhole) recovery dialog. */
+.wormhole-points {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.wormhole-points > li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+  min-width: 0;
+}
+.wormhole-points > li > svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--text);
+}
+.wormhole-points > li > div {
+  min-width: 0;
+}
+.wormhole-points strong {
+  display: block;
+  color: var(--text);
+  font-weight: 550;
+}
+.wormhole-steps {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.wormhole-steps li {
+  margin: 8px 0;
+  padding-left: 4px;
+}
+.wormhole-steps strong {
+  color: var(--text);
+  font-weight: 550;
+}
+.wormhole-list-title {
+  font-size: 13px;
+  font-weight: 550;
+  margin: 26px 0 10px;
+}
+.wormhole-receipts {
+  display: grid;
+  gap: 10px;
+}
+.wormhole-receipt {
+  padding: 16px 18px;
+  background: var(--surface);
+  border-radius: 18px;
+  font-size: 13px;
+  min-width: 0;
+}
+.wormhole-receipt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wormhole-receipt-head strong {
+  font-size: 15px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wormhole-receipt > small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.wormhole-receipt .label {
+  display: block;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.wormhole-receipt .text-button {
+  margin-top: 6px;
+}
+.wormhole-receipt-message {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.wormhole-hash {
+  font:
+    12px/1.7 "SFMono-Regular",
+    Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+  margin: 6px 0 0;
+}
+.wormhole-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  background: var(--surface-soft);
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wormhole-badge.ok {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.wormhole-badge.warn {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.wormhole-badge.bad {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.wormhole-match {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -10px 0 18px;
+}
+.wormhole-match small {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.wormhole-progress {
+  padding: 22px;
+  background: var(--surface);
+  border-radius: 18px;
+}
+.wormhole-progress-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.wormhole-progress-bar > span {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: 4px;
+  transform-origin: left;
+  transition: transform 300ms var(--motion-ease);
+}
+.wormhole-progress-bar.indeterminate > span {
+  width: 40%;
+  animation: wormhole-sweep 1.4s ease-in-out infinite;
+}
+@keyframes wormhole-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.wormhole-progress dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px 20px;
+  margin: 0;
+  font-size: 13px;
+}
+.wormhole-progress dt {
+  color: var(--muted);
+}
+.wormhole-progress dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wormhole-progress .hint {
+  margin: 16px 0 0;
+}
+.wormhole-empty {
+  text-align: center;
+  padding: 32px 18px;
+  background: var(--surface);
+  border-radius: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.wormhole-empty > svg {
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.wormhole-empty p {
+  margin: 4px 0 0;
+}
+.wormhole-empty strong {
+  color: var(--text);
+  font-weight: 550;
+}
+.wormhole-selection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.wormhole-selection .text-button {
+  min-height: 32px;
+  padding: 0;
+}
+.wormhole-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px;
+  background: var(--surface);
+  border-radius: 18px;
+}
+.wormhole-list > li {
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.wormhole-list > li:last-child {
+  border-bottom: 0;
+}
+.wormhole-list label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 0;
+  min-width: 0;
+  cursor: pointer;
+}
+.wormhole-list input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+}
+.wormhole-list .main {
+  flex: 1;
+  min-width: 0;
+}
+.wormhole-list strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wormhole-list small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wormhole-progress-bar.indeterminate > span {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

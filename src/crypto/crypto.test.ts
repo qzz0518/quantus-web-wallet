@@ -9,7 +9,7 @@ import {
   account, accountFromMnemonic, accountFromMnemonicScheme, canonicalAddressIndex, signatureVariant,
   verifySignature, verifySignatureScheme, wormholeAddresses, wormholeNullifier,
 } from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
-import { bytesToHex, deriveAccountCore, hexToBytes, initializeWasm, signCallCore } from './core';
+import { bytesToHex, computeWormholeNullifiersCore, deriveAccountCore, deriveWormholeAddressesCore, hexToBytes, initializeWasm, signCallCore } from './core';
 import { DEFAULT_SCHEME, SCHEMES, WALLET_SCHEMES, derivationPath, generateMnemonic, normalizeMnemonic, validateMnemonic } from './index';
 import type { SignContext, WalletScheme } from './types';
 
@@ -181,6 +181,28 @@ describe('official Quantus browser cryptography', () => {
     expect(() => wormholeAddresses(PHRASE, 2, 0, 1)).toThrow();
     expect(() => wormholeAddresses(PHRASE, 0, 0, 5000)).toThrow();
     expect(() => wormholeNullifier('not a phrase', 0, 0, 0n)).toThrow();
+  });
+
+  test('worker core derives Wormhole addresses and hex nullifiers with range checks', async () => {
+    expect(await deriveWormholeAddressesCore(PHRASE, 0, 0, 2)).toEqual(wormholeAddresses(PHRASE, 0, 0, 2));
+    expect(await deriveWormholeAddressesCore(PHRASE, 1, 2, 1)).toEqual(wormholeAddresses(PHRASE, 1, 2, 1));
+    expect(await computeWormholeNullifiersCore(PHRASE, [
+      { branch: 0, index: 0, transferCount: '0' },
+      { branch: 0, index: 0, transferCount: '18446744073709551615' },
+      { branch: 1, index: 2, transferCount: '424242' },
+    ])).toEqual([
+      '0x2cbb73e7f9fad1070f8e729eb8e2b55d05d844dfea6622e12a7884eec1fe5bdc',
+      '0x045b756536aaad9a9174df74e2c7e32b0bc3b66ccfc00b8f63d175d725bcb307',
+      '0xbfcd88744ff455e13effce2e580374c2deb5fc648f9a77d4a64be21351bd4c63',
+    ]);
+    expect(await computeWormholeNullifiersCore(PHRASE, [])).toEqual([]);
+    await expect(deriveWormholeAddressesCore(PHRASE, 2 as never, 0, 1)).rejects.toThrow();
+    await expect(deriveWormholeAddressesCore(PHRASE, 0, 0, 0)).rejects.toThrow();
+    await expect(deriveWormholeAddressesCore(PHRASE, 0, 0, 4097)).rejects.toThrow();
+    await expect(deriveWormholeAddressesCore(PHRASE, 0, 0x7fff_ffff, 2)).rejects.toThrow();
+    await expect(computeWormholeNullifiersCore(PHRASE, [{ branch: 0, index: 0, transferCount: '18446744073709551616' }])).rejects.toThrow();
+    await expect(computeWormholeNullifiersCore(PHRASE, [{ branch: 0, index: 0, transferCount: '1.5' }])).rejects.toThrow();
+    await expect(computeWormholeNullifiersCore(PHRASE, [{ branch: 0, index: -1, transferCount: '1' }])).rejects.toThrow();
   });
 
   test('ML-DSA-65 v4 envelope uses signature variant 1 and verifies', async () => {

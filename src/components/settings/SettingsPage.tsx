@@ -8,6 +8,7 @@ import {
   Info,
   KeyRound,
   Languages,
+  LifeBuoy,
   LockKeyhole,
   Palette,
   Smartphone,
@@ -26,6 +27,7 @@ import { LanguagePicker } from "../LanguagePicker";
 import { dismissModal } from "../../lib/motion";
 import { Modal } from "../Modal";
 import { AboutDialog } from "../dialogs/AboutDialog";
+import { WormholeRecoveryDialog } from "../dialogs/WormholeRecoveryDialog";
 
 type SettingsPanel =
   | "password"
@@ -33,10 +35,12 @@ type SettingsPanel =
   | "backup"
   | "install"
   | "about"
+  | "wormhole"
   | null;
 
 type SettingsPageProps = {
   wallet?: Wallet;
+  wallets?: Wallet[];
   walletCount: number;
   unlocked?: boolean;
   onManage: () => void;
@@ -77,6 +81,7 @@ function SettingsRow({
 
 export function SettingsPage({
   wallet,
+  wallets = [],
   walletCount,
   unlocked = true,
   onManage,
@@ -217,6 +222,16 @@ export function SettingsPage({
           icon={<Info size={19} />}
           title={t("关于钱包")}
           onClick={() => openPanel("about")}
+        />
+      </section>
+
+      <section className="settings-group" aria-label={t("工具")}>
+        <h2>{t("工具")}</h2>
+        <SettingsRow
+          icon={<LifeBuoy size={19} />}
+          title={t("加密账户恢复")}
+          description={t("查看并取回转入 Wormhole 加密账户的资产")}
+          onClick={() => secured(() => openPanel("wormhole"))}
         />
       </section>
 
@@ -395,6 +410,13 @@ export function SettingsPage({
       )}
       {panel === "about" && (
         <AboutDialog onClose={closePanel} onBack={closePanel} />
+      )}
+      {panel === "wormhole" && (
+        <WormholeRecoveryDialog
+          wallets={wallets}
+          onClose={closePanel}
+          onBack={closePanel}
+        />
       )}
     </section>
   );
