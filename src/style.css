@@ -2073,7 +2073,14 @@ button.account-type-notice {
 .mining-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 12px;
+  /* Row rhythm comes from the grid, not from field margins: a margin that
+     applies to the first child only would stagger the second column. */
+  gap: 22px 12px;
+  align-items: start;
+}
+.mining-fields > .field,
+.mining-fields > .mining-field {
+  margin: 0;
 }
 .mining-fields.split {
   grid-template-columns: minmax(0, 1fr) 96px;
