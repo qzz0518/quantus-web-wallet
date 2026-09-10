@@ -16,6 +16,11 @@
   --surface: #fff;
   --surface-soft: #eeefec;
   --surface-hover: #e6e8e3;
+  --nav-glass: rgba(255, 255, 255, 0.72);
+  --nav-glass-opaque: rgba(252, 252, 251, 0.96);
+  --nav-active: rgba(23, 26, 24, 0.09);
+  --nav-border: rgba(23, 26, 24, 0.08);
+  --nav-shadow: 0 10px 30px rgba(23, 26, 24, 0.14);
   --text: #171a18;
   --muted: #747b76;
   --faint: #929891;
@@ -40,6 +45,11 @@
   --surface: #1a201c;
   --surface-soft: #242b25;
   --surface-hover: #303930;
+  --nav-glass: rgba(30, 37, 32, 0.66);
+  --nav-glass-opaque: rgba(26, 32, 28, 0.96);
+  --nav-active: rgba(255, 255, 255, 0.14);
+  --nav-border: rgba(255, 255, 255, 0.1);
+  --nav-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   --text: #f0f2ed;
   --muted: #a1aaa0;
   --faint: #808e82;
@@ -3393,24 +3403,34 @@ button.account-type-notice {
     z-index: 20;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 0;
-    width: min(100%, 520px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(calc(100% - 28px), 440px);
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: center;
-    padding: 12px 20px max(16px, env(safe-area-inset-bottom));
-    background: var(--bg);
+    padding: 6px;
+    background: var(--nav-glass);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid var(--nav-border);
+    border-radius: 999px;
+    box-shadow: var(--nav-shadow);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .wallet-bottom-nav {
+      background: var(--nav-glass-opaque);
+    }
   }
   .wallet-bottom-nav::before {
     content: "";
     position: absolute;
-    top: 12px;
-    bottom: max(16px, env(safe-area-inset-bottom));
-    left: 28px;
-    width: calc((100% - 40px) / 4 - 16px);
-    border-radius: 30px;
-    background: var(--surface);
-    transform: translateX(calc(var(--active-tab) * (100% + 16px)));
+    top: 6px;
+    bottom: 6px;
+    left: 6px;
+    width: calc((100% - 12px) / 4);
+    border-radius: 999px;
+    background: var(--nav-active);
+    transform: translateX(calc(var(--active-tab) * 100%));
     transition: transform var(--motion-enter) var(--motion-ease);
     pointer-events: none;
   }
@@ -3420,11 +3440,11 @@ button.account-type-notice {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 5px;
     min-width: 0;
-    min-height: 54px;
-    padding: 9px 18px;
-    border-radius: 30px;
+    min-height: 50px;
+    padding: 7px 4px;
+    border-radius: 999px;
     color: var(--muted);
     font-size: 11px;
   }
@@ -3433,8 +3453,8 @@ button.account-type-notice {
     background: transparent;
   }
   .wallet-bottom-nav .nav-notification {
-    right: 24px;
-    top: 8px;
+    right: 18px;
+    top: 6px;
   }
   .welcome-screen {
     display: flex;

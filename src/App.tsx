@@ -54,6 +54,16 @@ import {
 } from "./components/wallet/WalletSwitcher";
 import type { WalletDialog, WalletPage } from "./components/wallet/types";
 
+/** Which wallet was open last; only an id, and only meaningful with the vault. */
+const SELECTED_KEY = "quantus-wallet-selected";
+function rememberedWallet(): string {
+  try {
+    return localStorage.getItem(SELECTED_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 type Balance = Awaited<ReturnType<typeof readBalance>>;
 type Network = Awaited<ReturnType<typeof readNetwork>>;
 
@@ -71,7 +81,7 @@ export default function App() {
       clearManualLock();
       return hasAutoUnlock();
     }),
-    [selected, setSelected] = useState(""),
+    [selected, setSelected] = useState(rememberedWallet),
     [dialog, setDialog] = useState<WalletDialog>(null),
     [page, setPage] = useState<WalletPage>(() =>
       location.hash === "#settings"
@@ -146,6 +156,15 @@ export default function App() {
     (message: string, success = false) => setToast({ message, success }),
     [],
   );
+  const chooseWallet = useCallback((id: string) => {
+    setSelected(id);
+    try {
+      if (id) localStorage.setItem(SELECTED_KEY, id);
+      else localStorage.removeItem(SELECTED_KEY);
+    } catch {
+      // Storage restrictions only cost the memory of the choice.
+    }
+  }, []);
   const lock = useCallback(() => {
     epoch.current++;
     setSession(null);
@@ -481,7 +500,13 @@ export default function App() {
     storageRef.current = localStorage.getItem(STORAGE_KEY);
     setHasVault(true);
     lastActivity.current = Date.now();
-    setSelected(d.wallets[0]?.id || "");
+    // Reopen the wallet that was in use; a stale id falls back to the first.
+    const remembered = rememberedWallet();
+    chooseWallet(
+      d.wallets.some((w) => w.id === remembered)
+        ? remembered
+        : d.wallets[0]?.id || "",
+    );
     const action = nextAction.current;
     nextAction.current = null;
     setDialog(action || (d.wallets.length ? null : "choose"));
@@ -492,7 +517,7 @@ export default function App() {
         throw new Error(t("这个地址已经存在"));
       return { ...d, wallets: [...d.wallets, w] };
     });
-    setSelected(w.id);
+    chooseWallet(w.id);
   }
   // Every caller reports the result in its own panel, so this does not also
   // raise a toast; a failure is thrown for the caller to show.
@@ -651,7 +676,7 @@ export default function App() {
         <WalletSwitcher
           wallets={wallets}
           wallet={wallet}
-          onSelect={setSelected}
+          onSelect={chooseWallet}
           onClose={closeDialog}
           onAdd={() => setDialog("choose")}
         />
@@ -711,12 +736,15 @@ export default function App() {
               ),
             }))
           }
-          onRemove={() =>
-            persist((d) => ({
+          onRemove={async () => {
+            await persist((d) => ({
               ...d,
               wallets: d.wallets.filter((w) => w.id !== wallet.id),
-            }))
-          }
+            }));
+            chooseWallet(
+              dataRef.current?.wallets.find((w) => w.id !== wallet.id)?.id || "",
+            );
+          }}
         />
       )}
       {dialog === "send" && wallet && wallet.kind !== "watch" && (
