@@ -22,6 +22,13 @@ const model = (price: string | null = null, hardwareCost = "", market: number | 
   inputs.hardwareCost = hardwareCost;
   return toModel(inputs, BUILT_IN_TERMS, market);
 };
+const rented = (price: string | null = "20"): Model => {
+  const inputs = defaultInputs(BUILT_IN_TERMS);
+  inputs.price = price;
+  inputs.costMode = "rental";
+  inputs.rent = "3";
+  return toModel(inputs, BUILT_IN_TERMS, null);
+};
 const results = (value: Model) =>
   renderToStaticMarkup(
     <MiningResults
@@ -43,6 +50,11 @@ const summary = (value: Model) =>
       onNeedPrice={() => {}}
     />,
   );
+/** Just the estimate card, without the folds that open on demand. */
+const estimateCard = (html: string) => {
+  const start = html.indexOf('aria-label="估算结果"');
+  return html.slice(start, html.indexOf("</section>", start));
+};
 
 describe("mining calculator page", () => {
   test("leads with the answer, keeps the form short and folds the rest away", () => {
@@ -51,18 +63,18 @@ describe("mining calculator page", () => {
       "挖矿计算",
       "关键结果",
       "期望产量",
-      "保本租金 / 天",
+      "保本电价",
       "难度",
-      "设备",
-      "显卡 1",
+      "参数",
+      "型号",
       "矿池矿工",
       "官方矿工",
       "算力与功耗",
       "QTC 价格",
+      "电价",
       "更多设置",
       "在线率",
       "矿池费率",
-      "电价",
       "估算结果",
       "计算方法与假设",
     ]) {
@@ -72,8 +84,19 @@ describe("mining calculator page", () => {
     expect(html).toContain("RTX 4090");
     expect(html).not.toContain("<select");
     expect(html).toContain('role="combobox"');
+    // A single card is the whole rig, so it needs no number of its own.
+    expect(html).not.toContain("显卡 1");
     // The secondary settings and the tables are there, but behind a disclosure.
     expect(html.match(/<details/g)?.length ?? 0).toBeGreaterThan(2);
+  });
+  test("puts the rarely typed settings behind the disclosure, not in the card", () => {
+    const html = renderToStaticMarkup(<MiningCalculator onBack={() => {}} />);
+    const fold = html.indexOf("更多设置");
+    for (const late of ["输入方式", "在线率", "矿池费率", "货币", "折旧天数"]) {
+      expect(html.indexOf(late)).toBeGreaterThan(fold);
+    }
+    // The two figures that change most often stay in the open card.
+    for (const early of ["电价", "QTC 价格"]) expect(html.indexOf(early)).toBeLessThan(fold);
   });
   test("names the market, links to it and stays usable when the quote is out of reach", () => {
     const html = renderToStaticMarkup(<MiningCalculator onBack={() => {}} />);
@@ -88,7 +111,7 @@ describe("mining calculator page", () => {
     const html = renderToStaticMarkup(<MiningCalculator onBack={() => {}} />);
     setLanguage("zh");
     expect(html).toContain("Mining calculator");
-    expect(html).toContain("Break-even rent");
+    expect(html).toContain("Break-even electricity");
     expect(html).toContain("Break-even price");
     expect(html).toContain("More settings");
     expect(html).not.toMatch(/[一-鿿]/);
@@ -96,13 +119,17 @@ describe("mining calculator page", () => {
 });
 
 describe("mining results", () => {
-  test("shows the worked example for one RTX 4090", () => {
-    const html = results(model());
-    expect(html).toContain("0.1137");
-    expect(html).toContain("保本价（电费）");
-    expect(html).toContain("8.02 USDT/QTC");
-    expect(html).toContain("整机保本租金");
-    expect(html).toContain("填写 QTC 价格后显示");
+  test("shows the other periods with the cost beside the revenue", () => {
+    const html = results(model("20"));
+    expect(html).toContain("每小时");
+    expect(html).toContain("每周");
+    expect(html).toContain("30 天");
+    expect(html).toContain("成本");
+    expect(html).toContain("收入");
+    // 0.1137 QTC/day × 20 = 2.27/day, so 15.91 a week and 68.19 over 30 days.
+    expect(html).toContain("15.91");
+    expect(html).toContain("68.19");
+    expect(html).toContain("每日用电");
     expect(html).toContain("难度上涨敏感性");
     expect(html).toContain("× 1.5");
     expect(html).toContain("显卡对比");
@@ -111,14 +138,24 @@ describe("mining results", () => {
     expect(html).not.toContain("各显卡明细");
     expect(html).not.toContain("<dt>回本时间</dt>");
   });
-  test("prices revenue, profit, rent budget and payback once a price is given", () => {
+  test("never reprints a figure the headline already carries", () => {
+    const card = estimateCard(results(model("20")));
+    // Output, profit and both break-even lines are stated once, up top.
+    for (const headline of ["0.1137", "8.02", "保本价", "利润率", "总成本", "整机保本租金"]) {
+      expect(card).not.toContain(headline);
+    }
+    // The day is the headline's; the periods here start at the hour.
+    expect(card).not.toContain('<th scope="row">每天</th>');
+    const rent = estimateCard(results(rented()));
+    expect(rent).not.toContain('<th scope="row">每天</th>');
+    expect(rent).toContain("租金");
+  });
+  test("adds the amortised figures only when hardware is paid for", () => {
     const html = results(model("20", "1800"));
-    // 0.1137 QTC/day × 20 = 2.27 revenue, less 0.91 of electricity = 1.36 of rent.
-    expect(html).toContain("2.27");
-    expect(html).toContain("1.36");
     expect(html).toContain("保本价（含折旧）");
+    expect(html).toContain("<dt>折旧 / 天</dt>");
+    expect(html).toContain("<dt>电费 / 天</dt>");
     expect(html).toContain("<dt>回本时间</dt>");
-    expect(html).toContain("利润率");
     expect(html).toContain("按保本租金排序。");
   });
   test("waits for the network instead of inventing numbers", () => {
@@ -134,14 +171,25 @@ describe("mining results", () => {
 describe("headline figures", () => {
   test("says where the price came from and keeps break-even independent of it", () => {
     const market = summary(model(null, "", 47));
-    expect(market).toContain("SafeTrade 最新价");
+    expect(market).toContain("SafeTrade 最新成交价");
     expect(market).toContain("8.02");
     const manual = summary(model("20"));
-    expect(manual).toContain("你填写的");
+    expect(manual).toContain("你填写的 QTC 价格");
     const none = summary(model());
     expect(none).toContain("填写 QTC 价格");
-    // Output and break-even price are there without a price; profit and rent are not.
+    // Output and break-even price are there without a price; profit is not.
     expect(none).toContain("0.1137");
     expect(none).toContain("8.02");
+  });
+  test("asks about the cost the reader actually pays", () => {
+    // Own hardware buys kilowatt-hours: a rent budget there would only be
+    // the profit again, so the fourth figure is the electricity ceiling.
+    const own = summary(model("20"));
+    expect(own).toContain("保本电价");
+    expect(own).toContain("kWh");
+    expect(own).not.toContain("保本租金");
+    const rig = summary(rented());
+    expect(rig).toContain("保本租金 / 天");
+    expect(rig).not.toContain("保本电价");
   });
 });

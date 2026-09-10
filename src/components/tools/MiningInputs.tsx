@@ -1,9 +1,9 @@
 import type { RefObject } from "react";
-import { ArrowUpRight, LineChart, Plus, Trash2 } from "lucide-react";
+import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { useT } from "../../lib/i18n";
 import { Select } from "../Select";
 import { MARKET_PAIR, MARKET_QUOTE, SAFETRADE_MARKET_URL, type MarketPrice } from "../../lib/mining/data";
-import { SNAPSHOT_DATE, type PoolTerms } from "../../lib/mining/gpus";
+import type { PoolTerms } from "../../lib/mining/gpus";
 import { formatFiat, formatHashrate } from "../../lib/mining/format";
 import type { DeviceYield } from "../../lib/mining/math";
 import {
@@ -30,20 +30,18 @@ function updateAt<T>(list: T[], index: number, patch: Partial<T>): T[] {
 }
 
 /**
- * The break-even rent of one row: the most it can pay per hour and per day
- * before it stops covering itself. This is the number a renter decides on,
- * so it sits with the device instead of at the bottom of the page.
+ * What one row of a multi-row rig can pay in rent. With a single row this
+ * is the headline figure again, so it only appears once the rig has more
+ * than one kind of card in it.
  */
 function RentLine({ row, currency, priced }: { row: DeviceYield | null; currency: string; priced: boolean }) {
   const t = useT();
   const perDay = row?.breakEvenRentPerDay ?? null;
-  const perHour = row?.breakEvenRentPerHour ?? null;
   const unit = (suffix: string) => (currency ? `${currency}${suffix}` : suffix);
-  const bare = (value: number) => formatFiat(value, "");
   return (
     <p className="mining-rent-line">
       <span className="mining-rent-label">{t("保本租金")}</span>
-      {perDay === null || perHour === null ? (
+      {perDay === null ? (
         <span className="mining-rent-empty">
           <span aria-hidden="true">—</span>
           <small>{priced ? t("填写功耗后显示") : t("需要 QTC 价格")}</small>
@@ -51,11 +49,7 @@ function RentLine({ row, currency, priced }: { row: DeviceYield | null; currency
       ) : (
         <span className={`mining-rent-values ${signClass(perDay) ?? ""}`}>
           <b>
-            {bare(perHour)}
-            <em>{unit("/h")}</em>
-          </b>
-          <b>
-            {bare(perDay)}
+            {formatFiat(perDay, "")}
             <em>{unit(t("/天"))}</em>
           </b>
         </span>
@@ -136,6 +130,7 @@ function DeviceRow({
   index,
   terms,
   removable,
+  showRent,
   result,
   currency,
   priced,
@@ -146,6 +141,7 @@ function DeviceRow({
   index: number;
   terms: PoolTerms;
   removable: boolean;
+  showRent: boolean;
   result: DeviceYield | null;
   currency: string;
   priced: boolean;
@@ -187,15 +183,15 @@ function DeviceRow({
 
   return (
     <div className="mining-device">
-      <div className="mining-device-head">
-        <strong>{t("显卡 {0}", index + 1)}</strong>
-        {removable && (
+      {removable && (
+        <div className="mining-device-head">
+          <strong>{t("显卡 {0}", index + 1)}</strong>
           <button type="button" className="text-button" onClick={onRemove}>
             <Trash2 size={15} aria-hidden="true" />
             {t("移除")}
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div className="mining-fields split">
         <label className="field mining-field">
           <span>{t("型号")}</span>
@@ -216,7 +212,7 @@ function DeviceRow({
           ]}
         />
       </div>
-      <RentLine row={result} currency={currency} priced={priced} />
+      {showRent && <RentLine row={result} currency={currency} priced={priced} />}
       {row.gpu === CUSTOM_GPU ? (
         <Tuning row={row} terms={terms} onChange={onChange} />
       ) : (
@@ -235,9 +231,9 @@ function DeviceRow({
 }
 
 /**
- * Everything the reader types. The device, its quantity and the miner
- * software are the edits people actually make, so they stay in the open;
- * the rest of the assumptions live one disclosure away.
+ * Everything the reader types, ordered by how often they type it: the cards,
+ * what the power or the rig costs, and the QTC price stay in the open; the
+ * assumptions that are set once live behind one disclosure.
  */
 export function MiningInputs({
   inputs,
@@ -263,29 +259,21 @@ export function MiningInputs({
   const t = useT();
   const poolFeeValue = inputs.poolFee ?? String(terms.poolFeePercent);
   const following = inputs.price === null && market !== null;
+  const rentMode = inputs.costMode === "rental";
   const settingsMeta = [
+    inputs.mode === "devices" ? t("按显卡") : t("总算力"),
     t("在线 {0}%", inputs.uptime || "100"),
-    inputs.costMode === "electricity"
-      ? t("电价 {0}", `${inputs.electricity || "0"} ${currency || ""}/kWh`.trim())
-      : t("租金 {0}", `${inputs.rent || "0"} ${currency || ""}`.trim()),
     t("矿池费 {0}%", poolFeeValue),
   ].join(" · ");
+  // One row is the whole rig, and the headline already states its rent
+  // budget; several rows each carry their own share.
+  const showRent = inputs.devices.length > 1;
 
   return (
     <>
-      <section className="settings-group" aria-label={t("设备")}>
-        <h2>{t("设备")}</h2>
+      <section className="settings-group" aria-label={t("参数")}>
+        <h2>{t("参数")}</h2>
         <div className="mining-card">
-          <Segmented
-            className="mining-segmented"
-            label={t("输入方式")}
-            value={inputs.mode}
-            onChange={(mode) => update({ mode })}
-            options={[
-              { value: "devices", label: t("按显卡") },
-              { value: "total", label: t("总算力") },
-            ]}
-          />
           {inputs.mode === "devices" ? (
             <>
               {inputs.devices.map((row, index) => (
@@ -295,6 +283,7 @@ export function MiningInputs({
                   index={index}
                   terms={terms}
                   removable={inputs.devices.length > 1}
+                  showRent={showRent}
                   result={rows?.[index] ?? null}
                   currency={currency}
                   priced={priced}
@@ -315,15 +304,9 @@ export function MiningInputs({
                 <Plus size={15} aria-hidden="true" />
                 {t("添加显卡")}
               </button>
-              <p className="mining-note">
-                {t(
-                  "基准算力来自 Quanpool 公开接口（{0}），功耗为典型满载值，均可修改。",
-                  terms.source === "live" ? t("实时") : t("{0} 快照", SNAPSHOT_DATE),
-                )}
-              </p>
             </>
           ) : (
-            <>
+            <div className="mining-total">
               <NumberField
                 label={t("总算力")}
                 value={inputs.total.hashrate}
@@ -354,108 +337,147 @@ export function MiningInputs({
                   ]}
                 />
               </div>
-              <RentLine row={rows?.[0] ?? null} currency={currency} priced={priced} />
-              <label className="check-row">
-                <input
-                  type="checkbox"
-                  checked={inputs.total.netOfMinerFee}
-                  onChange={(event) => update({ total: { ...inputs.total, netOfMinerFee: event.target.checked } })}
-                />
-                <span>{t("这个算力已经扣除了矿工软件费（矿池显示的通常是扣除后的数字）")}</span>
-              </label>
-              <div className="mining-fields">
-                <NumberField
-                  label={t("矿工软件费")}
-                  value={inputs.total.minerFee}
-                  onChange={(minerFee) => update({ total: { ...inputs.total, minerFee } })}
-                  placeholder="0"
-                  suffix="%"
-                  disabled={inputs.total.netOfMinerFee}
-                />
-                <NumberField
-                  label={t("总功耗")}
-                  value={inputs.total.powerW}
-                  onChange={(powerW) => update({ total: { ...inputs.total, powerW } })}
-                  placeholder="—"
-                  suffix="W"
-                  hint={t("可选，用于电费")}
-                />
-              </div>
-            </>
+              <details className="flow-details mining-fold mining-row-more">
+                <summary>
+                  <span className="mining-fold-title">{t("算力与功耗")}</span>
+                  <span className="mining-fold-meta">{inputs.total.powerW ? `${inputs.total.powerW} W` : ""}</span>
+                </summary>
+                <div className="mining-fold-body">
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={inputs.total.netOfMinerFee}
+                      onChange={(event) => update({ total: { ...inputs.total, netOfMinerFee: event.target.checked } })}
+                    />
+                    <span>{t("这个算力已经扣除了矿工软件费（矿池显示的通常是扣除后的数字）")}</span>
+                  </label>
+                  <div className="mining-fields">
+                    <NumberField
+                      label={t("矿工软件费")}
+                      value={inputs.total.minerFee}
+                      onChange={(minerFee) => update({ total: { ...inputs.total, minerFee } })}
+                      placeholder="0"
+                      suffix="%"
+                      disabled={inputs.total.netOfMinerFee}
+                    />
+                    <NumberField
+                      label={t("总功耗")}
+                      value={inputs.total.powerW}
+                      onChange={(powerW) => update({ total: { ...inputs.total, powerW } })}
+                      placeholder="—"
+                      suffix="W"
+                      hint={t("可选，用于电费")}
+                    />
+                  </div>
+                </div>
+              </details>
+            </div>
           )}
-        </div>
-      </section>
 
-      <section className="settings-group" aria-label={t("QTC 价格")}>
-        <h2>{t("QTC 价格")}</h2>
-        <div className="mining-card">
-          <NumberField
-            label={t("QTC 价格")}
-            value={priceFieldText(inputs, market?.lastText ?? null)}
-            onChange={(price) => update({ price })}
-            placeholder="0"
-            inputRef={priceRef}
-            suffix={`${currency || "—"}/QTC`}
-            hint={
-              following ? (
-                t("SafeTrade 最新成交价，可以改成你自己的假设")
-              ) : market ? (
-                <button type="button" className="text-button mining-inline-button" onClick={() => update({ price: null })}>
-                  {t("改回市场价 {0}", `${market.lastText} ${MARKET_QUOTE}`)}
-                </button>
-              ) : loading ? (
-                t("正在读取市场价…")
+          {/* What the running hours cost, and what the output is worth: the
+              two numbers that move the answer most often. */}
+          <div className="mining-costs">
+            <div className="mining-fields">
+              {rentMode ? (
+                <NumberField
+                  label={t("租金（全部设备，含电费）")}
+                  value={inputs.rent}
+                  onChange={(rent) => update({ rent })}
+                  placeholder="0"
+                  suffix={
+                    <Segmented
+                      label={t("租金周期")}
+                      value={inputs.rentPer}
+                      onChange={(rentPer) => update({ rentPer })}
+                      options={[
+                        { value: "day", label: t("每天") },
+                        { value: "hour", label: t("每小时") },
+                      ]}
+                    />
+                  }
+                  hint={
+                    <button type="button" className="text-button mining-inline-button" onClick={() => update({ costMode: "electricity" })}>
+                      {t("改为自有设备付电费")}
+                    </button>
+                  }
+                />
               ) : (
-                // The market row right below already says the quote failed.
-                t("按你自己的假设填写")
-              )
-            }
-          />
-          <a
-            className={market ? "mining-market" : "mining-market quiet"}
-            href={SAFETRADE_MARKET_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span className="mining-market-icon" aria-hidden="true">
-              <LineChart size={18} />
-            </span>
-            <span className="mining-market-copy">
-              <strong>{`SafeTrade · ${MARKET_PAIR}`}</strong>
-              <small>
-                {market
-                  ? t("最新价 · 更新于 {0}", clock(market.fetchedAt))
-                  : loading
-                    ? t("正在读取市场价…")
-                    : t("暂时取不到市场价，请手动填写")}
-              </small>
-            </span>
-            {market && (
-              <span className="mining-market-price">
-                <b>
-                  {market.lastText}
-                  <em>{MARKET_QUOTE}</em>
-                </b>
-                {market.changePercent && (
-                  <small className={market.changePercent.startsWith("-") ? "negative" : "positive"}>
-                    {market.changePercent}
-                  </small>
-                )}
+                <NumberField
+                  label={t("电价")}
+                  value={inputs.electricity}
+                  onChange={(electricity) => update({ electricity })}
+                  placeholder="0.10"
+                  suffix={`${currency || "—"}/kWh`}
+                  hint={
+                    <button type="button" className="text-button mining-inline-button" onClick={() => update({ costMode: "rental" })}>
+                      {t("改为整机租用（租金含电费）")}
+                    </button>
+                  }
+                />
+              )}
+
+              <NumberField
+                label={t("QTC 价格")}
+                value={priceFieldText(inputs, market?.lastText ?? null)}
+                onChange={(price) => update({ price })}
+                placeholder="0"
+                inputRef={priceRef}
+                suffix={`${currency || "—"}/QTC`}
+                hint={
+                  !following && market ? (
+                    <button type="button" className="text-button mining-inline-button" onClick={() => update({ price: null })}>
+                      {t("改回市场价 {0}", `${market.lastText} ${MARKET_QUOTE}`)}
+                    </button>
+                  ) : undefined
+                }
+              />
+            </div>
+            {/* The quote's own line: who is asked, how fresh, which way it
+                moved. The number itself belongs to the field above. */}
+            <a
+              className={market ? "mining-market" : "mining-market quiet"}
+              href={SAFETRADE_MARKET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="mining-market-copy">
+                <strong>{`SafeTrade · ${MARKET_PAIR}`}</strong>
+                <small>
+                  {market
+                    ? t("最新成交价 · 更新于 {0}", clock(market.fetchedAt))
+                    : loading
+                      ? t("正在读取市场价…")
+                      : t("暂时取不到市场价，请手动填写")}
+                </small>
               </span>
+              {market?.changePercent && (
+                <span className={`mining-market-change ${market.changePercent.startsWith("-") ? "negative" : "positive"}`}>
+                  {market.changePercent}
+                </span>
+              )}
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </a>
+            {following && currency && currency.toUpperCase() !== MARKET_QUOTE && (
+              <p className="mining-note warn">{t("市场价以 USDT 计，而你的货币标签是 {0}；不一致时请自行填写价格。", currency)}</p>
             )}
-            <ArrowUpRight size={17} aria-hidden="true" />
-          </a>
-          <p className="mining-note">
-            {t("行情来自 SafeTrade 公开接口，读取时交易所会看到你的 IP；QUAN 与 QTC 是同一资产，报价以 USDT 计。")}{" "}
-            {t("收入、利润和保本租金按这个价格计算；产量和保本价与它无关。")}
-          </p>
-          {following && currency && currency.toUpperCase() !== MARKET_QUOTE && (
-            <p className="mining-note warn">{t("市场价以 USDT 计，而你的货币标签是 {0}；不一致时请自行填写价格。", currency)}</p>
-          )}
+          </div>
         </div>
       </section>
 
       <Fold title={t("更多设置")} meta={settingsMeta}>
+        <div className="field mining-field">
+          <span>{t("输入方式")}</span>
+          <Segmented
+            className="mining-segmented"
+            label={t("输入方式")}
+            value={inputs.mode}
+            onChange={(mode) => update({ mode })}
+            options={[
+              { value: "devices", label: t("按显卡") },
+              { value: "total", label: t("总算力") },
+            ]}
+          />
+        </div>
         <div className="mining-fields">
           <NumberField
             label={t("在线率")}
@@ -486,47 +508,7 @@ export function MiningInputs({
             }
           />
         </div>
-        <div className="field mining-field">
-          <span>{t("成本方式")}</span>
-          <Segmented
-            className="mining-segmented"
-            label={t("成本方式")}
-            value={inputs.costMode}
-            onChange={(costMode) => update({ costMode })}
-            options={[
-              { value: "electricity", label: t("自有设备付电费") },
-              { value: "rental", label: t("整机租用") },
-            ]}
-          />
-        </div>
         <div className="mining-fields">
-          {inputs.costMode === "electricity" ? (
-            <NumberField
-              label={t("电价")}
-              value={inputs.electricity}
-              onChange={(electricity) => update({ electricity })}
-              placeholder="0.10"
-              suffix={`${currency || "—"}/kWh`}
-            />
-          ) : (
-            <NumberField
-              label={t("租金（全部设备，含电费）")}
-              value={inputs.rent}
-              onChange={(rent) => update({ rent })}
-              placeholder="0"
-              suffix={
-                <Segmented
-                  label={t("租金周期")}
-                  value={inputs.rentPer}
-                  onChange={(rentPer) => update({ rentPer })}
-                  options={[
-                    { value: "day", label: t("每天") },
-                    { value: "hour", label: t("每小时") },
-                  ]}
-                />
-              }
-            />
-          )}
           <label className="field mining-field">
             <span>{t("货币")}</span>
             <input
@@ -539,9 +521,7 @@ export function MiningInputs({
             />
             <small>{t("只是标签，所有金额按同一货币")}</small>
           </label>
-        </div>
-        {inputs.costMode === "electricity" && (
-          <div className="mining-fields">
+          {!rentMode && (
             <NumberField
               label={t("设备成本（可选）")}
               value={inputs.hardwareCost}
@@ -550,14 +530,16 @@ export function MiningInputs({
               suffix={currency || undefined}
               hint={t("全部设备的购置价，用于折旧和回本")}
             />
-            <NumberField
-              label={t("折旧天数")}
-              value={inputs.amortiseDays}
-              onChange={(amortiseDays) => update({ amortiseDays })}
-              placeholder="365"
-              suffix={t("天")}
-            />
-          </div>
+          )}
+        </div>
+        {!rentMode && (
+          <NumberField
+            label={t("折旧天数")}
+            value={inputs.amortiseDays}
+            onChange={(amortiseDays) => update({ amortiseDays })}
+            placeholder="365"
+            suffix={t("天")}
+          />
         )}
       </Fold>
     </>

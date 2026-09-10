@@ -11,9 +11,10 @@ import { MiningSummary } from "./MiningSummary";
 
 /**
  * Mining calculator. The page leads with the four figures a miner decides
- * on — output, profit, break-even price and the rent a rig can carry — then
- * the short form that changes them, and only then the tables that explain
- * where they came from.
+ * on — output, profit, break-even price, and the price of whatever the rig
+ * burns — then the short form that changes them, and only then the tables
+ * that explain where they came from. Each figure is printed once: the
+ * headline owns "per day", everything below it says something else.
  */
 export function MiningCalculator({ onBack }: { onBack: () => void }) {
   const t = useT();
@@ -63,10 +64,12 @@ export function MiningCalculator({ onBack }: { onBack: () => void }) {
         hasNetwork={network !== null}
         onNeedPrice={focusPrice}
       />
-      <MiningNetwork data={data} network={network} />
-
+      {/* One grid holds all three: on a phone they read top to bottom, on a
+          wide screen the form takes the left column while the network line
+          and the estimate stack up the right, so neither side runs long. */}
       <div className="mining-grid">
-        <div className="mining-column">
+        <MiningNetwork data={data} network={network} />
+        <div className="mining-column mining-column-form">
           <MiningInputs
             inputs={inputs}
             update={update}
@@ -79,7 +82,7 @@ export function MiningCalculator({ onBack }: { onBack: () => void }) {
             priceRef={priceRef}
           />
         </div>
-        <div className="mining-column">
+        <div className="mining-column mining-column-results">
           <MiningResults
             network={network}
             model={model}
