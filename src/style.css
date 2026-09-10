@@ -510,7 +510,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .wallet-navigation {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   align-items: center;
   padding: 5px;
