@@ -134,7 +134,7 @@ export const wormhole: Record<string, string> = {
   "从同一助记词派生的普通账户": "Regular account from the same seed phrase",
   "官方钱包中与加密账户配对的普通账户": "The regular account paired with the encrypted account in the official wallet",
   "正在派生…": "Deriving…",
-  "请与官方钱包中该普通账户的地址核对。{0}": "Compare with the regular account address in the official wallet. {0}",
+  "请与官方钱包中该普通账户（{0}）的地址核对。": "Compare with the address of that regular account ({0}) in the official wallet.",
   "取回功能暂不可用": "Withdrawal is not available yet",
   "扫描结果仍然有效，你可以稍后再试。": "The scan results are still valid; try again later.",
   "选中入账": "Selected deposits",

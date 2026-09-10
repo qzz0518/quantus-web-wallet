@@ -268,8 +268,7 @@ export function WormholeRecoveryDialog({
       .then((final) => mounted.current && setReceipt(final))
       .catch(() => {});
     return () => controller.abort();
-    // Tracking follows one receipt; updates arrive through the callback.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Tracking follows one receipt by hash; updates arrive through the callback.
   }, [step, exitStage, receipt?.hash]);
 
   function close() {
@@ -873,7 +872,7 @@ export function WormholeRecoveryDialog({
                         : derived.error}
                   </p>
                   {derived && "address" in derived && (
-                    <p className="hint">{t("请与官方钱包中该普通账户的地址核对。{0}", schemeLabel(scheme))}</p>
+                    <p className="hint">{t("请与官方钱包中该普通账户（{0}）的地址核对。", schemeLabel(scheme))}</p>
                   )}
                 </div>
               </>
