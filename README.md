@@ -17,6 +17,25 @@ A browser wallet for Quantus.
 - Light, dark and system themes, with a responsive mobile layout.
 - Install as a PWA for a standalone app window and offline startup.
 - Monitor wormhole addresses as watch-only accounts.
+- Recover funds sent to an encrypted (Wormhole) account: scan with the official wallet's seed phrase to see the real unspent balance and withdraw to a regular account (see below).
+
+## Encrypted account recovery
+
+**What it is.** The official Quantus wallet has an "Encrypted Account" (Wormhole). Its addresses look like ordinary addresses but are derived from the seed phrase at `m/44'/189189189'/0'/<branch>'/<index>'`. Every transfer into such an address becomes a deposit in the privacy pool, and only the holder of the seed phrase can tell which deposits are still unspent — a watch-only view can only show "unknown". Many users have received funds on these addresses by mistake.
+
+**What the tool does.** Under *Settings → Tools → Encrypted account recovery* you can scan an encrypted account with the official wallet's seed phrase. The scan is read-only: it derives the receiving and change addresses locally in a disposable worker, asks the official indexer for deposits to those addresses, derives each deposit's nullifier locally and checks on the official RPC node whether it has been spent. Unspent deposits can then be withdrawn to a regular account: a zero-knowledge proof is generated in the browser and submitted once.
+
+**Steps.**
+
+1. Open *Settings → Tools → Encrypted account recovery* and read the introduction.
+2. Enter the official wallet's 24-word seed phrase. Optionally paste the encrypted account address shown by the official wallet — the result will say whether it is among the derived addresses.
+3. Confirm the network notice and start the scan. The progress view shows the stage, the branch, the number of addresses scanned and the deposits found; the scan can be cancelled.
+4. Review the results: withdrawable balance, spent deposits, the snapshot block and a list of unspent deposits with checkboxes.
+5. Select up to 7 deposits, choose the receiving account (one of this wallet's signing accounts, or the regular account derived from the same phrase), check the fee preview and submit. The receipt shows the transaction hash, its phase and an explorer link; previous receipts are listed on the tool's start page.
+
+**Costs.** The chain charges a 0.04% volume fee on the withdrawn amount. Amounts are rounded down to 0.01 QTC first, and the remainder below 0.01 QTC of each deposit is lost. When withdrawing to your own account, half of the fee comes back to the receiving account as a rebate. Proof generation needs about 1 GB of memory; a desktop browser is recommended.
+
+**Limits.** The scan snapshots one finalized block that the RPC node and the indexer agree on; deposits after that block are not included. It stops after 20 consecutive unused addresses per branch and refuses to report a balance when an account exceeds 1000 addresses per branch or 10 000 deposits, so an incomplete scan is shown as an error rather than a smaller balance. One withdrawal takes at most 7 deposits; larger accounts are withdrawn in several rounds. The seed phrase stays in the page and the local signing module — it is never stored or uploaded — but the official indexer and RPC node see the derived addresses and your IP address.
 
 ## Installation
 

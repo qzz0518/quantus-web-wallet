@@ -506,6 +506,7 @@ export default function App() {
           <SettingsPage
             key={session ? "unlocked" : "locked"}
             wallet={wallet}
+            wallets={wallets}
             walletCount={wallets.length}
             unlocked={!!session}
             onManage={() => open("manage")}
