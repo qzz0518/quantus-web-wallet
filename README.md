@@ -6,7 +6,7 @@ A browser wallet for the Quantus network. Keys never leave your device, there is
 
 ## Features
 
-- **Accounts.** Create, import and manage multiple wallets. Both signature schemes the network uses are supported: ML-DSA-65 (the official wallet's default, path `m/44'/189189'/n'/0'/1'`) and ML-DSA-87 (`…/0'/0'`). Imports show the derived address first so you can compare it with the official wallet before saving. Watch-only accounts, including Wormhole addresses, show public balances and deposits.
+- **Accounts.** Create, import and manage multiple wallets. Both signature schemes the network uses are supported: ML-DSA-65 (the official wallet's default, path `m/44'/189189'/n'/0'/1'`) and ML-DSA-87 (`…/0'/0'`). Imports show the derived address first so you can compare it with the official wallet before saving. Watch-only accounts, including Wormhole addresses, show public balances and deposits. Under the balance the wallet shows its dollar value at SafeTrade's latest QUAN/USDT trade (USDT counted as USD); hover for the unit price.
 - **Transfers.** Send QTC, receive with a QR code, and follow every transaction from submission to finality. Before the amount step the wallet checks the recipient on the public indexer: an address that only ever received mining rewards and never sent anything is almost certainly an encrypted (Wormhole) account, so the wallet explains the consequences and asks for confirmation; an address with no on-chain history gets a hint.
 - **History.** Incoming, outgoing and mining-reward activity with search and filters, linked to the Quantus explorer.
 - **Backup and security.** Wallets are encrypted locally with a password of at least 6 characters; encrypted backups can be exported and restored; recovery words can be downloaded and are confirmed with a word-selection check. Unlock with your device's fingerprint, face or screen lock on browsers that support WebAuthn PRF. The wallet locks itself after 10 minutes without interaction.
@@ -18,7 +18,7 @@ A browser wallet for the Quantus network. Keys never leave your device, there is
 ## Security model
 
 - Seed phrases and keys are stored only in this browser, encrypted with your password. Derivation and signing run inside a disposable Web Worker with the vendored Rust/WASM module; the phrase is never written to storage in clear text, never uploaded, and never shown to any server.
-- The wallet screens talk only to the official Quantus RPC node and indexer; the mining calculator additionally reads Quanpool's public API and SafeTrade's public QUAN/USDT ticker, and nothing else on the page does. The Content Security Policy served with the site allows no other host. There is no telemetry, no analytics and no service fee.
+- The wallet screens talk only to the official Quantus RPC node and indexer, plus SafeTrade's public QUAN/USDT ticker once a minute for the dollar value of the balance; the mining calculator additionally reads Quanpool's public API, and nothing else on the page does. The Content Security Policy served with the site allows no other host. There is no telemetry, no analytics and no service fee.
 - Signing is pinned to the mainnet runtime (`specVersion` 152, `transactionVersion` 6). When the network upgrades, the wallet refuses to sign until it has been reviewed and updated.
 - The deployment can be verified: `node scripts/verify-deployment.mjs` compares every file on the site with a local build and checks the security headers.
 - This project has not been independently audited. Keep a backup of your seed phrase outside the browser.

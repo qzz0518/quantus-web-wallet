@@ -74,6 +74,7 @@ export const wallet: Record<string, string> = {
   "隐私账户": "Encrypted account",
   "公开余额": "Public balance",
   "账户余额": "Balance",
+  "1 QTC ≈ {0}，行情来自 SafeTrade QUAN/USDT": "1 QTC ≈ {0}, quoted from SafeTrade QUAN/USDT",
   "显示余额": "Show balance",
   "隐藏余额": "Hide balance",
   "未花费余额需在官方钱包查看":

@@ -912,8 +912,19 @@ input[type="number"]::-webkit-outer-spin-button {
 .hero-balance.no-value > span {
   color: var(--faint);
 }
+/* The dollar value keeps its line even before the quote arrives, so the
+   buttons below never move. */
+.hero-fiat {
+  min-height: 24px;
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 24px;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
 .hero-available {
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: 12px;
   color: var(--muted);
   min-height: 29px;
@@ -3376,8 +3387,12 @@ button.account-type-notice {
   .hero-balance > small {
     font-size: 16px;
   }
+  .hero-fiat {
+    margin-top: 4px;
+    font-size: 14px;
+  }
   .hero-available {
-    margin-top: 10px;
+    margin-top: 6px;
     font-size: 12px;
   }
   .wallet-quick-actions {

@@ -11,6 +11,7 @@ import {
   walletHue,
 } from "../../lib/wallet";
 import { useT } from "../../lib/i18n";
+import { fiatValue, formatUsd, useMarketPrice } from "../../lib/market";
 import { SwapIcon } from "../SwapIcon";
 import { WalletLogo } from "./WalletLogo";
 import type { WalletDialog } from "./types";
@@ -43,13 +44,12 @@ export function WalletOverview({
   useReveal(card, wallet.id, 10);
   useReveal(hero, wallet.id, 6);
   const kind = walletBalanceKind(wallet);
-  const amount = hidden
-    ? "••••"
-    : !hasPublicBalance(wallet)
-      ? "—"
-      : balance
-        ? formatAmount(BigInt(balance.free) + BigInt(balance.reserved))
-        : "—";
+  const price = useMarketPrice();
+  const total =
+    balance && hasPublicBalance(wallet)
+      ? BigInt(balance.free) + BigInt(balance.reserved)
+      : null;
+  const amount = hidden ? "••••" : total === null ? "—" : formatAmount(total);
   const [whole, decimal] = amount.split(".");
   const groups = whole.split(",");
   // "—" and the masked value are placeholders, not figures: they should not
@@ -106,6 +106,20 @@ export function WalletOverview({
           </span>
           <small>QTC</small>
         </div>
+        {hasPublicBalance(wallet) && (
+          <div
+            className="hero-fiat"
+            title={
+              price
+                ? t("1 QTC ≈ {0}，行情来自 SafeTrade QUAN/USDT", formatUsd(price.last, true))
+                : undefined
+            }
+          >
+            {price && total !== null
+              ? `≈ ${hidden ? "$••••" : formatUsd(fiatValue(total, price.last))}`
+              : null}
+          </div>
+        )}
         <div className="hero-available">
           {kind === "wormhole" ? (
             t("未花费余额需在官方钱包查看")
