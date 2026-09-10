@@ -7,10 +7,12 @@ import {
   fetchBlockReward,
   fetchChainStats,
   fetchMarketPrice,
+  fetchPoolLuck,
   fetchPoolStats,
   fetchPoolTerms,
   type ChainStats,
   type MarketPrice,
+  type PoolLuck,
   type PoolStats,
   type RewardStats,
 } from "../../lib/mining/data";
@@ -29,6 +31,7 @@ export type DataState = {
   chain: ChainStats | null;
   reward: RewardStats | null;
   pool: PoolStats | null;
+  luck: PoolLuck | null;
   /** Last price of the QUAN/USDT market; null while it has never been read. */
   market: MarketPrice | null;
   terms: PoolTerms;
@@ -50,6 +53,7 @@ export function useMiningData(): DataState & { refresh: () => void } {
     chain: null,
     reward: null,
     pool: null,
+    luck: null,
     market: null,
     terms: BUILT_IN_TERMS,
     errors: {},
@@ -73,8 +77,9 @@ export function useMiningData(): DataState & { refresh: () => void } {
       fetchBlockReward({ signal }),
       fetchPoolTerms({ signal }),
       fetchPoolStats({ signal }),
+      fetchPoolLuck({ signal }),
       fetchMarketPrice({ signal }),
-    ]).then(([chain, reward, terms, pool, market]) => {
+    ]).then(([chain, reward, terms, pool, luck, market]) => {
       if (signal.aborted) return;
       const essentialFailed = chain.status === "rejected" || reward.status === "rejected";
       if (essentialFailed && retries.current < MAX_RETRIES) {
@@ -86,6 +91,7 @@ export function useMiningData(): DataState & { refresh: () => void } {
         reward: reward.status === "fulfilled" ? reward.value : prev.reward,
         terms: terms.status === "fulfilled" ? terms.value : prev.terms,
         pool: pool.status === "fulfilled" ? pool.value : prev.pool,
+        luck: luck.status === "fulfilled" ? luck.value : prev.luck,
         // The exchange turns some visitors away; keep the last good quote and
         // let the price field fall back to whatever the reader types.
         market: market.status === "fulfilled" ? market.value : prev.market,

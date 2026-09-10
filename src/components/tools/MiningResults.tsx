@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useT } from "../../lib/i18n";
-import type { PoolStats } from "../../lib/mining/data";
+import type { PoolLuck, PoolStats } from "../../lib/mining/data";
 import type { Gpu, PoolTerms } from "../../lib/mining/gpus";
 import { formatFiat, formatHashrate, formatPercent, formatQtc, trimNumber } from "../../lib/mining/format";
 import type { Model, Software } from "../../lib/mining/inputs";
@@ -39,6 +39,7 @@ type Props = {
   result: Estimate | null;
   terms: PoolTerms;
   pool: PoolStats | null;
+  luck: PoolLuck | null;
   loading: boolean;
 };
 
@@ -48,7 +49,7 @@ type Props = {
  * of figures that appear nowhere else. Difficulty growth, the GPU table and
  * the method stay folded until asked for.
  */
-export function MiningResults({ network, model, result, terms, pool, loading }: Props) {
+export function MiningResults({ network, model, result, terms, pool, luck, loading }: Props) {
   const t = useT();
   const [compareSoftware, setCompareSoftware] = useState<Software>("pool");
   const { devices, assumptions, costs, currency } = model;
@@ -278,6 +279,27 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
             ? t("按 Quanpool 当前份额，单日约 ±{0}、单周约 ±{1}（1σ）。", formatPercent(luckDay), formatPercent(luckWeek))
             : t("统计周期越短，偏离越大。")}
         </p>
+        {luck && (
+          <div className="mining-luck">
+            <p className="mining-note">
+              {t("Quanpool 实测运气，100% 为期望值，低于 100% 表示比期望多花了算力：")}
+            </p>
+            <div className="mining-luck-windows">
+              {luck.windows.map((window) => (
+                <span key={window.blocks}>
+                  <b>{trimNumber(window.luckPercent, 0)}%</b>
+                  <small>{t("近 {0} 块", window.blocks)}</small>
+                </span>
+              ))}
+              {luck.roundProgressPercent !== null && (
+                <span>
+                  <b>{trimNumber(luck.roundProgressPercent, 0)}%</b>
+                  <small>{t("本轮进度")}</small>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         {perGh && (
           <dl className="mining-stats mining-per-gh">
             <Stat label={t("1 GH/s 日产量")} value={`${formatQtc(perGh.qtcPerDay)} QTC`} />

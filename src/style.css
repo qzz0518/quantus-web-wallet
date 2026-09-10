@@ -2054,6 +2054,31 @@ button.account-type-notice {
   gap: 14px 16px;
   margin: 16px 0 0;
 }
+.mining-luck {
+  margin-top: 14px;
+}
+.mining-luck-windows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mining-luck-windows > span {
+  display: grid;
+  gap: 1px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-variant-numeric: tabular-nums;
+}
+.mining-luck-windows b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mining-luck-windows small {
+  font-size: 11px;
+  color: var(--muted);
+}
 .mining-per-gh {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding-top: 14px;

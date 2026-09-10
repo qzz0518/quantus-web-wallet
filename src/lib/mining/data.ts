@@ -65,6 +65,14 @@ export type MarketPrice = {
   fetchedAt: number;
 };
 
+export type PoolLuck = {
+  /** Published luck windows, shortest first: 100% is the expected effort. */
+  windows: { blocks: number; luckPercent: number }[];
+  /** How far the current round has run, in percent of the expected effort. */
+  roundProgressPercent: number | null;
+  fetchedAt: number;
+};
+
 export type PoolStats = {
   /** H/s the pool reports for itself: the median of its windows, since the shortest one swings by a third within minutes. */
   poolHashrate: number;
@@ -331,6 +339,34 @@ export async function fetchPoolStats(options: Options & { baseUrl?: string } = {
   const poolHashrate = windows[Math.floor(windows.length / 2)];
   const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null);
   return { poolHashrate, blocks24h: count(reply.blocks_24h), networkMiners: count(reply.network_miners), fetchedAt: Date.now() };
+}
+
+type LuckReply = { windows?: unknown; round_progress_percent?: unknown };
+
+/** The pool's measured luck over its published windows. */
+export async function fetchPoolLuck(options: Options & { baseUrl?: string } = {}): Promise<PoolLuck> {
+  const fetcher = options.fetcher ?? fetch;
+  const reply = await get<LuckReply>(fetcher, `${options.baseUrl ?? QUANPOOL_URL}/api/luck/mainnet`, options.signal);
+  const windows = (Array.isArray(reply?.windows) ? reply.windows : [])
+    .map((entry) => {
+      const row = entry as { blocks?: unknown; luck_percent?: unknown };
+      const blocks = typeof row.blocks === "number" && Number.isInteger(row.blocks) && row.blocks > 0 ? row.blocks : null;
+      const luck =
+        typeof row.luck_percent === "number" && Number.isFinite(row.luck_percent) && row.luck_percent > 0
+          ? row.luck_percent
+          : null;
+      return blocks !== null && luck !== null ? { blocks, luckPercent: luck } : null;
+    })
+    .filter((row): row is { blocks: number; luckPercent: number } => row !== null)
+    .sort((a, b) => a.blocks - b.blocks);
+  if (!windows.length) throw new Error(t("矿池接口返回的数据无效。"));
+  const progress = reply.round_progress_percent;
+  return {
+    windows,
+    roundProgressPercent:
+      typeof progress === "number" && Number.isFinite(progress) && progress >= 0 ? progress : null,
+    fetchedAt: Date.now(),
+  };
 }
 
 export { BUILT_IN_TERMS };

@@ -89,6 +89,7 @@ export function MiningCalculator({ onBack }: { onBack: () => void }) {
             result={result}
             terms={terms}
             pool={data.pool}
+            luck={data.luck}
             loading={data.loading && !network}
           />
         </div>
