@@ -675,25 +675,19 @@ input[type="number"]::-webkit-outer-spin-button {
   transform: rotate(180deg);
 }
 .select-list {
+  /* Geometry is set inline; the list lives in the dialog (or body) so nothing clips it. */
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
   z-index: 30;
   margin: 0;
   padding: 6px;
   list-style: none;
-  max-height: 264px;
   overflow: auto;
+  box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
   animation: menu-in 160ms ease-out;
-}
-.select-list[data-placement="top"] {
-  top: auto;
-  bottom: calc(100% + 6px);
 }
 .select-list > li {
   display: flex;
