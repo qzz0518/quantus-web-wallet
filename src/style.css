@@ -938,13 +938,20 @@ input[type="number"]::-webkit-outer-spin-button {
   min-width: 0;
 }
 .wallet-account-panel {
+  --card-h: 147;
   display: flex;
   flex-direction: column;
   padding: 21px 24px 12px;
   border-radius: 22px;
   color: #ecf1e9;
-  background: linear-gradient(110deg, #2b4637, #23392d 72%, #354735);
-  min-height: 224px;
+  /* Hue comes from the address, so each wallet keeps its own card. */
+  background: linear-gradient(
+    110deg,
+    hsl(var(--card-h) 24% 23%),
+    hsl(var(--card-h) 26% 17%) 72%,
+    hsl(calc(var(--card-h) - 27) 16% 25%)
+  );
+  min-height: 208px;
 }
 .account-panel-top {
   display: flex;
@@ -981,12 +988,26 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 7px;
   text-align: left;
   margin-top: auto;
-  padding: 30px 0 0;
+  padding: 22px 0 0;
   min-width: 0;
 }
-.account-card-identity > span {
-  color: #b5c6b3;
-  font-size: 12px;
+.account-card-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #ffffff17;
+  color: #d9e4d6;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.account-card-type > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
 }
 .account-card-identity > strong {
   font-size: 22px;
@@ -2618,6 +2639,20 @@ button.account-type-notice {
   font-size: 11px;
   color: var(--faint);
 }
+.settings-build {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.settings-build > small,
+.about-build {
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.about-build {
+  margin: 10px 0 0;
+}
 .settings-lock {
   display: inline-flex;
   align-items: center;
@@ -2642,6 +2677,23 @@ button.account-type-notice {
 }
 .account-detail-card > .label ~ .label {
   margin-top: 18px;
+}
+.receive-address {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  margin-top: 4px;
+  border-radius: 12px;
+  text-align: center;
+  color: inherit;
+}
+.receive-caution {
+  margin-top: 22px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .receive-address:hover {
+    background: var(--surface-soft);
+  }
 }
 .account-detail-address,
 .receive-address {

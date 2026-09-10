@@ -7,11 +7,13 @@ import {
 import { Modal } from "../Modal";
 import {
   GITHUB_URL,
+  BUILD,
   PROJECT_NAME,
+  buildLabel,
   WEBSITE_URL,
   X_URL,
 } from "../../lib/project";
-import { useT } from "../../lib/i18n";
+import { localeTag, useT } from "../../lib/i18n";
 
 export function AboutDialog({
   onClose,
@@ -36,6 +38,9 @@ export function AboutDialog({
           <h2>{PROJECT_NAME}</h2>
           <p>
             {t("在浏览器中管理你的 Quantus 账户。社区开发，非 Quantus 官方产品。")}
+          </p>
+          <p className="about-build" title={BUILD.builtAt}>
+            {t("版本 {0}", buildLabel(localeTag()))}
           </p>
         </div>
         <nav

@@ -8,6 +8,7 @@ import {
   hasPublicBalance,
   isWormhole,
   walletBalanceKind,
+  walletHue,
 } from "../../lib/wallet";
 import { useT } from "../../lib/i18n";
 import { SwapIcon } from "../SwapIcon";
@@ -144,6 +145,7 @@ export function WalletOverview({
         <section
           className="wallet-account-panel"
           aria-label={t("当前钱包卡片")}
+          style={{ "--card-h": walletHue(wallet.address) } as CSSProperties}
         >
           <div className="account-panel-top">
             <span className="account-card-brand">
@@ -162,7 +164,16 @@ export function WalletOverview({
             className="account-card-identity"
             onClick={() => onOpen("manage")}
           >
-            <span>{wallet.kind === "watch" ? t("观察钱包") : t("我的账户")}</span>
+            <span className="account-card-type">
+              <i aria-hidden="true" />
+              {kind === "wormhole"
+                ? t("加密账户")
+                : wallet.kind === "watch"
+                  ? kind === "unknown"
+                    ? t("观察账户 · 类型待确认")
+                    : t("观察账户")
+                  : t("Quantus 主网账户")}
+            </span>
             <strong>{wallet.name}</strong>
           </button>
           <div className="account-card-footer">
@@ -202,14 +213,12 @@ export function WalletOverview({
             {t("确认观察账户类型")}
             <ChevronRight size={14} />
           </button>
-        ) : (
+        ) : wallet.kind === "watch" ? (
           <div className="account-card-caption">
             <i className="status-dot" />
-            {wallet.kind === "watch"
-              ? t("观察账户无法发送资产")
-              : t("Quantus 主网账户")}
+            {t("观察账户无法发送资产")}
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

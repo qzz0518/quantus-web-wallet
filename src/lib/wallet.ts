@@ -17,6 +17,19 @@ export function hasPublicBalance(wallet: Wallet): boolean {
   return walletBalanceKind(wallet) === "standard";
 }
 
+/** Muted, dark hues that all keep white text legible. */
+const CARD_HUES = [147, 168, 190, 122, 96, 205];
+
+/** A stable hue per address: the card identifies the wallet, not just the brand. */
+export function walletHue(address: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < address.length; i++) {
+    hash ^= address.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return CARD_HUES[Math.abs(hash) % CARD_HUES.length];
+}
+
 export function isWormhole(wallet: Wallet): boolean {
   return walletBalanceKind(wallet) === "wormhole";
 }

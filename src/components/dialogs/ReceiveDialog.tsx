@@ -124,11 +124,28 @@ export function ReceiveDialog({
               fgColor="#111111"
             />
           </div>
-          <p className="receive-address" aria-label={t("完整收款地址")}>
+          <button
+            className="receive-address"
+            aria-label={t("复制完整收款地址")}
+            disabled={copying}
+            onClick={() => void copyAddress()}
+          >
             {wallet.address}
-          </p>
+          </button>
         </div>
         <div className="receive-secondary-actions">
+          <button
+            className="text-button"
+            disabled={copying}
+            onClick={() => void copyAddress()}
+          >
+            <SwapIcon
+              active={copied}
+              idle={<Copy size={16} />}
+              done={<Check size={16} />}
+            />
+            {copying ? t("正在复制…") : copied ? t("已复制") : t("复制地址")}
+          </button>
           <button className="text-button" onClick={saveQr}>
             <Download size={16} />
             {t("保存二维码")}
@@ -177,28 +194,10 @@ export function ReceiveDialog({
           {t("在 Explorer 查看账户")}
           <ArrowUpRight size={14} />
         </a>
-        <FlowStatus error={error} message={message} />
-      </div>
-      <div className="flow-footer">
-        <p className="flow-note centered">
+        <p className="flow-note centered receive-caution">
           {t("请仅通过 Quantus 主网向此地址发送 QTC。")}
         </p>
-        <button
-          className="button primary full"
-          disabled={copying}
-          onClick={() => void copyAddress()}
-        >
-          <SwapIcon
-            active={copied}
-            idle={<Copy size={18} />}
-            done={<Check size={18} />}
-          />
-          {copying
-            ? t("正在复制…")
-            : copied
-              ? t("地址已复制")
-              : t("复制完整地址")}
-        </button>
+        <FlowStatus error={error} message={message} />
         <span className="sr-only" role="status">
           {copied ? t("地址已复制") : ""}
         </span>

@@ -99,6 +99,10 @@ export const wallet: Record<string, string> = {
   "确认观察账户类型": "Confirm watch-only account type",
   "观察账户无法发送资产": "Watch-only accounts cannot send",
   "Quantus 主网账户": "Quantus mainnet account",
+  "加密账户": "Encrypted account",
+  "已复制": "Copied",
+  "复制完整收款地址": "Copy the full receiving address",
+  "观察账户": "Watch-only",
 
   // WalletLayout
   "钱包": "Wallet",

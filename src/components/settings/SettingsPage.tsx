@@ -18,9 +18,9 @@ import type { Wallet } from "../../lib/vault";
 import { hasBiometric } from "../../lib/biometric";
 import { hasAutoUnlock } from "../../lib/auto-unlock";
 import { installPwa, usePwaInstall } from "../../lib/pwa";
-import { PROJECT_NAME } from "../../lib/project";
+import { BUILD, PROJECT_NAME, buildLabel } from "../../lib/project";
 import { shortAddress } from "../../lib/amount";
-import { useT } from "../../lib/i18n";
+import { localeTag, useT } from "../../lib/i18n";
 import { DeviceUnlockSettings } from "../DeviceUnlockSettings";
 import { AutoUnlockSettings } from "../AutoUnlockSettings";
 import { ThemePicker } from "../ThemePicker";
@@ -248,7 +248,10 @@ export function SettingsPage({
           <LockKeyhole size={17} />
           {unlocked ? t("锁定钱包") : t("解锁钱包")}
         </button>
-        <span>{PROJECT_NAME}</span>
+        <span className="settings-build">
+          {PROJECT_NAME}
+          <small title={BUILD.builtAt}>{buildLabel(localeTag())}</small>
+        </span>
       </div>
 
       {(panel === "password" || panel === "biometric") && (

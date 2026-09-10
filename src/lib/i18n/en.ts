@@ -29,6 +29,7 @@ export const en: Record<string, string> = {
   关闭: "Close",
   语言: "Language",
   切换语言: "Switch language",
+  "版本 {0}": "Version {0}",
   挖矿计算: "Mining calculator",
   "按显卡算力估算产量、成本、保本价和利润": "Estimate output, cost, break-even price and profit from GPU hashrate",
   "和钱包主功能分开的辅助工具，每个都附带说明。": "Helpers kept apart from the wallet's main screens, each with its own guide.",
