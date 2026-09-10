@@ -157,7 +157,17 @@ describe("pool terms", () => {
     expect(terms.source).toBe("live");
     expect(terms.poolFeePercent).toBe(1);
     expect(terms.minerDevFeePercent).toBe(5);
-    expect(terms.gpus.map((gpu) => gpu.id)).toEqual(["rtx-5090", "rtx-4090", "rtx-6090"]);
+    // The observed cards the pool does not benchmark are appended, once each.
+    expect(terms.gpus.map((gpu) => gpu.id)).toEqual([
+      "rtx-5090",
+      "rtx-4090",
+      "rtx-6090",
+      "rtx-4070-ti-super",
+      "rtx-4070-super",
+      "rtx-3060-ti",
+      "rtx-2070",
+    ]);
+    expect(terms.gpus.find((gpu) => gpu.id === "rtx-2070")).toMatchObject({ stock: null, powerW: 175 });
     expect(terms.gpus[0].powerW).toBe(500);
     expect(terms.gpus[1].short).toBe("RTX 4090");
     expect(terms.gpus[2].powerW).toBeNull();

@@ -1,7 +1,7 @@
 import { xxhashAsHex } from "@polkadot/util-crypto";
 import { MAINNET } from "../chain";
 import { t } from "../i18n";
-import { BUILT_IN_TERMS, gpuId, shortName, typicalPower, type Gpu, type PoolTerms } from "./gpus";
+import { BUILT_IN_TERMS, OBSERVED_GPUS, gpuId, shortName, typicalPower, type Gpu, type PoolTerms } from "./gpus";
 
 /**
  * Network state for the calculator, read from three public sources and
@@ -277,6 +277,7 @@ export async function fetchPoolTerms(options: Options & { baseUrl?: string } = {
     });
   }
   if (!gpus.length) throw new Error(t("矿池接口返回的数据无效。"));
+  for (const gpu of OBSERVED_GPUS) if (!seen.has(gpu.id)) gpus.push(gpu);
   return { poolFeePercent, minerDevFeePercent, gpus, capturedAt: Date.now(), source: "live" };
 }
 

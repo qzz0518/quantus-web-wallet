@@ -17,8 +17,8 @@ export type Gpu = {
   short: string;
   /** Hashrate with the pool miner, in H/s. */
   ours: number;
-  /** Hashrate with the official miner, in H/s. */
-  stock: number;
+  /** Hashrate with the official miner, in H/s; null when only the pool miner has been measured. */
+  stock: number | null;
   /** Typical board power under load in watts; null when unknown. */
   powerW: number | null;
   note?: string;
@@ -52,6 +52,10 @@ const TYPICAL_POWER: Record<string, number> = {
   "rtx-4070-ti": 260,
   "rtx-3080-ti": 330,
   "rtx-5060-ti": 170,
+  "rtx-4070-ti-super": 290,
+  "rtx-4070-super": 220,
+  "rtx-3060-ti": 220,
+  "rtx-2070": 175,
 };
 
 export function typicalPower(id: string): number | null {
@@ -66,6 +70,26 @@ const SNAPSHOT: { device: string; ours: number; stock: number; note: string }[] 
   { device: "NVIDIA GeForce RTX 5060 Ti", ours: 313_900_000, stock: 75_000_000, note: "steady state on this pool, GPU only" },
 ];
 
+/**
+ * Cards the pool has not benchmarked, read off rigs mining this chain with
+ * the pool miner. Only the pool-miner figure is known; the official miner is
+ * left unmeasured rather than guessed at.
+ */
+const OBSERVED: { device: string; ours: number; note: string }[] = [
+  { device: "NVIDIA GeForce RTX 4070 Ti SUPER", ours: 624_000_000, note: "observed on mining rigs, pool miner" },
+  { device: "NVIDIA GeForce RTX 4070 SUPER", ours: 512_300_000, note: "observed on mining rigs, pool miner" },
+  { device: "NVIDIA GeForce RTX 3060 Ti", ours: 256_000_000, note: "observed on mining rigs, pool miner" },
+  { device: "NVIDIA GeForce RTX 2070", ours: 192_600_000, note: "observed on mining rigs, pool miner" },
+];
+
+/** The observed cards, for merging into a live benchmark table that lacks them. */
+export const OBSERVED_GPUS: readonly Gpu[] = Object.freeze(
+  OBSERVED.map((row) => {
+    const id = gpuId(row.device);
+    return Object.freeze({ id, device: row.device, short: shortName(row.device), ours: row.ours, stock: null, powerW: typicalPower(id), note: row.note });
+  }),
+);
+
 export const BUILT_IN_GPUS: readonly Gpu[] = Object.freeze(
   SNAPSHOT.map((row) => {
     const id = gpuId(row.device);
@@ -73,10 +97,13 @@ export const BUILT_IN_GPUS: readonly Gpu[] = Object.freeze(
   }),
 );
 
+/** Everything the calculator offers: the pool's benchmarks plus the observed cards. */
+export const ALL_BUILT_IN_GPUS: readonly Gpu[] = Object.freeze([...BUILT_IN_GPUS, ...OBSERVED_GPUS]);
+
 export const BUILT_IN_TERMS: PoolTerms = Object.freeze({
   poolFeePercent: 1,
   minerDevFeePercent: 5,
-  gpus: BUILT_IN_GPUS as Gpu[],
+  gpus: ALL_BUILT_IN_GPUS as Gpu[],
   capturedAt: Date.parse(`${SNAPSHOT_DATE}T00:00:00Z`),
   source: "snapshot",
 });

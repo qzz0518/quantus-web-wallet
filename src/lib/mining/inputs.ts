@@ -79,7 +79,7 @@ export function parseNumber(text: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-export function benchmark(gpu: Gpu, software: Software): number {
+export function benchmark(gpu: Gpu, software: Software): number | null {
   return software === "pool" ? gpu.ours : gpu.stock;
 }
 
@@ -101,7 +101,9 @@ export function deviceFromGpu(gpu: Gpu, software: Software, terms: PoolTerms, qu
     gpu: gpu.id,
     quantity,
     software,
-    ...hashrateText(benchmark(gpu, software)),
+    ...(benchmark(gpu, software) === null
+      ? { hashrate: "", unit: "MH" as HashrateUnit }
+      : hashrateText(benchmark(gpu, software) as number)),
     powerW: gpu.powerW === null ? "" : String(gpu.powerW),
     minerFee: minerFeeFor(software, terms),
   };

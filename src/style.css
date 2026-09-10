@@ -2080,7 +2080,7 @@ button.account-type-notice {
   color: var(--muted);
 }
 .mining-per-gh {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   padding-top: 14px;
   border-top: 1px solid var(--line);
 }
@@ -2168,7 +2168,17 @@ button.account-type-notice {
   padding-right: 88px;
 }
 .mining-input:has(.segmented) > input {
-  padding-right: 128px;
+  padding-right: 112px;
+}
+/* A unit switch is not text: it must not be clipped to fit a share of the field. */
+.mining-input-suffix:has(.segmented) {
+  max-width: none;
+  overflow: visible;
+  right: 6px;
+}
+/* Inside the narrow form column these fields get a line each. */
+.mining-row-more .mining-fields {
+  grid-template-columns: minmax(0, 1fr);
 }
 .mining-input-suffix {
   position: absolute;
@@ -2189,8 +2199,8 @@ button.account-type-notice {
 }
 .mining-input-suffix .segmented > button {
   min-height: 28px;
-  padding: 0 9px;
-  font-size: 12px;
+  padding: 0 8px;
+  font-size: 11px;
 }
 .mining-input-suffix .segmented > button[aria-checked="true"] {
   background: var(--surface);

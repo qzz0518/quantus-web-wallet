@@ -96,9 +96,19 @@ export const UNIT_OPTIONS: { value: HashrateUnit; label: string }[] = [
  * A section the reader opens only when they want it. Everything inside stays
  * in the document, so find-in-page and the server snapshot still see it.
  */
-export function Fold({ title, meta, children }: { title: ReactNode; meta?: ReactNode; children: ReactNode }) {
+export function Fold({
+  title,
+  meta,
+  children,
+  open = false,
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  children: ReactNode;
+  open?: boolean;
+}) {
   return (
-    <details className="flow-details mining-fold">
+    <details className="flow-details mining-fold" open={open}>
       <summary>
         <span className="mining-fold-title">{title}</span>
         {meta && <span className="mining-fold-meta">{meta}</span>}

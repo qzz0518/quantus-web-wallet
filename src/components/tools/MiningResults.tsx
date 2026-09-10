@@ -85,7 +85,7 @@ export function MiningResults({ network, model, result, terms, pool, luck, loadi
         {
           id: gpu.id,
           label: gpu.short,
-          hashrate: compareSoftware === "pool" ? gpu.ours : gpu.stock,
+          hashrate: (compareSoftware === "pool" ? gpu.ours : gpu.stock) ?? 0,
           quantity: 1,
           powerW: gpu.powerW,
           minerFeePercent: compareSoftware === "pool" ? terms.minerDevFeePercent : 0,
@@ -237,6 +237,7 @@ export function MiningResults({ network, model, result, terms, pool, luck, loadi
       )}
 
       <Fold
+        open
         title={t("难度与运气")}
         meta={
           perGh?.ratePerHour != null
@@ -314,19 +315,27 @@ export function MiningResults({ network, model, result, terms, pool, luck, loadi
               hint={
                 perGh.ratePerDay === null
                   ? t("填写 QTC 价格")
-                  : t(
-                      "每 GH/s 每小时；每天 {0}；折合 {1} MH/({2}·小时)",
-                      bare(perGh.ratePerDay),
-                      formatInteger(1000 / (perGh.ratePerHour ?? 1)),
-                      currency,
-                    )
+                  : t("每 GH/s 每小时；每天 {0}", bare(perGh.ratePerDay))
+              }
+            />
+            <Stat
+              label={t("保本算价比")}
+              value={
+                perGh.ratePerHour === null
+                  ? "—"
+                  : t("{0} MH", formatInteger(1000 / perGh.ratePerHour))
+              }
+              hint={
+                perGh.ratePerHour === null
+                  ? t("填写 QTC 价格")
+                  : t("每 {0} 每小时；租赁报价高于此值才有利润", currency)
               }
             />
           </dl>
         )}
       </Fold>
 
-      <Fold title={t("显卡对比")} meta={t("{0} 款", comparison.length)}>
+      <Fold open title={t("显卡对比")} meta={t("{0} 款", comparison.length)}>
         <div className="segmented mining-segmented" role="radiogroup" aria-label={t("矿工软件")}>
           {(["pool", "stock"] as Software[]).map((software) => (
             <button

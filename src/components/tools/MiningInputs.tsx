@@ -3,6 +3,9 @@ import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { useT } from "../../lib/i18n";
 import { Select } from "../Select";
 import { MARKET_PAIR, MARKET_QUOTE, SAFETRADE_MARKET_URL, type MarketPrice } from "../../lib/mining/data";
+
+/** The market quotes USDT; a dollar label means the same thing here. */
+const SAME_AS_QUOTE = new Set([MARKET_QUOTE, "USD", "$"]);
 import type { PoolTerms } from "../../lib/mining/gpus";
 import { formatFiat, formatHashrate } from "../../lib/mining/format";
 import type { DeviceYield } from "../../lib/mining/math";
@@ -94,11 +97,13 @@ function Tuning({
           }
           hint={
             gpu
-              ? t(
-                  "基准：{0}（{1}）",
-                  formatHashrate(benchmark(gpu, row.software)),
-                  row.software === "pool" ? t("矿池矿工") : t("官方矿工"),
-                )
+              ? benchmark(gpu, row.software) === null
+                ? t("官方矿工未实测，请自行填写算力")
+                : t(
+                    "基准：{0}（{1}）",
+                    formatHashrate(benchmark(gpu, row.software) as number),
+                    row.software === "pool" ? t("矿池矿工") : t("官方矿工"),
+                  )
               : undefined
           }
         />
@@ -160,7 +165,10 @@ function DeviceRow({
     ...terms.gpus.map((item) => ({
       value: item.id,
       label: item.short,
-      description: `${formatHashrate(item.ours)} · ${formatHashrate(item.stock)}`,
+      description:
+        item.stock === null
+          ? `${formatHashrate(item.ours)} · ${t("官方矿工未实测")}`
+          : `${formatHashrate(item.ours)} · ${formatHashrate(item.stock)}`,
     })),
     { value: CUSTOM_GPU, label: t("自定义"), description: t("自行填写算力和功耗") },
   ];
@@ -175,7 +183,9 @@ function DeviceRow({
   };
   const chooseSoftware = (software: Software) => {
     const patch: Partial<DeviceInput> = { software, minerFee: minerFeeFor(software, terms) };
-    if (gpu) Object.assign(patch, hashrateText(benchmark(gpu, software)));
+    const measured = gpu ? benchmark(gpu, software) : null;
+    if (measured !== null) Object.assign(patch, hashrateText(measured));
+    else if (gpu) Object.assign(patch, { hashrate: "" });
     onChange(patch);
   };
   // The row's own totals, read straight from the inputs so they show before
@@ -482,14 +492,14 @@ export function MiningInputs({
               )}
               <ArrowUpRight size={17} aria-hidden="true" />
             </a>
-            {following && currency && currency.toUpperCase() !== MARKET_QUOTE && (
+            {following && currency && !SAME_AS_QUOTE.has(currency.toUpperCase()) && (
               <p className="mining-note warn">{t("市场价以 USDT 计，而你的货币标签是 {0}；不一致时请自行填写价格。", currency)}</p>
             )}
           </div>
         </div>
       </section>
 
-      <Fold title={t("更多设置")} meta={settingsMeta}>
+      <Fold open title={t("更多设置")} meta={settingsMeta}>
         <div className="field mining-field">
           <span>{t("输入方式")}</span>
           <Segmented
