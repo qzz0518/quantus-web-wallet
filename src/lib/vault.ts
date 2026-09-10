@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 export const STORAGE_KEY = "quantus.wallet.v1";
 const ITERATIONS = 600_000;
 export type Wallet = {
@@ -38,7 +39,7 @@ const decode = (value: string) =>
   Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
 const aad = new TextEncoder().encode("quantus-wallet:v1");
 function parseEnvelope(value: string): Envelope {
-  if (value.length > 5_000_000) throw new Error("备份文件过大");
+  if (value.length > 5_000_000) throw new Error(t("备份文件过大"));
   const e = JSON.parse(value);
   if (
     e.format !== "quantus-vault" ||
@@ -51,7 +52,7 @@ function parseEnvelope(value: string): Envelope {
     decode(e.salt).length !== 16 ||
     decode(e.iv).length !== 12
   )
-    throw new Error("无法识别此钱包备份");
+    throw new Error(t("无法识别此钱包备份"));
   return e;
 }
 export function validateData(value: unknown): VaultData {
@@ -63,7 +64,7 @@ export function validateData(value: unknown): VaultData {
     !Array.isArray(d.pending) ||
     d.pending.length > 500
   )
-    throw new Error("钱包数据格式无效");
+    throw new Error(t("钱包数据格式无效"));
   const ids = new Set<string>(),
     addresses = new Set<string>();
   for (const w of d.wallets) {
@@ -81,19 +82,19 @@ export function validateData(value: unknown): VaultData {
       w.index > 2 ** 31 - 1 ||
       !Number.isFinite(w.createdAt)
     )
-      throw new Error("钱包数据格式无效");
+      throw new Error(t("钱包数据格式无效"));
     if (
       w.kind === "mldsa87" &&
       (typeof w.mnemonic !== "string" || w.mnemonic.length > 1000)
     )
-      throw new Error("钱包密钥数据无效");
+      throw new Error(t("钱包密钥数据无效"));
     if (
       w.watchKind !== undefined &&
       !["standard", "wormhole"].includes(w.watchKind)
     )
-      throw new Error("观察账户类型无效");
+      throw new Error(t("观察账户类型无效"));
     if (w.kind === "watch" && w.mnemonic !== undefined)
-      throw new Error("观察钱包不能包含密钥");
+      throw new Error(t("观察钱包不能包含密钥"));
     ids.add(w.id);
     addresses.add(w.address);
   }
@@ -114,7 +115,7 @@ export function validateData(value: unknown): VaultData {
         p.status,
       )
     )
-      throw new Error("交易数据格式无效");
+      throw new Error(t("交易数据格式无效"));
   return d;
 }
 async function derive(password: string, salt: Uint8Array): Promise<CryptoKey> {
@@ -139,7 +140,7 @@ async function derive(password: string, salt: Uint8Array): Promise<CryptoKey> {
   );
 }
 export async function createSession(password: string): Promise<VaultSession> {
-  if (password.length < 6) throw new Error("解锁密码至少需要 6 个字符");
+  if (password.length < 6) throw new Error(t("解锁密码至少需要 6 个字符"));
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return { key: await derive(password, salt), salt: encode(salt) };
 }
@@ -189,7 +190,7 @@ export async function unlockVault(
       data: validateData(JSON.parse(new TextDecoder().decode(bytes))),
     };
   } catch {
-    throw new Error("密码不正确，或钱包备份已经损坏");
+    throw new Error(t("密码不正确，或钱包备份已经损坏"));
   } finally {
     bytes?.fill(0);
   }
@@ -234,7 +235,7 @@ export async function unlockVaultWithKey(
 ): Promise<{ session: VaultSession; data: VaultData }> {
   const envelope = parseEnvelope(raw);
   if (envelope.salt !== salt)
-    throw new Error("钱包密码已更新，请重新开启生物识别");
+    throw new Error(t("钱包密码已更新，请重新开启生物识别"));
   const bytes = new Uint8Array(
     await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: decode(envelope.iv), additionalData: aad },

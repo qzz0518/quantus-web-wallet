@@ -14,6 +14,7 @@ import {
   Wallet as WalletIcon,
   LoaderCircle,
   ShieldCheck,
+  TriangleAlert,
 } from "lucide-react";
 import { SwapIcon } from "./SwapIcon";
 import { Modal } from "./Modal";
@@ -36,6 +37,8 @@ import { blake2AsHex } from "@polkadot/util-crypto";
 import { hexToU8a } from "@polkadot/util";
 import { signCall } from "../crypto";
 import { copyText } from "../lib/browser";
+import { useT } from "../lib/i18n";
+import { readRecipientProfile, type RecipientProfile } from "../lib/recipient";
 const mainnetServices = {
   prepareTransfer,
   estimateFee,
@@ -68,6 +71,7 @@ export function SendDialog({
   onSubmitted: (tx: Pending) => Promise<void>;
   services?: TransferServices;
 }) {
+  const t = useT();
   const active = useRef(true);
   const processing = useRef(false);
   useEffect(() => {
@@ -86,7 +90,10 @@ export function SendDialog({
     [hash, setHash] = useState(""),
     [copied, setCopied] = useState(false),
     [copyError, setCopyError] = useState(""),
-    [expired, setExpired] = useState(false);
+    [expired, setExpired] = useState(false),
+    [profile, setProfile] = useState<{ address: string; data: RecipientProfile | null } | null>(null),
+    [checking, setChecking] = useState(false),
+    [riskAck, setRiskAck] = useState(false);
   useEffect(() => {
     if (!quote) return;
     const id = setInterval(() => {
@@ -102,10 +109,10 @@ export function SendDialog({
     setError("");
     try {
       if (!wallet.mnemonic || wallet.kind === "watch")
-        throw new Error("观察钱包不能签名");
+        throw new Error(t("观察钱包不能签名"));
       const to = validateAddress(recipient.trim()),
         atomic = parseAmount(amount).toString();
-      if (to === wallet.address) throw new Error("收款地址与当前钱包相同");
+      if (to === wallet.address) throw new Error(t("收款地址与当前钱包相同"));
       const prepared = await services.prepareTransfer(
         wallet.address,
         to,
@@ -120,13 +127,17 @@ export function SendDialog({
       const fee = await services.estimateFee(hex),
         balance = await services.readBalance(wallet.address);
       if (BigInt(balance.spendable) < BigInt(atomic) + BigInt(fee))
-        throw new Error("可用余额不足以支付金额和手续费");
+        throw new Error(t("可用余额不足以支付金额和手续费"));
       if (
         BigInt(balance.free) - BigInt(atomic) - BigInt(fee) <
         BigInt(prepared.existentialDeposit)
       )
         throw new Error(
-          `转账后需保留至少 ${formatAmount(prepared.existentialDeposit)} ${services.symbol} 以维持账户`,
+          t(
+            "转账后需保留至少 {0} {1} 以维持账户",
+            formatAmount(prepared.existentialDeposit),
+            services.symbol,
+          ),
         );
       if (!active.current) return;
       setQuote({
@@ -156,7 +167,7 @@ export function SendDialog({
     try {
       if (Date.now() - quote.at > 60_000) {
         setExpired(true);
-        throw new Error("费用报价已过期，请更新费用后重新确认");
+        throw new Error(t("费用报价已过期，请更新费用后重新确认"));
       }
       const prepared = await services.prepareTransfer(
         wallet.address,
@@ -168,7 +179,7 @@ export function SendDialog({
         prepared.ctx.blockNumber - quote.block >= 48
       ) {
         setExpired(true);
-        throw new Error("账户或网络状态已变化，请更新费用后重新确认");
+        throw new Error(t("账户或网络状态已变化，请更新费用后重新确认"));
       }
       const balance = await services.readBalance(wallet.address),
         freshFee = await services.estimateFee(quote.hex);
@@ -179,7 +190,7 @@ export function SendDialog({
           BigInt(prepared.existentialDeposit)
       ) {
         setExpired(true);
-        throw new Error("余额或手续费已变化，请更新费用后重新确认");
+        throw new Error(t("余额或手续费已变化，请更新费用后重新确认"));
       }
       if (!active.current) return;
       journal = {
@@ -200,7 +211,7 @@ export function SendDialog({
     } catch (e) {
       if (e instanceof SubmissionError && e.submissionStatus === "unknown") {
         setHash(e.transactionHash);
-        setError("提交结果待确认，请保留哈希并核对链上状态，勿重复发送。");
+        setError(t("提交结果待确认，请保留哈希并核对链上状态，勿重复发送。"));
         try {
           await onSubmitted({
             hash: e.transactionHash,
@@ -211,11 +222,13 @@ export function SendDialog({
             startBlock: quote.block,
             createdAt: Date.now(),
             status: "unknown",
-            error: "提交结果待确认，请核对链上状态",
+            error: t("提交结果待确认，请核对链上状态"),
           });
         } catch {
           setError(
-            "提交结果待确认，且本机记录保存失败。请保留交易哈希并在 Explorer 中核对，勿重复发送。",
+            t(
+              "提交结果待确认，且本机记录保存失败。请保留交易哈希并在 Explorer 中核对，勿重复发送。",
+            ),
           );
         }
       } else {
@@ -228,7 +241,7 @@ export function SendDialog({
             await onSubmitted({
               ...journal,
               status: "failed",
-              error: "节点拒绝提交：" + e.message,
+              error: t("节点拒绝提交：{0}", e.message),
             });
           } catch {
             /* Existing pending journal still permits independent verification. */
@@ -251,30 +264,49 @@ export function SendDialog({
     else if (step === "amount") setStep("recipient");
     else onClose();
   }
-  function nextRecipient(event: FormEvent) {
+  async function nextRecipient(event: FormEvent) {
     event.preventDefault();
     setError("");
+    let to: string;
     try {
-      const to = validateAddress(recipient.trim());
-      if (to === wallet.address) throw new Error("收款地址与当前钱包相同");
-      setRecipient(to);
-      setStep("amount");
+      to = validateAddress(recipient.trim());
+      if (to === wallet.address) throw new Error(t("收款地址与当前钱包相同"));
     } catch (cause) {
       setError(errorText(cause));
+      return;
     }
+    setRecipient(to);
+    let checked = profile?.address === to ? profile.data : undefined;
+    if (checked === undefined) {
+      setChecking(true);
+      try {
+        checked = await readRecipientProfile(to, wallets);
+      } catch {
+        // The check is advisory; an unreachable indexer must not block sending.
+        checked = null;
+      } finally {
+        if (active.current) setChecking(false);
+      }
+      if (!active.current) return;
+      setProfile({ address: to, data: checked });
+    }
+    if (checked && (checked.ownWormhole || checked.minerDepositOnly) && !riskAck) return;
+    setStep("amount");
   }
+  const checked = profile?.address === recipient.trim() ? profile.data : null;
+  const risk = !!checked && (checked.ownWormhole || checked.minerDepositOnly);
   return (
     <Modal
       title={
         hash
           ? error
-            ? "交易状态待确认"
-            : "交易已提交"
+            ? t("交易状态待确认")
+            : t("交易已提交")
           : quote
-            ? "确认转账"
+            ? t("确认转账")
             : step === "amount"
-              ? "发送金额"
-              : `发送 ${services.symbol}`
+              ? t("发送金额")
+              : t("发送 {0}", services.symbol)
       }
       variant="flow"
       busy={busy}
@@ -290,14 +322,14 @@ export function SendDialog({
               {error ? <CircleHelp size={29} /> : <Check size={29} />}
             </div>
             <div className="flow-heading centered">
-              <h2>{error ? "请核对交易结果" : "已发送至网络"}</h2>
+              <h2>{error ? t("请核对交易结果") : t("已发送至网络")}</h2>
               <p>
                 {error
-                  ? "请核对链上状态，暂勿重复发送。"
-                  : "交易正在等待确认，可在活动记录中查看进度。"}
+                  ? t("请核对链上状态，暂勿重复发送。")
+                  : t("交易正在等待确认，可在活动记录中查看进度。")}
               </p>
             </div>
-            <p className="label">交易哈希</p>
+            <p className="label">{t("交易哈希")}</p>
             <p className="address-block">{hash}</p>
             <button
               className="text-button full"
@@ -308,7 +340,7 @@ export function SendDialog({
                   await copyText(hash);
                   setCopied(true);
                 } catch {
-                  setCopyError("复制失败，请手动复制上方哈希");
+                  setCopyError(t("复制失败，请手动复制上方哈希"));
                 }
               }}
             >
@@ -318,7 +350,7 @@ export function SendDialog({
                 idle={<Copy size={16} />}
                 done={<Check size={16} />}
               />
-              {copied ? "哈希已复制" : "复制交易哈希"}
+              {copied ? t("哈希已复制") : t("复制交易哈希")}
             </button>
             {copyError && (
               <p className="error" role="alert">
@@ -336,13 +368,13 @@ export function SendDialog({
               rel="noopener noreferrer"
               href={`https://explorer.quantus.com/transactions/${hash}`}
             >
-              在 Explorer 查看
+              {t("在 Explorer 查看")}
               <ArrowUpRight size={16} />
             </a>
           </div>
           <div className="flow-footer">
             <button className="button primary full" onClick={onClose}>
-              完成
+              {t("完成")}
             </button>
           </div>
         </>
@@ -356,28 +388,28 @@ export function SendDialog({
             </div>
             <dl className="review-details">
               <div>
-                <dt>付款钱包</dt>
+                <dt>{t("付款钱包")}</dt>
                 <dd>
                   {wallet.name}
                   <small>{wallet.address}</small>
                 </dd>
               </div>
               <div>
-                <dt>收款地址</dt>
+                <dt>{t("收款地址")}</dt>
                 <dd className="mono">{quote.recipient}</dd>
               </div>
               <div>
-                <dt>网络</dt>
+                <dt>{t("网络")}</dt>
                 <dd>{services.networkName}</dd>
               </div>
               <div>
-                <dt>预估手续费</dt>
+                <dt>{t("预估手续费")}</dt>
                 <dd>
                   {formatAmount(quote.fee)} {services.symbol}
                 </dd>
               </div>
               <div className="review-total">
-                <dt>预计总支出</dt>
+                <dt>{t("预计总支出")}</dt>
                 <dd>
                   {formatAmount(BigInt(quote.amount) + BigInt(quote.fee))}{" "}
                   {services.symbol}
@@ -391,12 +423,14 @@ export function SendDialog({
                 disabled={busy}
                 onChange={(event) => setAck(event.target.checked)}
               />
-              我已核对完整收款地址与金额
+              {t("我已核对完整收款地址与金额")}
             </label>
           </div>
           <div className="flow-footer">
             {expired && !error && (
-              <p className="flow-note">费用需要更新，更新后请重新核对。</p>
+              <p className="flow-note">
+                {t("费用需要更新，更新后请重新核对。")}
+              </p>
             )}
             {error && (
               <p className="error" role="alert">
@@ -411,11 +445,11 @@ export function SendDialog({
               {busy && <LoaderCircle className="spin" size={18} />}{" "}
               {busy
                 ? expired
-                  ? "正在更新费用…"
-                  : "正在提交…"
+                  ? t("正在更新费用…")
+                  : t("正在提交…")
                 : expired
-                  ? "更新费用"
-                  : "确认并发送"}
+                  ? t("更新费用")
+                  : t("确认并发送")}
             </button>
           </div>
         </>
@@ -428,11 +462,11 @@ export function SendDialog({
             {step === "recipient" ? (
               <>
                 <div className="flow-heading">
-                  <h2>发送给谁？</h2>
-                  <p>输入收款人的 Quantus 主网地址。</p>
+                  <h2>{t("发送给谁？")}</h2>
+                  <p>{t("输入收款人的 Quantus 主网地址。")}</p>
                 </div>
                 <label className="field">
-                  收款地址
+                  {t("收款地址")}
                   <textarea
                     rows={3}
                     required
@@ -441,23 +475,25 @@ export function SendDialog({
                     value={recipient}
                     onChange={(event) => {
                       setRecipient(event.target.value);
+                      setRiskAck(false);
                       setError("");
                     }}
-                    placeholder="输入或粘贴 Quantus 地址"
+                    placeholder={t("输入或粘贴 Quantus 地址")}
                     autoFocus
                   />
                 </label>
                 {wallets.some((w) => w.id !== wallet.id) && (
                   <label className="field">
-                    我的其他钱包
+                    {t("我的其他钱包")}
                     <select
                       value=""
                       onChange={(event) => {
                         setRecipient(event.target.value);
+                        setRiskAck(false);
                         setError("");
                       }}
                     >
-                      <option value="">选择一个钱包</option>
+                      <option value="">{t("选择一个钱包")}</option>
                       {wallets
                         .filter((w) => w.id !== wallet.id)
                         .map((w) => (
@@ -468,33 +504,66 @@ export function SendDialog({
                     </select>
                   </label>
                 )}
-                <div className="soft-note">
-                  <ShieldCheck size={17} />
-                  <p>
-                    请确认对方使用 Quantus 主网。下一步输入金额，再核对手续费。
-                  </p>
-                </div>
+                {risk ? (
+                  <div className="callout warm recipient-warning">
+                    <TriangleAlert size={17} />
+                    <div>
+                      <p>
+                        {checked.ownWormhole
+                          ? t("这是你标记为 Wormhole 隐私账户的观察地址。")
+                          : t(
+                              "该地址只收到过挖矿奖励、从未发出过交易，很可能是官方钱包的加密账户（Wormhole）地址。",
+                            )}{" "}
+                        {t(
+                          "普通转账会进入隐私池：收款方必须用该账户的助记词生成零知识证明才能取出，并会损失 0.04% 的链上费用和不足 0.01 QTC 的零头。",
+                        )}
+                      </p>
+                      <label className="check-row">
+                        <input
+                          type="checkbox"
+                          checked={riskAck}
+                          onChange={(event) => setRiskAck(event.target.checked)}
+                        />
+                        <span>
+                          {t("我已确认收款方能够从加密账户取出这笔资产，仍要继续。")}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="soft-note">
+                    <ShieldCheck size={17} />
+                    <p>
+                      {t(
+                        "请确认对方使用 Quantus 主网。下一步输入金额，再核对手续费。",
+                      )}
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <>
                 <div className="flow-heading">
-                  <h2>发送多少？</h2>
-                  <p>
-                    从 {wallet.name} 发送 {services.symbol}。
-                  </p>
+                  <h2>{t("发送多少？")}</h2>
+                  <p>{t("从 {0} 发送 {1}。", wallet.name, services.symbol)}</p>
                 </div>
                 <div className="send-recipient-chip">
                   <WalletIcon size={20} />
                   <span>
-                    <strong>收款地址</strong>
+                    <strong>{t("收款地址")}</strong>
                     <small>{recipient}</small>
                   </span>
                   <button type="button" disabled={busy} onClick={back}>
-                    修改
+                    {t("修改")}
                   </button>
                 </div>
+                {checked?.unknown && (
+                  <p className="field-hint">
+                    {t("该地址在链上还没有任何记录。新账户属正常情况，否则请再核对一遍。")}
+                  </p>
+                )}
                 <label className="field">
-                  <span className="sr-only">发送金额</span>
+                  <span className="sr-only">{t("发送金额")}</span>
                   <div
                     className="amount-input"
                     style={
@@ -521,7 +590,7 @@ export function SendDialog({
                   </div>
                 </label>
                 <p className="flow-note centered">
-                  下一步预览网络手续费与总支出。
+                  {t("下一步预览网络手续费与总支出。")}
                 </p>
               </>
             )}
@@ -536,16 +605,21 @@ export function SendDialog({
               className="button primary full"
               disabled={
                 busy ||
-                (step === "recipient" ? !recipient.trim() : !amount.trim())
+                checking ||
+                (step === "recipient"
+                  ? !recipient.trim() || (risk && !riskAck)
+                  : !amount.trim())
               }
             >
-              {busy && <LoaderCircle size={18} className="spin" />}
+              {(busy || checking) && <LoaderCircle size={18} className="spin" />}
               {busy
-                ? "正在计算费用…"
-                : step === "recipient"
-                  ? "继续"
-                  : "预览转账"}
-              {!busy && <ArrowRight size={17} />}
+                ? t("正在计算费用…")
+                : checking
+                  ? t("正在核对收款地址…")
+                  : step === "recipient"
+                    ? t("继续")
+                    : t("预览转账")}
+              {!busy && !checking && <ArrowRight size={17} />}
             </button>
           </div>
         </form>

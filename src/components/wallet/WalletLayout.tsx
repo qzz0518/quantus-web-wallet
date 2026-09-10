@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import type { NetworkState } from "../../lib/chain";
 import type { Wallet } from "../../lib/vault";
+import { localeTag, useT } from "../../lib/i18n";
 import { ThemePicker } from "../ThemePicker";
+import { LanguagePicker } from "../LanguagePicker";
 import { WalletLogo } from "./WalletLogo";
 import type { WalletDialog, WalletPage } from "./types";
 
@@ -36,6 +38,7 @@ type Props = {
   onLock: () => void;
   onRefresh: () => void;
 };
+// Labels stay in the Chinese source form; they are translated where rendered.
 const tabs = [
   { id: "overview", label: "钱包", Icon: House },
   { id: "activity", label: "活动", Icon: History },
@@ -59,6 +62,7 @@ export function WalletLayout({
   onLock,
   onRefresh,
 }: Props) {
+  const t = useT();
   const content = useRef<HTMLElement>(null);
   const previous = useRef({ page, unlocked });
   useLayoutEffect(() => {
@@ -70,8 +74,8 @@ export function WalletLayout({
     )
       return;
     const direction =
-      tabs.findIndex((t) => t.id === page) <
-      tabs.findIndex((t) => t.id === before.page)
+      tabs.findIndex((tab) => tab.id === page) <
+      tabs.findIndex((tab) => tab.id === before.page)
         ? -1
         : 1;
     const animations = [...(content.current?.children || [])].map(
@@ -83,10 +87,10 @@ export function WalletLayout({
   const navigation = (mobile: boolean) => (
     <nav
       className={mobile ? "wallet-bottom-nav" : "wallet-navigation"}
-      aria-label={mobile ? "移动端导航" : "主要导航"}
+      aria-label={mobile ? t("移动端导航") : t("主要导航")}
       style={
         {
-          "--active-tab": tabs.findIndex((t) => t.id === page),
+          "--active-tab": tabs.findIndex((tab) => tab.id === page),
         } as CSSProperties
       }
     >
@@ -94,12 +98,12 @@ export function WalletLayout({
         <button
           key={id}
           className={page === id ? "active" : ""}
-          aria-label={label}
+          aria-label={t(label)}
           aria-current={page === id ? "page" : undefined}
           onClick={() => onPageChange(id)}
         >
           <Icon size={20} />
-          <span>{label}</span>
+          <span>{t(label)}</span>
           {id === "activity" && pendingCount > 0 && (
             <i className="nav-notification" />
           )}
@@ -110,13 +114,13 @@ export function WalletLayout({
   const selector = (
     <button
       className="current-wallet-selector"
-      aria-label="切换钱包"
+      aria-label={t("切换钱包")}
       onClick={() => onOpen(wallets.length ? "wallets" : "choose")}
     >
       <span className="current-wallet-avatar">
         <WalletLogo />
       </span>
-      <strong>{wallet?.name || "我的钱包"}</strong>
+      <strong>{wallet?.name || t("我的钱包")}</strong>
       <ChevronDown size={15} />
     </button>
   );
@@ -141,18 +145,23 @@ export function WalletLayout({
             {unlocked && page !== "settings" && (
               <button
                 className="circle-button mobile-refresh"
-                aria-label="刷新余额与交易"
+                aria-label={t("刷新余额与交易")}
                 disabled={loading}
                 onClick={onRefresh}
               >
                 <RefreshCw size={17} className={loading ? "spin" : ""} />
               </button>
             )}
-            {!unlocked && <ThemePicker />}
+            {!unlocked && (
+              <>
+                <LanguagePicker variant="compact" />
+                <ThemePicker variant="menu" />
+              </>
+            )}
             <button
               className="circle-button header-lock"
               aria-label={
-                unlocked ? "锁定钱包" : hasVault ? "解锁钱包" : "设置"
+                unlocked ? t("锁定钱包") : hasVault ? t("解锁钱包") : t("设置")
               }
               onClick={() =>
                 unlocked
@@ -183,24 +192,27 @@ export function WalletLayout({
                 className="network-label"
                 title={
                   networkError
-                    ? "连接中断，请刷新重试"
+                    ? t("连接中断，请刷新重试")
                     : network
-                      ? `Quantus 主网 · 区块 #${network.block.toLocaleString()}`
-                      : "正在连接 Quantus 主网"
+                      ? t(
+                          "Quantus 主网 · 区块 #{0}",
+                          network.block.toLocaleString(localeTag()),
+                        )
+                      : t("正在连接 Quantus 主网")
                 }
               >
                 <i
                   className={`status-dot ${network && !networkError ? "" : "offline"}`}
                 />
                 {networkError
-                  ? "连接中断"
+                  ? t("连接中断")
                   : network
-                    ? "Quantus 主网"
-                    : "正在连接"}
+                    ? t("Quantus 主网")
+                    : t("正在连接")}
               </span>
               <button
                 className="circle-button subtle"
-                aria-label="刷新余额与交易"
+                aria-label={t("刷新余额与交易")}
                 disabled={loading}
                 onClick={onRefresh}
               >
@@ -211,9 +223,9 @@ export function WalletLayout({
         )}
         {unlocked && page !== "settings" && (networkError || balanceError) && (
           <div className="inline-warning" role="status">
-            {networkError ? "暂时无法连接网络，请联网后刷新。" : balanceError}
+            {networkError ? t("暂时无法连接网络，请联网后刷新。") : balanceError}
             <button disabled={loading} onClick={onRefresh}>
-              重试
+              {t("重试")}
             </button>
           </div>
         )}

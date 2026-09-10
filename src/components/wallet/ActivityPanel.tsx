@@ -16,10 +16,12 @@ import { explorerTransactionUrl, MAINNET } from "../../lib/chain";
 import type { Transaction } from "../../lib/chain";
 import type { Pending, Wallet } from "../../lib/vault";
 import { formatAmount, shortAddress } from "../../lib/amount";
+import { localeTag, useT } from "../../lib/i18n";
 import { isWormhole } from "../../lib/wallet";
 import type { WalletPage } from "./types";
 
 const EXPLORER = MAINNET.explorerUrl;
+// Chinese source labels; translate at the usage site with t().
 const txLabel = (type: string) =>
   ({
     IMMEDIATE: "普通转账",
@@ -68,6 +70,7 @@ export function ActivityPanel({
   onReload,
   onLoadMore,
 }: ActivityPanelProps) {
+  const t = useT();
   const search = query.trim().toLowerCase();
   const visiblePending = pending.filter(
     (p) =>
@@ -80,12 +83,12 @@ export function ActivityPanel({
     <section className="wallet-activity">
       <div className="wallet-section-title">
         <div>
-          <h2>{page === "overview" ? "最近活动" : "全部记录"}</h2>
-          {wallet && isWormhole(wallet) && <p>公开入账记录</p>}
+          <h2>{page === "overview" ? t("最近活动") : t("全部记录")}</h2>
+          {wallet && isWormhole(wallet) && <p>{t("公开入账记录")}</p>}
         </div>
         {page === "overview" && wallet ? (
           <button onClick={onShowAll}>
-            查看全部
+            {t("查看全部")}
             <ArrowRight size={15} />
           </button>
         ) : wallet ? (
@@ -103,7 +106,7 @@ export function ActivityPanel({
       </div>
       {page === "activity" && (
         <div className="wallet-activity-toolbar">
-          <div className="filter-tabs" aria-label="交易筛选">
+          <div className="filter-tabs" aria-label={t("交易筛选")}>
             {[
               ["all", "全部"],
               ["in", "转入"],
@@ -116,15 +119,15 @@ export function ActivityPanel({
                 className={filter === id ? "active" : ""}
                 onClick={() => onFilterChange(id)}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
           <label className="search-field">
             <Search size={16} />
             <input
-              aria-label="搜索交易"
-              placeholder="搜索地址或哈希"
+              aria-label={t("搜索交易")}
+              placeholder={t("搜索地址或哈希")}
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
             />
@@ -132,7 +135,7 @@ export function ActivityPanel({
               <button
                 className="clear-search"
                 type="button"
-                aria-label="清除搜索"
+                aria-label={t("清除搜索")}
                 onClick={() => onQueryChange("")}
               >
                 <X size={16} />
@@ -145,15 +148,15 @@ export function ActivityPanel({
         <div className="history-error" role="alert">
           <p>
             {transactions.length
-              ? "交易记录暂未更新，以下为上次加载的结果。"
-              : "暂时无法加载交易记录，请稍后重试。"}
+              ? t("交易记录暂未更新，以下为上次加载的结果。")
+              : t("暂时无法加载交易记录，请稍后重试。")}
           </p>
           <button
             className="text-button"
             disabled={historyLoading}
             onClick={onReload}
           >
-            重新加载
+            {t("重新加载")}
             <RefreshCw size={13} />
           </button>
         </div>
@@ -174,17 +177,17 @@ export function ActivityPanel({
                 )}
               </span>
               <div>
-                <strong>发送至 {shortAddress(p.to)}</strong>
+                <strong>{t("发送至 {0}", shortAddress(p.to))}</strong>
                 <small>
                   {p.status === "pending"
-                    ? "已提交，等待入块"
+                    ? t("已提交，等待入块")
                     : p.status === "included"
-                      ? "已入块，等待最终确认"
+                      ? t("已入块，等待最终确认")
                       : p.status === "finalized"
-                        ? "已最终确认"
+                        ? t("已最终确认")
                         : p.status === "failed"
-                          ? "执行失败"
-                          : p.error || "状态待核实，请在 Explorer 中确认"}
+                          ? t("执行失败")
+                          : p.error || t("状态待核实，请在 Explorer 中确认")}
                 </small>
                 {p.status === "failed" && p.error && (
                   <small className="danger-text">{p.error}</small>
@@ -195,7 +198,7 @@ export function ActivityPanel({
                 {formatAmount(p.amount)} <small>QTC</small>
               </b>
               <a
-                aria-label="查看已提交交易"
+                aria-label={t("查看已提交交易")}
                 href={`${EXPLORER}/transactions/${p.hash}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -208,19 +211,21 @@ export function ActivityPanel({
       )}
       {visibleTransactions.length > 0 ? (
         <div className="wallet-transactions">
-          {visibleTransactions.map((t) => {
-            const incoming = t.to === wallet?.address,
-              reward = t.type === "MINER_REWARD" || t.type === "REWARD",
-              unsuccessful = /FAILED|CANCELLED/.test(t.status),
-              other = incoming ? t.from : t.to;
+          {visibleTransactions.map((tx) => {
+            const incoming = tx.to === wallet?.address,
+              reward = tx.type === "MINER_REWARD" || tx.type === "REWARD",
+              unsuccessful = /FAILED|CANCELLED/.test(tx.status),
+              other = incoming ? tx.from : tx.to;
             return (
               <a
                 className="wallet-transaction"
-                key={t.id}
-                href={explorerTransactionUrl(t)}
+                key={tx.id}
+                href={explorerTransactionUrl(tx)}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`在 Explorer 查看${reward ? "挖矿奖励" : "交易"}`}
+                aria-label={
+                  reward ? t("在 Explorer 查看挖矿奖励") : t("在 Explorer 查看交易")
+                }
               >
                 <span
                   className={`transaction-icon ${incoming && !unsuccessful ? "incoming" : "outgoing"}`}
@@ -236,23 +241,23 @@ export function ActivityPanel({
                 <span className="wallet-transaction-main">
                   <strong>
                     {reward
-                      ? "挖矿奖励"
-                      : t.type === "NETWORK_REWARD"
-                        ? "网络奖励"
+                      ? t("挖矿奖励")
+                      : tx.type === "NETWORK_REWARD"
+                        ? t("网络奖励")
                         : incoming
-                          ? "收到转账"
-                          : t.from === wallet?.address
-                            ? "发送转账"
-                            : txLabel(t.type)}
+                          ? t("收到转账")
+                          : tx.from === wallet?.address
+                            ? t("发送转账")
+                            : t(txLabel(tx.type))}
                   </strong>
                   <small title={other || ""}>
-                    {other ? shortAddress(other, 4) : txLabel(t.type)}
+                    {other ? shortAddress(other, 4) : t(txLabel(tx.type))}
                     <span className="transaction-date">
-                      {new Date(t.timestamp).toLocaleDateString("zh-CN", {
+                      {new Date(tx.timestamp).toLocaleDateString(localeTag(), {
                         month: "2-digit",
                         day: "2-digit",
                       })}{" "}
-                      {new Date(t.timestamp).toLocaleTimeString("zh-CN", {
+                      {new Date(tx.timestamp).toLocaleTimeString(localeTag(), {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -260,30 +265,32 @@ export function ActivityPanel({
                   </small>
                 </span>
                 <span
-                  className={`wallet-transaction-amount ${incoming && !unsuccessful ? "positive" : ""} ${formatAmount(t.amount).length > 12 ? "long-value" : ""}`}
+                  className={`wallet-transaction-amount ${incoming && !unsuccessful ? "positive" : ""} ${formatAmount(tx.amount).length > 12 ? "long-value" : ""}`}
                 >
                   <strong>
                     {unsuccessful
                       ? ""
                       : incoming
                         ? "+"
-                        : t.from === wallet?.address
+                        : tx.from === wallet?.address
                           ? "−"
                           : ""}
-                    {formatAmount(t.amount)}
+                    {formatAmount(tx.amount)}
                     <small> QTC</small>
                   </strong>
                   <span
-                    className={`transaction-status ${/SUCCESS|EXECUTED/.test(t.status) ? "success" : "neutral"}`}
+                    className={`transaction-status ${/SUCCESS|EXECUTED/.test(tx.status) ? "success" : "neutral"}`}
                   >
                     <span />
-                    {{
-                      SUCCESS: "成功",
-                      FAILED: "失败",
-                      PENDING: "待执行",
-                      EXECUTED: "已执行",
-                      CANCELLED: "已取消",
-                    }[t.status] || t.status}
+                    {t(
+                      {
+                        SUCCESS: "成功",
+                        FAILED: "失败",
+                        PENDING: "待执行",
+                        EXECUTED: "已执行",
+                        CANCELLED: "已取消",
+                      }[tx.status] || tx.status,
+                    )}
                   </span>
                 </span>
                 <ArrowUpRight className="transaction-external" size={17} />
@@ -306,23 +313,23 @@ export function ActivityPanel({
             </span>
             <h3>
               {!unlocked
-                ? "解锁后查看交易"
+                ? t("解锁后查看交易")
                 : historyLoading
-                  ? "正在读取链上记录…"
+                  ? t("正在读取链上记录…")
                   : !wallet
-                    ? "添加钱包后查看交易"
+                    ? t("添加钱包后查看交易")
                     : filtered
-                      ? "没有符合条件的记录"
-                      : "暂无交易记录"}
+                      ? t("没有符合条件的记录")
+                      : t("暂无交易记录")}
             </h3>
             <p>
               {!unlocked
-                ? "余额与交易记录仅在解锁后显示"
+                ? t("余额与交易记录仅在解锁后显示")
                 : !wallet
-                  ? "支持创建、导入和观察钱包"
+                  ? t("支持创建、导入和观察钱包")
                   : filtered
-                    ? "试试其他地址、交易哈希或筛选条件"
-                    : "交易确认并被索引后，会出现在这里"}
+                    ? t("试试其他地址、交易哈希或筛选条件")
+                    : t("交易确认并被索引后，会出现在这里")}
             </p>
           </div>
         )
@@ -333,14 +340,14 @@ export function ActivityPanel({
           disabled={historyLoading}
           onClick={onLoadMore}
         >
-          {historyLoading ? "正在加载…" : "加载更多记录"}
+          {historyLoading ? t("正在加载…") : t("加载更多记录")}
           <ChevronDown size={14} />
         </button>
       )}
       {wallet && page === "activity" && (
         <div className="wallet-indexer-note">
           <span className="status-dot" />
-          Explorer 索引可能稍有延迟
+          {t("Explorer 索引可能稍有延迟")}
         </div>
       )}
     </section>

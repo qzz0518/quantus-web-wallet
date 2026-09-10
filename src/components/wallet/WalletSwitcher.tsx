@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { Wallet } from "../../lib/vault";
 import { shortAddress } from "../../lib/amount";
+import { useT } from "../../lib/i18n";
 import { Modal } from "../Modal";
 
 type WalletSwitcherProps = {
@@ -25,8 +26,9 @@ export function WalletSwitcher({
   onClose,
   onAdd,
 }: WalletSwitcherProps) {
+  const t = useT();
   return (
-    <Modal title="切换钱包" variant="flow" onClose={onClose}>
+    <Modal title={t("切换钱包")} variant="flow" onClose={onClose}>
       <div className="flow-body">
         <div className="wallet-switcher-list">
           {wallets.map((w, i) => (
@@ -57,7 +59,7 @@ export function WalletSwitcher({
       <div className="flow-footer">
         <button className="button primary full" onClick={onAdd}>
           <Plus size={17} />
-          添加钱包
+          {t("添加钱包")}
         </button>
       </div>
     </Modal>
@@ -73,11 +75,12 @@ export function WalletChooser({
   onBack?: () => void;
   onChoose: (mode: "create" | "import" | "watch") => void;
 }) {
+  const t = useT();
   return (
     <Modal
-      title="添加一个钱包"
+      title={t("添加一个钱包")}
       variant="flow"
-      subtitle="选择适合你的开始方式。"
+      subtitle={t("选择适合你的开始方式。")}
       onClose={onClose}
       onBack={onBack}
     >
@@ -87,22 +90,22 @@ export function WalletChooser({
             {
               mode: "create" as const,
               icon: <Plus size={21} />,
-              title: "创建新钱包",
-              desc: "生成一个独立的地址与助记词",
+              title: t("创建新钱包"),
+              desc: t("生成一个独立的地址与助记词"),
               color: "mint",
             },
             {
               mode: "import" as const,
               icon: <ArrowDownToLine size={21} />,
-              title: "导入已有钱包",
-              desc: "通过 ML-DSA-87 助记词恢复",
+              title: t("导入已有钱包"),
+              desc: t("通过 ML-DSA-87 助记词恢复"),
               color: "lavender",
             },
             {
               mode: "watch" as const,
               icon: <Eye size={21} />,
-              title: "添加观察钱包",
-              desc: "查看余额、转账记录与挖矿奖励",
+              title: t("添加观察钱包"),
+              desc: t("查看余额、转账记录与挖矿奖励"),
               color: "peach",
             },
           ].map((o) => (
@@ -118,7 +121,9 @@ export function WalletChooser({
         </div>
       </div>
       <div className="flow-footer">
-        <p className="flow-note centered">你可以添加多个钱包，并随时切换。</p>
+        <p className="flow-note centered">
+          {t("你可以添加多个钱包，并随时切换。")}
+        </p>
       </div>
     </Modal>
   );

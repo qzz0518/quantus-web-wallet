@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useId, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useId, useState, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { dismissModal, reveal } from "../lib/motion";
+import { useT } from "../lib/i18n";
 
 export function Modal({
   title,
@@ -23,7 +24,11 @@ export function Modal({
   variant?: "default" | "flow";
   busy?: boolean;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
+  // Children mount after the dialog is open so a field's autoFocus can win;
+  // otherwise focus rests on the inert container instead of the first button.
+  const [ready, setReady] = useState(false);
   const titleId = useId();
   const subtitleId = useId();
   const previousStep = useRef(`${title}:${stepKey}`);
@@ -32,6 +37,8 @@ export function Modal({
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     el?.showModal();
+    el?.querySelector<HTMLElement>(".modal-inner")?.focus({ preventScroll: true });
+    setReady(true);
     return () => {
       el?.close();
       document.body.style.overflow = overflow;
@@ -96,11 +103,11 @@ export function Modal({
         if (event.target === event.currentTarget) close();
       }}
     >
-      <div className="modal-inner">
+      <div className="modal-inner" tabIndex={-1}>
         <header className="modal-head">
           <button
             className="circle-button"
-            aria-label="返回"
+            aria-label={t("返回")}
             disabled={busy}
             onClick={back}
           >
@@ -110,7 +117,7 @@ export function Modal({
           {onBack ? (
             <button
               className="circle-button subtle"
-              aria-label="关闭"
+              aria-label={t("关闭")}
               disabled={busy}
               onClick={close}
             >
@@ -126,7 +133,7 @@ export function Modal({
               {subtitle}
             </p>
           )}
-          {children}
+          {ready && children}
         </div>
       </div>
     </dialog>

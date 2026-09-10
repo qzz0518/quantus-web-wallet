@@ -101,8 +101,16 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 0;
+}
+.modal-inner:focus {
+  outline: none;
 }
 p,
 h1,
@@ -353,6 +361,24 @@ textarea {
   background: var(--warning-bg);
   color: var(--warning);
 }
+.callout > div {
+  flex: 1;
+  min-width: 0;
+}
+.callout > div > p {
+  margin: 0;
+}
+.callout .check-row {
+  margin: 10px 0 0;
+  min-height: 0;
+  color: inherit;
+}
+.field-hint {
+  margin: -6px 0 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
 
 /* A centered desktop frame, with a separate phone navigation. */
 .wallet-app {
@@ -523,30 +549,87 @@ textarea {
   flex-shrink: 0;
   text-decoration: underline;
 }
-.theme-picker {
+/* Segmented control shared by appearance and language settings. */
+.segmented {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  position: relative;
-  color: var(--muted);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  max-width: 100%;
 }
-.theme-picker select {
-  appearance: none;
+.segmented > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
   font-size: 13px;
-  border: 0;
-  padding: 12px 20px 12px 2px;
-  height: 44px;
-  background: transparent;
-  cursor: pointer;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
-.theme-picker option {
-  background: var(--surface);
+.segmented > button:hover {
   color: var(--text);
 }
-.theme-chevron {
+.segmented > button[aria-checked="true"] {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.segmented > button:focus-visible {
+  outline-offset: 0;
+}
+.theme-menu {
+  position: relative;
+}
+.theme-menu-list {
   position: absolute;
-  right: 1px;
-  pointer-events: none;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  animation: menu-in 160ms ease-out;
+}
+.theme-menu-list > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+}
+.theme-menu-list > button > span {
+  flex: 1;
+}
+.theme-menu-list > button:hover {
+  background: var(--surface-hover);
+}
+.theme-menu-list > button[aria-checked="true"] > svg:last-child {
+  color: var(--focus);
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Balance and account identity share one bounded row. */
@@ -1354,7 +1437,8 @@ p.flow-success {
   cursor: pointer;
 }
 .file-picker:focus-within {
-  outline: 3px solid var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .step-progress {
   display: flex;
@@ -1583,8 +1667,26 @@ a.settings-row:hover {
   height: 16px;
   color: var(--muted);
 }
-.settings-appearance .theme-picker > svg:first-child {
-  display: none;
+.settings-row.settings-appearance {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+.settings-appearance .settings-row-copy {
+  flex: 1 0 auto;
+}
+.settings-appearance .segmented {
+  margin-left: auto;
+}
+@media (max-width: 700px) {
+  /* Stack the control under its label so neither has to shrink. */
+  .settings-appearance .segmented {
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+  .settings-appearance .segmented > button {
+    flex: 1;
+    min-height: 38px;
+  }
 }
 .settings-footer {
   display: flex;
@@ -2040,22 +2142,10 @@ a.settings-row:hover {
   .wallet-header-actions {
     margin-left: auto;
   }
-  .wallet-header-actions .theme-picker {
+  .wallet-header-actions .theme-menu > .circle-button,
+  .wallet-header-actions .language-toggle {
     width: 40px;
     height: 40px;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--surface);
-  }
-  .wallet-header-actions .theme-picker select {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    width: 100%;
-    font-size: 16px;
-  }
-  .wallet-header-actions .theme-chevron {
-    display: none;
   }
   .header-lock {
     width: 40px;

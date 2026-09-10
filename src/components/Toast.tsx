@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, Info, X } from "lucide-react";
+import { useT } from "../lib/i18n";
 import { MOTION_EASE, motionAllowed, trackMotion } from "../lib/motion";
 
 export type Notice = { message: string; success: boolean };
@@ -11,6 +12,7 @@ export function Toast({
   notice: Notice | null;
   onDismiss: () => void;
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(notice);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -64,7 +66,7 @@ export function Toast({
     <div className="toast" role="status" ref={ref}>
       {visible.success ? <Check size={16} /> : <Info size={16} />}
       {visible.message}
-      <button aria-label="关闭提示" onClick={onDismiss}>
+      <button aria-label={t("关闭提示")} onClick={onDismiss}>
         <X size={14} />
       </button>
     </div>

@@ -2,6 +2,7 @@ import { ApiPromise, HttpProvider } from '@polkadot/api';
 import { hexToU8a } from '@polkadot/util';
 import { blake2AsHex, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import type { EventRecord } from '@polkadot/types/interfaces';
+import { t } from './i18n';
 
 export const MAINNET = Object.freeze({
   rpcUrl: 'https://rpc1-mainnet.quantus.com',
@@ -134,7 +135,7 @@ const HISTORY_PAGE_SIZE = 25;
 
 export function validateAddress(address: string): string {
   const trimmed = address.trim();
-  if (!trimmed || trimmed.startsWith('0x')) throw new Error('请输入 Quantus 地址（SS58 前缀 189）。');
+  if (!trimmed || trimmed.startsWith('0x')) throw new Error(t('请输入 Quantus 地址（SS58 前缀 189）。'));
   try {
     const publicKey = decodeAddress(trimmed, false, MAINNET.ss58Prefix);
     if (publicKey.length !== 32) throw new Error('Invalid account length');
@@ -142,33 +143,33 @@ export function validateAddress(address: string): string {
     if (canonical !== trimmed) throw new Error('Noncanonical address');
     return canonical;
   } catch {
-    throw new Error('地址格式或校验码无效，请使用 Quantus 地址（SS58 前缀 189）。');
+    throw new Error(t('地址格式或校验码无效，请使用 Quantus 地址（SS58 前缀 189）。'));
   }
 }
 
 function integerAmount(value: unknown): string {
   // Hasura returns numeric balances as strings. Never coerce an unsafe JSON number.
-  if (typeof value !== 'string' || !/^\d+$/.test(value)) throw new Error('服务返回了无效的金额。');
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) throw new Error(t('服务返回了无效的金额。'));
   return BigInt(value).toString();
 }
 
-function safeInteger(value: unknown, name: string): number {
+function safeInteger(value: unknown, invalid: string): number {
   const number = typeof value === 'string' && /^(0x[\da-f]+|\d+)$/i.test(value) ? Number(value) : value;
-  if (typeof number !== 'number' || !Number.isSafeInteger(number) || number < 0) throw new Error(`${name} 无效。`);
+  if (typeof number !== 'number' || !Number.isSafeInteger(number) || number < 0) throw new Error(invalid);
   return number;
 }
 
 function hash32(value: unknown): string {
-  if (typeof value !== 'string' || !HEX_32.test(value)) throw new Error('服务返回了无效的区块或交易哈希。');
+  if (typeof value !== 'string' || !HEX_32.test(value)) throw new Error(t('服务返回了无效的区块或交易哈希。'));
   return value.toLowerCase();
 }
 
 function signedTransaction(value: string): string {
-  if (!/^0x(?:[\da-f]{2})+$/i.test(value) || value.length > 100_000) throw new Error('签名交易格式无效。');
+  if (!/^0x(?:[\da-f]{2})+$/i.test(value) || value.length > 100_000) throw new Error(t('签名交易格式无效。'));
   return value;
 }
 
-function aborted(): DOMException { return new DOMException('已停止查询交易状态。', 'AbortError'); }
+function aborted(): DOMException { return new DOMException(t('已停止查询交易状态。'), 'AbortError'); }
 
 function pause(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -195,7 +196,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
       referrerPolicy: 'no-referrer',
       cache: 'no-store',
     });
-    if (!response.ok) throw new Error(`网络服务暂不可用（HTTP ${response.status}）。`);
+    if (!response.ok) throw new Error(t('网络服务暂不可用（HTTP {0}）。', response.status));
     return await response.json() as T;
   }
 
@@ -204,9 +205,9 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const reply = await request<{ id: number; result?: T; error?: { message?: string } }>(config.rpcUrl, {
       jsonrpc: '2.0', id, method, params,
     }, signal);
-    if (reply.id !== id) throw new Error('RPC 响应编号不匹配。');
-    if (reply.error) throw new RpcRejection(reply.error.message || '节点拒绝了请求。');
-    if (!Object.prototype.hasOwnProperty.call(reply, 'result')) throw new Error('RPC 响应不完整。');
+    if (reply.id !== id) throw new Error(t('RPC 响应编号不匹配。'));
+    if (reply.error) throw new RpcRejection(reply.error.message || t('节点拒绝了请求。'));
+    if (!Object.prototype.hasOwnProperty.call(reply, 'result')) throw new Error(t('RPC 响应不完整。'));
     return reply.result as T;
   }
 
@@ -221,7 +222,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     }).then(async (api) => {
       if (api.genesisHash.toHex().toLowerCase() !== config.genesisHash.toLowerCase()) {
         await api.disconnect();
-        throw new Error('RPC 网络不匹配，已停止读取和签名。');
+        throw new Error(t('RPC 网络不匹配，已停止读取和签名。'));
       }
       return api;
     }).catch((error: unknown) => { apiPromise = undefined; throw error; });
@@ -232,11 +233,11 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const [genesis, version] = await Promise.all([
       rpc<string>('chain_getBlockHash', [0]), rpc<RuntimeVersion>('state_getRuntimeVersion'),
     ]);
-    if (hash32(genesis) !== config.genesisHash.toLowerCase()) throw new Error('RPC 网络不匹配，已停止操作。');
-    const specVersion = safeInteger(version.specVersion, '运行时版本');
-    const transactionVersion = safeInteger(version.transactionVersion, '交易版本');
+    if (hash32(genesis) !== config.genesisHash.toLowerCase()) throw new Error(t('RPC 网络不匹配，已停止操作。'));
+    const specVersion = safeInteger(version.specVersion, t('运行时版本 无效。'));
+    const transactionVersion = safeInteger(version.transactionVersion, t('交易版本 无效。'));
     if (forSigning && (specVersion !== config.specVersion || transactionVersion !== config.transactionVersion)) {
-      throw new Error(`主网运行时已变更（${specVersion}/${transactionVersion}），请更新钱包后转账。`);
+      throw new Error(t('主网运行时已变更（{0}/{1}），请更新钱包后转账。', specVersion, transactionVersion));
     }
     return { specVersion, transactionVersion };
   }
@@ -247,8 +248,8 @@ export function createChainClient(config: ChainConfig = MAINNET) {
       rpc<{ peers: number }>('system_health'),
     ]);
     const finalized = await rpc<RpcHeader>('chain_getHeader', [hash32(finalizedHash)]);
-    return { block: safeInteger(head.number, '区块高度'), finalized: safeInteger(finalized.number, '最终确认高度'),
-      ...version, peers: safeInteger(health.peers, '连接节点数') };
+    return { block: safeInteger(head.number, t('区块高度 无效。')), finalized: safeInteger(finalized.number, t('最终确认高度 无效。')),
+      ...version, peers: safeInteger(health.peers, t('连接节点数 无效。')) };
   }
 
   async function readBalance(address: string): Promise<Balance> {
@@ -263,12 +264,12 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const reserved = integerAmount(data.reserved.toString());
     const frozen = integerAmount(data.frozen.toString());
     const spendable = BigInt(free) > BigInt(frozen) ? BigInt(free) - BigInt(frozen) : 0n;
-    return { free, reserved, frozen, spendable: spendable.toString(), block: safeInteger(head.number, '区块高度') };
+    return { free, reserved, frozen, spendable: spendable.toString(), block: safeInteger(head.number, t('区块高度 无效。')) };
   }
 
   async function readHistory(address: string, offset = 0): Promise<Transaction[]> {
     const canonical = validateAddress(address);
-    safeInteger(offset, '分页位置');
+    safeInteger(offset, t('分页位置 无效。'));
     type IndexedTransaction = {
       id: string; detail_id: string; type: string; hash: string | null; block: { height: number; hash: string };
       timestamp: string; amount: string; fee: string | null; status: string;
@@ -283,7 +284,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
       }`,
       variables: { address: canonical, offset, limit: HISTORY_PAGE_SIZE },
     });
-    if (result.errors?.length || !Array.isArray(result.data?.transactions)) throw new Error('交易索引暂不可用，请稍后重试或打开区块浏览器。');
+    if (result.errors?.length || !Array.isArray(result.data?.transactions)) throw new Error(t('交易索引暂不可用，请稍后重试或打开区块浏览器。'));
     const rows = result.data.transactions;
     // Upstream excludes hashless IMMEDIATE rows as miner/treasury rewards.
     // Match the dedicated MinerRewarded index to avoid mislabelling genesis or
@@ -299,12 +300,12 @@ export function createChainClient(config: ChainConfig = MAINNET) {
           }
         }`, variables: { blocks: candidateBlocks, limit: HISTORY_PAGE_SIZE },
       });
-      if (rewardReply.errors?.length || !Array.isArray(rewardReply.data?.rewards)) throw new Error('奖励索引暂不可用，请稍后重试。');
+      if (rewardReply.errors?.length || !Array.isArray(rewardReply.data?.rewards)) throw new Error(t('奖励索引暂不可用，请稍后重试。'));
       rewards = rewardReply.data.rewards;
     }
     return rows.map((row) => {
       if (typeof row.id !== 'string' || typeof row.type !== 'string' || typeof row.status !== 'string' ||
-          !Number.isFinite(Date.parse(row.timestamp))) throw new Error('交易索引返回了无效的数据。');
+          !Number.isFinite(Date.parse(row.timestamp))) throw new Error(t('交易索引返回了无效的数据。'));
       const hashlessReward = row.type === 'IMMEDIATE' && row.hash === null;
       const mined = hashlessReward && rewards.some((reward) => reward.block.hash === row.block.hash &&
         reward.miner.id === row.to?.id && integerAmount(reward.reward) === integerAmount(row.amount));
@@ -312,7 +313,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
         id: row.id, detailId: row.detail_id, sourceType: row.type,
         type: mined ? 'MINER_REWARD' : hashlessReward ? 'NETWORK_REWARD' : row.type,
         hash: row.hash ? hash32(row.hash) : null,
-        block: safeInteger(row.block.height, '交易高度'), blockHash: hash32(row.block.hash),
+        block: safeInteger(row.block.height, t('交易高度 无效。')), blockHash: hash32(row.block.hash),
         timestamp: row.timestamp, amount: integerAmount(row.amount), fee: row.fee === null ? '0' : integerAmount(row.fee),
         status: row.status, from: row.from?.id ?? null, to: row.to?.id ?? null,
       };
@@ -338,20 +339,20 @@ export function createChainClient(config: ChainConfig = MAINNET) {
         stats: account_stats_by_pk(id: $address) {total_mined_blocks total_rewards}
       }`, variables: { address: canonical, limit: HISTORY_PAGE_SIZE + 1 },
     });
-    if (result.errors?.length || !Array.isArray(result.data?.deposits)) throw new Error('Wormhole 公开入账索引暂不可用。');
+    if (result.errors?.length || !Array.isArray(result.data?.deposits)) throw new Error(t('Wormhole 公开入账索引暂不可用。'));
     const rows = result.data.deposits;
     const counter = (value: string | number | null): string | null => value === null ? null :
-      typeof value === 'number' ? safeInteger(value, '入账索引').toString() : integerAmount(value);
+      typeof value === 'number' ? safeInteger(value, t('入账索引 无效。')).toString() : integerAmount(value);
     const deposits = rows.slice(0, HISTORY_PAGE_SIZE).map((row): WormholeDeposit => {
-      if (typeof row.id !== 'string' || !Number.isFinite(Date.parse(row.timestamp))) throw new Error('Wormhole 入账索引数据无效。');
+      if (typeof row.id !== 'string' || !Number.isFinite(Date.parse(row.timestamp))) throw new Error(t('Wormhole 入账索引数据无效。'));
       return { id: row.id, amount: integerAmount(row.amount), timestamp: row.timestamp,
-        block: safeInteger(row.block.height, '入账高度'), blockHash: hash32(row.block.hash), from: row.from?.id ?? null,
+        block: safeInteger(row.block.height, t('入账高度 无效。')), blockHash: hash32(row.block.hash), from: row.from?.id ?? null,
         leafIndex: counter(row.leaf_index), transferCount: counter(row.transfer_count) };
     });
     return { unspentBalance: null, deposits,
       receivedInPage: deposits.reduce((total, deposit) => total + BigInt(deposit.amount), 0n).toString(),
       hasMore: rows.length > HISTORY_PAGE_SIZE,
-      indexedMinedBlocks: result.data.stats ? safeInteger(result.data.stats.total_mined_blocks, '已索引挖矿区块数') : null,
+      indexedMinedBlocks: result.data.stats ? safeInteger(result.data.stats.total_mined_blocks, t('已索引挖矿区块数 无效。')) : null,
       indexedMiningRewards: result.data.stats ? integerAmount(result.data.stats.total_rewards) : null,
     };
   }
@@ -360,7 +361,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const from = validateAddress(address);
     const recipient = validateAddress(to);
     const planck = BigInt(integerAmount(amount));
-    if (planck <= 0n || planck > U128_MAX) throw new Error('转账金额必须大于 0 且在有效范围内。');
+    if (planck <= 0n || planck > U128_MAX) throw new Error(t('转账金额必须大于 0 且在有效范围内。'));
     const [api, version, nonce, blockHash] = await Promise.all([
       getApi(), assertNetwork(true), rpc<number | string>('system_accountNextIndex', [from]), rpc<string>('chain_getBlockHash'),
     ]);
@@ -370,19 +371,19 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     // runtime upgrade race instead of pairing old call indices with a new context.
     const [at, checkpointVersion] = await Promise.all([api.at(checkpoint), rpc<RuntimeVersion>('state_getRuntimeVersion', [checkpoint])]);
     if (checkpointVersion.specVersion !== version.specVersion ||
-        checkpointVersion.transactionVersion !== version.transactionVersion) throw new Error('网络正在升级，请稍后重新准备交易。');
+        checkpointVersion.transactionVersion !== version.transactionVersion) throw new Error(t('网络正在升级，请稍后重新准备交易。'));
     const balances = at.registry.metadata.pallets.find((pallet) => pallet.name.toString() === 'Balances');
     const calls = balances?.calls.unwrap();
     const transfer = calls && at.registry.lookup.getSiType(calls.type).def.asVariant.variants.find((variant) => variant.name.toString() === 'transfer_keep_alive');
-    if (!balances || !transfer) throw new Error('当前网络不支持所需的保留账户转账。');
+    if (!balances || !transfer) throw new Error(t('当前网络不支持所需的保留账户转账。'));
     // Build only the Call: Polkadot.js ExtrinsicV4 cannot represent Quantus’s
     // 7,219-byte signature field. The official WASM creates the signed envelope.
     const call = at.registry.createType('Call', { callIndex: new Uint8Array([balances.index.toNumber(), transfer.index.toNumber()]),
       args: { dest: recipient, value: planck.toString() } });
     const existentialDeposit = integerAmount(at.consts.balances.existentialDeposit.toString());
     return { callHex: call.toHex(), existentialDeposit, ctx: {
-      nonce: safeInteger(nonce, '账户序号'), genesisHash: config.genesisHash, blockHash: checkpoint,
-      blockNumber: safeInteger(head.number, '区块高度'), period: 64,
+      nonce: safeInteger(nonce, t('账户序号 无效。')), genesisHash: config.genesisHash, blockHash: checkpoint,
+      blockNumber: safeInteger(head.number, t('区块高度 无效。')), period: 64,
       ...version, tip: '0',
     } };
   }
@@ -402,21 +403,21 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     } catch (error) {
       // Transport failures may happen after the node accepted the transaction.
       // The caller can track this known local hash; do not advise blindly resending.
-      const message = error instanceof Error ? error.message : '提交交易时连接中断。';
+      const message = error instanceof Error ? error.message : t('提交交易时连接中断。');
       // A duplicate submission response proves neither rejection of the original
       // transaction nor its final outcome. Resume tracking the same local hash.
       const alreadyKnown = /already\s+(?:imported|known|in\s+the\s+pool)/i.test(message);
       throw new SubmissionError(message, expectedHash,
         error instanceof RpcRejection && !alreadyKnown ? 'rejected' : 'unknown');
     }
-    if (returnedHash !== expectedHash) throw new SubmissionError('节点返回的交易哈希与本地签名不匹配，请查询状态后再操作。', expectedHash, 'unknown');
+    if (returnedHash !== expectedHash) throw new SubmissionError(t('节点返回的交易哈希与本地签名不匹配，请查询状态后再操作。'), expectedHash, 'unknown');
     return returnedHash;
   }
 
   async function trackTransfer(hash: string, startBlock: number, onState: (state: TransferState) => void,
     options: TrackOptions = {}): Promise<TransferState> {
     const transactionHash = hash32(hash);
-    safeInteger(startBlock, '起始高度');
+    safeInteger(startBlock, t('起始高度 无效。'));
     const { signal, timeoutMs = 10 * 60_000, pollIntervalMs = 4_000, period = 64 } = options;
     const deadline = Date.now() + Math.max(0, timeoutMs);
     const endBlock = startBlock + period;
@@ -441,8 +442,8 @@ export function createChainClient(config: ChainConfig = MAINNET) {
           rpc<RpcHeader>('chain_getHeader', [], signal), rpc<string>('chain_getFinalizedHead', [], signal),
         ]);
         const finalizedHeader = await rpc<RpcHeader>('chain_getHeader', [hash32(finalizedHash)], signal);
-        const height = safeInteger(header.number, '区块高度');
-        const finalizedHeight = safeInteger(finalizedHeader.number, '最终确认高度');
+        const height = safeInteger(header.number, t('区块高度 无效。'));
+        const finalizedHeight = safeInteger(finalizedHeader.number, t('最终确认高度 无效。'));
         if (inclusion) {
           const canonical = await rpc<string>('chain_getBlockHash', [inclusion.block], signal);
           if (canonical !== inclusion.blockHash) { emit({ status: 'retracted', ...inclusion }); inclusion = undefined; scannedThrough = undefined; }
@@ -475,7 +476,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
               const result = events.find(({ phase, event }) => phase.isApplyExtrinsic &&
                 phase.asApplyExtrinsic.toNumber() === extrinsicIndex && event.section === 'system' &&
                 (event.method === 'ExtrinsicSuccess' || event.method === 'ExtrinsicFailed'));
-              if (!result) throw new Error('已找到交易，但尚未确认执行结果。');
+              if (!result) throw new Error(t('已找到交易，但尚未确认执行结果。'));
               entry.outcome = {};
               if (result.event.method === 'ExtrinsicFailed') {
                 const dispatch = result.event.data[0] as unknown as { isModule: boolean; asModule: Parameters<typeof at.registry.findMetaError>[0]; toString(): string };
@@ -496,16 +497,16 @@ export function createChainClient(config: ChainConfig = MAINNET) {
           }
           if (number <= finalizedHeight) { finalizedScanned = number; cache.delete(number); }
         }
-        if (!inclusion && finalizedHeight >= endBlock) return emit({ status: 'expired', error: '交易有效期内未在最终确认的主链中找到此交易，请重新查询余额和序号后再准备。' });
+        if (!inclusion && finalizedHeight >= endBlock) return emit({ status: 'expired', error: t('交易有效期内未在最终确认的主链中找到此交易，请重新查询余额和序号后再准备。') });
         lastError = undefined;
       } catch (error) {
         if (signal?.aborted) throw aborted();
-        lastError = error instanceof Error ? error.message : '交易状态查询中断。';
-        emit({ status: 'unknown', ...(inclusion ?? {}), error: `${lastError} 正在重试，请勿重复转账。` });
+        lastError = error instanceof Error ? error.message : t('交易状态查询中断。');
+        emit({ status: 'unknown', ...(inclusion ?? {}), error: t('{0} 正在重试，请勿重复转账。', lastError) });
       }
       await pause(Math.min(pollIntervalMs, Math.max(0, deadline - Date.now())), signal);
     }
-    return emit({ status: 'unknown', ...(inclusion ?? {}), error: lastError || '等待确认超时，请通过交易哈希查询最终状态，勿重复转账。' });
+    return emit({ status: 'unknown', ...(inclusion ?? {}), error: lastError || t('等待确认超时，请通过交易哈希查询最终状态，勿重复转账。') });
   }
 
   async function disconnect(): Promise<void> {

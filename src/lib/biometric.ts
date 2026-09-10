@@ -4,6 +4,7 @@ import {
   vaultSalt,
   STORAGE_KEY,
 } from "./vault";
+import { t } from "./i18n";
 export const BIOMETRIC_KEY = "quantus.biometric.v1";
 export type DeviceSupport = {
   available: boolean;
@@ -41,19 +42,19 @@ export async function deviceSupport(): Promise<DeviceSupport> {
   if (typeof window === "undefined" || !window.isSecureContext)
     return {
       available: false,
-      reason: "请在 HTTPS 或本机 localhost 中使用设备解锁",
+      reason: t("请在 HTTPS 或本机 localhost 中使用设备解锁"),
     };
   if (location.hostname === "127.0.0.1" || location.hostname === "[::1]")
     return {
       available: false,
       needsLocalhost: true,
       reason:
-        "通行密钥需要使用 localhost 地址。请先导出加密备份，再在 localhost 恢复钱包。",
+        t("通行密钥需要使用 localhost 地址。请先导出加密备份，再在 localhost 恢复钱包。"),
     };
   if (!window.PublicKeyCredential || !navigator.credentials)
     return {
       available: false,
-      reason: "当前浏览器不支持系统通行密钥，请使用密码解锁",
+      reason: t("当前浏览器不支持系统通行密钥，请使用密码解锁"),
     };
   try {
     if (
@@ -62,7 +63,7 @@ export async function deviceSupport(): Promise<DeviceSupport> {
       return {
         available: false,
         reason:
-          "未检测到可用的系统验证器。请在系统设置中启用指纹、面容或设备锁屏。",
+          t("未检测到可用的系统验证器。请在系统设置中启用指纹、面容或设备锁屏。"),
       };
     const pk = PublicKeyCredential as typeof PublicKeyCredential & {
       getClientCapabilities?: () => Promise<Record<string, boolean>>;
@@ -72,14 +73,14 @@ export async function deviceSupport(): Promise<DeviceSupport> {
       if (caps["extension:prf"] === false)
         return {
           available: false,
-          reason: "当前浏览器不支持通行密钥加密扩展，请使用支持 PRF 的浏览器",
+          reason: t("当前浏览器不支持通行密钥加密扩展，请使用支持 PRF 的浏览器"),
         };
     }
     return { available: true };
   } catch {
     return {
       available: false,
-      reason: "暂时无法检测设备验证能力，仍可使用密码解锁",
+      reason: t("暂时无法检测设备验证能力，仍可使用密码解锁"),
     };
   }
 }
@@ -116,16 +117,16 @@ export function hasBiometric(raw = localStorage.getItem(STORAGE_KEY) || "") {
   return !!bindingFor(raw);
 }
 function assertCurrent(raw: string, signal?: AbortSignal) {
-  if (signal?.aborted) throw new DOMException("操作已取消", "AbortError");
+  if (signal?.aborted) throw new DOMException(t("操作已取消"), "AbortError");
   if (localStorage.getItem(STORAGE_KEY) !== raw)
-    throw new Error("钱包数据已变化，请重试");
+    throw new Error(t("钱包数据已变化，请重试"));
 }
 async function wrappingKey(
   prf: ArrayBuffer,
   b: Pick<Binding, "origin" | "vaultSalt">,
 ): Promise<CryptoKey> {
   const bytes = new Uint8Array(prf);
-  if (bytes.length !== 32) throw new Error("设备未提供有效的加密结果");
+  if (bytes.length !== 32) throw new Error(t("设备未提供有效的加密结果"));
   try {
     const material = await crypto.subtle.importKey(
       "raw",
@@ -189,7 +190,7 @@ async function authenticate(
     credential.type !== "public-key" ||
     b64(new Uint8Array(credential.rawId)) !== b64(id)
   )
-    throw new Error("设备凭证不匹配");
+    throw new Error(t("设备凭证不匹配"));
   const response = credential.response as AuthenticatorAssertionResponse;
   const client = JSON.parse(new TextDecoder().decode(response.clientDataJSON));
   if (
@@ -198,7 +199,7 @@ async function authenticate(
     client.challenge !== b64(challenge) ||
     client.crossOrigin === true
   )
-    throw new Error("设备验证上下文不匹配");
+    throw new Error(t("设备验证上下文不匹配"));
   const auth = new Uint8Array(response.authenticatorData),
     rp = new Uint8Array(
       await crypto.subtle.digest("SHA-256", enc.encode(location.hostname)),
@@ -208,9 +209,9 @@ async function authenticate(
     (auth[32] & 5) !== 5 ||
     !rp.every((v, i) => v === auth[i])
   )
-    throw new Error("系统未完成用户验证");
+    throw new Error(t("系统未完成用户验证"));
   const prf = output(credential).prf?.results?.first;
-  if (!prf) throw new Error("此设备凭证不支持加密解锁（PRF），请继续使用密码");
+  if (!prf) throw new Error(t("此设备凭证不支持加密解锁（PRF），请继续使用密码"));
   return prf;
 }
 export async function enrollBiometric(
@@ -220,7 +221,7 @@ export async function enrollBiometric(
   const support = await deviceSupport();
   if (!support.available) throw new Error(support.reason);
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) throw new Error("请先创建钱包空间");
+  if (!raw) throw new Error(t("请先创建钱包空间"));
   const material = await biometricKeyMaterial(password, raw);
   try {
     assertCurrent(raw, signal);
@@ -232,7 +233,7 @@ export async function enrollBiometric(
         user: {
           id: fresh(),
           name: `wallet-${location.port || "https"}`,
-          displayName: "Quantus 本地钱包解锁",
+          displayName: t("Quantus 本地钱包解锁"),
         },
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },
@@ -250,9 +251,9 @@ export async function enrollBiometric(
       signal,
     })) as PublicKeyCredential | null;
     if (!credential || credential.type !== "public-key")
-      throw new Error("未创建通行密钥");
+      throw new Error(t("未创建通行密钥"));
     if (output(credential).prf?.enabled === false)
-      throw new Error("此设备凭证不支持加密解锁（PRF），请继续使用密码");
+      throw new Error(t("此设备凭证不支持加密解锁（PRF），请继续使用密码"));
     const prf = await authenticate(
       new Uint8Array(credential.rawId),
       salt,
@@ -289,9 +290,9 @@ export async function enrollBiometric(
 }
 export async function unlockBiometric(signal?: AbortSignal) {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) throw new Error("请先恢复钱包");
+  if (!raw) throw new Error(t("请先恢复钱包"));
   const binding = bindingFor(raw);
-  if (!binding) throw new Error("请先使用密码解锁，再开启生物识别");
+  if (!binding) throw new Error(t("请先使用密码解锁，再开启生物识别"));
   let material: Uint8Array | undefined;
   try {
     const key = await wrappingKey(
@@ -305,7 +306,7 @@ export async function unlockBiometric(signal?: AbortSignal) {
     assertCurrent(raw, signal);
     // Disabling this binding in another tab must immediately revoke this attempt.
     if (localStorage.getItem(BIOMETRIC_KEY) !== JSON.stringify(binding))
-      throw new Error("设备解锁设置已变化，请使用密码");
+      throw new Error(t("设备解锁设置已变化，请使用密码"));
     material = new Uint8Array(
       await crypto.subtle.decrypt(
         {
@@ -346,6 +347,6 @@ export function deviceError(error: unknown): string {
     error instanceof DOMException &&
     ["NotAllowedError", "AbortError"].includes(error.name)
   )
-    return "验证已取消或超时，仍可使用密码解锁";
-  return error instanceof Error ? error.message : "设备验证未完成，请使用密码";
+    return t("验证已取消或超时，仍可使用密码解锁");
+  return error instanceof Error ? error.message : t("设备验证未完成，请使用密码");
 }

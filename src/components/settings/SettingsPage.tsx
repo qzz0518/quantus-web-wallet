@@ -7,6 +7,7 @@ import {
   Fingerprint,
   Info,
   KeyRound,
+  Languages,
   LockKeyhole,
   Palette,
   Smartphone,
@@ -18,8 +19,10 @@ import { hasBiometric } from "../../lib/biometric";
 import { installPwa, usePwaInstall } from "../../lib/pwa";
 import { PROJECT_NAME } from "../../lib/project";
 import { shortAddress } from "../../lib/amount";
+import { useT } from "../../lib/i18n";
 import { DeviceUnlockSettings } from "../DeviceUnlockSettings";
 import { ThemePicker } from "../ThemePicker";
+import { LanguagePicker } from "../LanguagePicker";
 import { dismissModal } from "../../lib/motion";
 import { Modal } from "../Modal";
 import { AboutDialog } from "../dialogs/AboutDialog";
@@ -83,6 +86,7 @@ export function SettingsPage({
   onLock,
   onUnlock,
 }: SettingsPageProps) {
+  const t = useT();
   const [panel, setPanel] = useState<SettingsPanel>(null);
   const [panelBusy, setPanelBusy] = useState(false);
   const [installError, setInstallError] = useState("");
@@ -107,12 +111,16 @@ export function SettingsPage({
   };
 
   return (
-    <section className="settings-page" aria-label="钱包设置">
+    <section className="settings-page" aria-label={t("钱包设置")}>
       <button
         className="settings-profile"
         onClick={() => secured(wallet ? onManage : onWallets)}
         aria-label={
-          unlocked ? (wallet ? "查看当前钱包详情" : "添加钱包") : "解锁钱包"
+          unlocked
+            ? wallet
+              ? t("查看当前钱包详情")
+              : t("添加钱包")
+            : t("解锁钱包")
         }
       >
         <span className="settings-profile-avatar" aria-hidden="true">
@@ -124,75 +132,90 @@ export function SettingsPage({
             <WalletIcon size={29} />
           )}
         </span>
-        <strong>{unlocked ? wallet?.name || "我的钱包" : "钱包已锁定"}</strong>
+        <strong>
+          {unlocked ? wallet?.name || t("我的钱包") : t("钱包已锁定")}
+        </strong>
         <span className="settings-profile-address">
           {visibleWallet
             ? shortAddress(visibleWallet.address, 6)
             : unlocked
-              ? "添加你的第一个账户"
-              : "解锁后管理账户"}
+              ? t("添加你的第一个账户")
+              : t("解锁后管理账户")}
           <ChevronRight size={14} />
         </span>
       </button>
 
-      <section className="settings-group" aria-label="账户">
-        <h2>账户</h2>
+      <section className="settings-group" aria-label={t("账户")}>
+        <h2>{t("账户")}</h2>
         <SettingsRow
           icon={<WalletCards size={19} />}
-          title={unlocked && !walletCount ? "添加钱包" : "我的钱包"}
+          title={unlocked && !walletCount ? t("添加钱包") : t("我的钱包")}
           value={
             unlocked
               ? walletCount
-                ? `${walletCount} 个`
+                ? t("{0} 个", walletCount)
                 : undefined
-              : "解锁后查看"
+              : t("解锁后查看")
           }
           onClick={() => secured(onWallets)}
         />
       </section>
 
-      <section className="settings-group" aria-label="安全与备份">
-        <h2>安全与备份</h2>
+      <section className="settings-group" aria-label={t("安全与备份")}>
+        <h2>{t("安全与备份")}</h2>
         <SettingsRow
           icon={<KeyRound size={19} />}
-          title="解锁密码"
+          title={t("解锁密码")}
           onClick={() => secured(() => openPanel("password"))}
         />
         <SettingsRow
           icon={<Fingerprint size={19} />}
-          title="设备解锁"
+          title={t("设备解锁")}
           value={
-            unlocked ? (deviceEnabled ? "已开启" : "未开启") : "解锁后查看"
+            unlocked
+              ? deviceEnabled
+                ? t("已开启")
+                : t("未开启")
+              : t("解锁后查看")
           }
           onClick={() => secured(() => openPanel("biometric"))}
         />
         <SettingsRow
           icon={<Download size={19} />}
-          title="加密备份"
+          title={t("加密备份")}
           onClick={() => secured(() => openPanel("backup"))}
         />
       </section>
 
-      <section className="settings-group" aria-label="应用">
-        <h2>应用</h2>
+      <section className="settings-group" aria-label={t("应用")}>
+        <h2>{t("应用")}</h2>
         <div className="settings-row settings-appearance">
           <span className="settings-row-icon" aria-hidden="true">
             <Palette size={19} />
           </span>
           <span className="settings-row-copy">
-            <strong>外观</strong>
+            <strong>{t("外观")}</strong>
           </span>
           <ThemePicker />
         </div>
+        <div className="settings-row settings-appearance">
+          <span className="settings-row-icon" aria-hidden="true">
+            <Languages size={19} />
+          </span>
+          <span className="settings-row-copy">
+            <strong>{t("语言")}</strong>
+          </span>
+          <LanguagePicker />
+        </div>
         <SettingsRow
           icon={<Smartphone size={19} />}
-          title="添加到主屏幕"
-          value={installation.installed ? "已添加" : undefined}
+          title={t("添加到主屏幕")}
+          value={installation.installed ? t("已添加") : undefined}
           onClick={() => openPanel("install")}
         />
         <SettingsRow
           icon={<Info size={19} />}
-          title="关于钱包"
+          title={t("关于钱包")}
           onClick={() => openPanel("about")}
         />
       </section>
@@ -204,14 +227,14 @@ export function SettingsPage({
           disabled={!unlocked && !onUnlock}
         >
           <LockKeyhole size={17} />
-          {unlocked ? "锁定钱包" : "解锁钱包"}
+          {unlocked ? t("锁定钱包") : t("解锁钱包")}
         </button>
         <span>{PROJECT_NAME}</span>
       </div>
 
       {(panel === "password" || panel === "biometric") && (
         <Modal
-          title={panel === "password" ? "解锁密码" : "设备解锁"}
+          title={panel === "password" ? t("解锁密码") : t("设备解锁")}
           variant="flow"
           busy={panelBusy}
           onClose={closePanel}
@@ -229,7 +252,7 @@ export function SettingsPage({
       )}
       {panel === "backup" && (
         <Modal
-          title="加密备份"
+          title={t("加密备份")}
           variant="flow"
           onClose={closePanel}
           onBack={closePanel}
@@ -239,22 +262,28 @@ export function SettingsPage({
               <span className="flow-symbol">
                 <Download size={29} />
               </span>
-              <h2>为钱包留一份备份</h2>
-              <p>导出这台设备上的全部钱包。恢复时需要当前解锁密码。</p>
+              <h2>{t("为钱包留一份备份")}</h2>
+              <p>{t("导出这台设备上的全部钱包。恢复时需要当前解锁密码。")}</p>
             </div>
             <div className="flow-summary">
-              <span>备份内容</span>
-              <strong>{walletCount} 个钱包</strong>
-              <span>文件格式</span>
-              <strong>加密 JSON</strong>
+              <span>{t("备份内容")}</span>
+              <strong>
+                {walletCount === 1
+                  ? t("1 个钱包")
+                  : t("{0} 个钱包", walletCount)}
+              </strong>
+              <span>{t("文件格式")}</span>
+              <strong>{t("加密 JSON")}</strong>
             </div>
             <p className="flow-note">
-              请将备份文件保存在另一台设备。修改密码或添加钱包后，记得重新备份。
+              {t(
+                "请将备份文件保存在另一台设备。修改密码或添加钱包后，记得重新备份。",
+              )}
             </p>
             {backupExported && (
               <p className="flow-success" role="status">
                 <Check size={17} />
-                备份下载已开始
+                {t("备份下载已开始")}
               </p>
             )}
             {backupError && (
@@ -273,19 +302,19 @@ export function SettingsPage({
                   onExport();
                   setBackupExported(true);
                 } catch {
-                  setBackupError("备份导出失败，请重试。");
+                  setBackupError(t("备份导出失败，请重试。"));
                 }
               }}
             >
               <Download size={18} />
-              {backupExported ? "再次导出备份" : "导出加密备份"}
+              {backupExported ? t("再次导出备份") : t("导出加密备份")}
             </button>
           </div>
         </Modal>
       )}
       {panel === "install" && (
         <Modal
-          title="添加到主屏幕"
+          title={t("添加到主屏幕")}
           variant="flow"
           busy={installBusy}
           onClose={closePanel}
@@ -297,12 +326,14 @@ export function SettingsPage({
                 <Smartphone size={29} />
               </span>
               <h2>
-                {installation.installed ? "钱包已在主屏幕" : "随手打开你的钱包"}
+                {installation.installed
+                  ? t("钱包已在主屏幕")
+                  : t("随手打开你的钱包")}
               </h2>
               <p>
                 {installation.installed
-                  ? "下次可以直接从主屏幕打开，继续管理你的账户。"
-                  : "像应用一样打开钱包，快速查看资产和交易。"}
+                  ? t("下次可以直接从主屏幕打开，继续管理你的账户。")
+                  : t("像应用一样打开钱包，快速查看资产和交易。")}
               </p>
             </div>
             {!installation.installed &&
@@ -310,15 +341,17 @@ export function SettingsPage({
               !installBusy && (
                 <div className="flow-note install-instructions">
                   {!installation.secure ? (
-                    <p>请通过 HTTPS 或 localhost 打开钱包后安装。</p>
+                    <p>{t("请通过 HTTPS 或 localhost 打开钱包后安装。")}</p>
                   ) : installation.isIOS ? (
                     <ol>
-                      <li>用 Safari 打开钱包。</li>
-                      <li>点击浏览器的分享按钮。</li>
-                      <li>选择“添加到主屏幕”。</li>
+                      <li>{t("用 Safari 打开钱包。")}</li>
+                      <li>{t("点击浏览器的分享按钮。")}</li>
+                      <li>{t("选择“添加到主屏幕”。")}</li>
                     </ol>
                   ) : (
-                    <p>打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。</p>
+                    <p>
+                      {t("打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。")}
+                    </p>
                   )}
                 </div>
               )}
@@ -342,7 +375,7 @@ export function SettingsPage({
                     await installPwa();
                   } catch {
                     setInstallError(
-                      "暂时无法打开安装窗口，请从浏览器菜单安装。",
+                      t("暂时无法打开安装窗口，请从浏览器菜单安装。"),
                     );
                   } finally {
                     setInstallBusy(false);
@@ -350,11 +383,11 @@ export function SettingsPage({
                 }}
               >
                 <ArrowUpRight size={18} />
-                {installBusy ? "请在系统窗口中确认…" : "安装钱包应用"}
+                {installBusy ? t("请在系统窗口中确认…") : t("安装钱包应用")}
               </button>
             ) : (
               <button className="button primary full" onClick={closePanel}>
-                知道了
+                {t("知道了")}
               </button>
             )}
           </div>

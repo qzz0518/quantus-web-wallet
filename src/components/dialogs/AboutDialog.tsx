@@ -11,6 +11,7 @@ import {
   WEBSITE_URL,
   X_URL,
 } from "../../lib/project";
+import { useT } from "../../lib/i18n";
 
 export function AboutDialog({
   onClose,
@@ -19,8 +20,14 @@ export function AboutDialog({
   onClose: () => void;
   onBack?: () => void;
 }) {
+  const t = useT();
   return (
-    <Modal title="关于钱包" variant="flow" onClose={onClose} onBack={onBack}>
+    <Modal
+      title={t("关于钱包")}
+      variant="flow"
+      onClose={onClose}
+      onBack={onBack}
+    >
       <div className="flow-body about-page">
         <div className="flow-heading">
           <span className="flow-symbol">
@@ -28,10 +35,13 @@ export function AboutDialog({
           </span>
           <h2>{PROJECT_NAME}</h2>
           <p>
-            在浏览器中管理你的 Quantus 账户。社区开发，非 Quantus 官方产品。
+            {t("在浏览器中管理你的 Quantus 账户。社区开发，非 Quantus 官方产品。")}
           </p>
         </div>
-        <nav className="settings-group about-links" aria-label="项目与作者链接">
+        <nav
+          className="settings-group about-links"
+          aria-label={t("项目与作者链接")}
+        >
           <a
             className="settings-row"
             href={WEBSITE_URL}
@@ -42,7 +52,7 @@ export function AboutDialog({
               <Globe size={19} />
             </span>
             <span className="settings-row-copy">
-              <strong>钱包网站</strong>
+              <strong>{t("钱包网站")}</strong>
               <small>{new URL(WEBSITE_URL).hostname}</small>
             </span>
             <ArrowUpRight size={17} />
@@ -58,7 +68,7 @@ export function AboutDialog({
             </span>
             <span className="settings-row-copy">
               <strong>GitHub</strong>
-              <small>查看源代码</small>
+              <small>{t("查看源代码")}</small>
             </span>
             <ArrowUpRight size={17} />
           </a>
@@ -72,7 +82,7 @@ export function AboutDialog({
               𝕏
             </span>
             <span className="settings-row-copy">
-              <strong>关注作者</strong>
+              <strong>{t("关注作者")}</strong>
               <small>@zerah_eth</small>
             </span>
             <ArrowUpRight size={17} />
@@ -81,7 +91,7 @@ export function AboutDialog({
       </div>
       <div className="flow-footer">
         <button className="button primary full" onClick={onBack || onClose}>
-          {onBack ? "返回设置" : "完成"}
+          {onBack ? t("返回设置") : t("完成")}
         </button>
       </div>
     </Modal>

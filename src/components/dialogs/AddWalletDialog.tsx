@@ -24,6 +24,7 @@ import {
   type MnemonicAnswers,
   type MnemonicQuestion,
 } from "../../lib/mnemonic-backup";
+import { useT } from "../../lib/i18n";
 
 type WalletAction = "create" | "import" | "watch";
 
@@ -40,8 +41,9 @@ export function AddWalletDialog({
   onBack?: () => void;
   onSave: (wallet: Wallet) => Promise<void>;
 }) {
+  const t = useT();
   const defaultName =
-    mode === "watch" ? "观察钱包" : "钱包 " + (wallets.length + 1);
+    mode === "watch" ? t("观察钱包") : t("钱包 {0}", wallets.length + 1);
   const [name, setName] = useState("");
   const [phrase, setPhrase] = useState("");
   const [address, setAddress] = useState("");
@@ -91,7 +93,7 @@ export function AddWalletDialog({
       })
       .catch(() => {
         if (alive) {
-          setError("暂时无法生成助记词，请重试");
+          setError(t("暂时无法生成助记词，请重试"));
           setGenerationFailed(true);
         }
       })
@@ -136,14 +138,14 @@ export function AddWalletDialog({
       )
         return;
       if (!value.trim()) {
-        setError("剪贴板为空，请先复制助记词或地址");
+        setError(t("剪贴板为空，请先复制助记词或地址"));
         return;
       }
       if (value.length > (mode === "watch" ? 256 : 1000)) {
         setError(
           mode === "watch"
-            ? "内容过长，请只粘贴钱包地址"
-            : "内容过长，请只粘贴助记词",
+            ? t("内容过长，请只粘贴钱包地址")
+            : t("内容过长，请只粘贴助记词"),
         );
         return;
       }
@@ -151,7 +153,7 @@ export function AddWalletDialog({
       else setPhrase(value);
     } catch {
       if (mounted.current && request === pasteRequest.current)
-        setError("无法读取剪贴板，请在输入框中手动粘贴");
+        setError(t("无法读取剪贴板，请在输入框中手动粘贴"));
     } finally {
       if (mounted.current && request === pasteRequest.current)
         setPasting(false);
@@ -191,16 +193,16 @@ export function AddWalletDialog({
         accountIndex < 0 ||
         accountIndex > 2 ** 31 - 1
       )
-        throw new Error("账户序号必须是有效的非负整数");
+        throw new Error(t("账户序号必须是有效的非负整数"));
       const normalized = normalizeMnemonic(phrase);
       if (mode !== "watch" && !validateMnemonic(normalized))
-        throw new Error("助记词无效，请检查单词和顺序");
+        throw new Error(t("助记词无效，请检查单词和顺序"));
       if (mode === "create") {
         const result = checkMnemonicQuiz(normalized, questions, answers);
         setIncorrect(result.incorrect);
-        if (!result.complete) throw new Error("请为每道题选择一个单词");
+        if (!result.complete) throw new Error(t("请为每道题选择一个单词"));
         if (!result.correct)
-          throw new Error("还有单词没有选对，请重新选择，或返回查看助记词");
+          throw new Error(t("还有单词没有选对，请重新选择，或返回查看助记词"));
       }
       const target =
         mode === "watch"
@@ -208,7 +210,7 @@ export function AddWalletDialog({
           : (await deriveAccount(normalized, accountIndex)).address;
       if (!mounted.current) return;
       if (wallets.some((wallet) => wallet.address === target))
-        throw new Error("这个地址已经在钱包列表中");
+        throw new Error(t("这个地址已经在钱包列表中"));
       const walletName = name.trim() || defaultName;
       await onSave({
         id: crypto.randomUUID(),
@@ -250,12 +252,12 @@ export function AddWalletDialog({
     questions.length === 3 &&
     questions.every((question) => !!answers[question.position]);
   const title = saved
-    ? "完成"
+    ? t("完成")
     : mode === "create"
-      ? "创建钱包"
+      ? t("创建钱包")
       : mode === "import"
-        ? "导入钱包"
-        : "添加观察钱包";
+        ? t("导入钱包")
+        : t("添加观察钱包");
   return (
     <Modal
       title={title}
@@ -272,13 +274,13 @@ export function AddWalletDialog({
               <Check size={36} strokeWidth={2} />
             </div>
             <div className="flow-heading">
-              <h3>钱包已准备好</h3>
+              <h3>{t("钱包已准备好")}</h3>
               <p>
                 {mode === "watch"
                   ? wormhole
-                    ? "现在可以查看这个地址的公开入账记录。"
-                    : "现在可以查看这个地址的余额与交易。"
-                  : "现在可以接收 QTC，管理你的资产。"}
+                    ? t("现在可以查看这个地址的公开入账记录。")
+                    : t("现在可以查看这个地址的余额与交易。")
+                  : t("现在可以接收 QTC，管理你的资产。")}
               </p>
             </div>
             <div className="flow-account">
@@ -293,7 +295,7 @@ export function AddWalletDialog({
           </div>
           <div className="flow-footer">
             <button className="button primary full" onClick={onClose} autoFocus>
-              进入钱包
+              {t("进入钱包")}
               <ArrowRight size={17} />
             </button>
           </div>
@@ -311,19 +313,19 @@ export function AddWalletDialog({
                   className="step-progress"
                   aria-label={
                     step === 0
-                      ? "第 1 步，共 2 步：备份助记词"
-                      : "第 2 步，共 2 步：验证备份"
+                      ? t("第 1 步，共 2 步：备份助记词")
+                      : t("第 2 步，共 2 步：验证备份")
                   }
                 >
                   <span className="active" />
                   <span className={step === 1 ? "active" : ""} />
                 </div>
                 <div className="flow-heading">
-                  <h3>{step === 0 ? "备份你的助记词" : "确认你的备份"}</h3>
+                  <h3>{step === 0 ? t("备份你的助记词") : t("确认你的备份")}</h3>
                   <p>
                     {step === 0
-                      ? "这 24 个单词可以恢复钱包，请按顺序保存。"
-                      : "根据刚才保存的助记词，选出对应位置的单词。"}
+                      ? t("这 24 个单词可以恢复钱包，请按顺序保存。")
+                      : t("根据刚才保存的助记词，选出对应位置的单词。")}
                   </p>
                 </div>
                 {step === 0 ? (
@@ -339,8 +341,8 @@ export function AddWalletDialog({
                       ) : (
                         <p className="muted">
                           {generating
-                            ? "正在生成助记词…"
-                            : "助记词暂未生成，请重试。"}
+                            ? t("正在生成助记词…")
+                            : t("助记词暂未生成，请重试。")}
                         </p>
                       )}
                     </div>
@@ -356,15 +358,15 @@ export function AddWalletDialog({
                         ) : (
                           <Download size={17} />
                         )}
-                        {downloaded ? "再次下载助记词 TXT" : "下载助记词 TXT"}
+                        {downloaded ? t("再次下载助记词 TXT") : t("下载助记词 TXT")}
                       </button>
-                      <p>这是未加密的助记词文件，请离线保管，不要分享。</p>
+                      <p>{t("这是未加密的助记词文件，请离线保管，不要分享。")}</p>
                     </div>
                   </>
                 ) : (
                   <div className="word-questions" data-private="true">
                     <p className="hint" role="status">
-                      已选择 {answeredCount} / 3 个单词
+                      {t("已选择 {0} / 3 个单词", answeredCount)}
                     </p>
                     {questions.map((question) => (
                       <fieldset
@@ -377,7 +379,7 @@ export function AddWalletDialog({
                           incorrect.includes(question.position) || undefined
                         }
                       >
-                        <legend>第 {question.position} 个单词</legend>
+                        <legend>{t("第 {0} 个单词", question.position)}</legend>
                         <div className="word-options">
                           {question.options.map((option) => (
                             <button
@@ -419,16 +421,16 @@ export function AddWalletDialog({
             ) : (
               <>
                 <div className="flow-heading">
-                  <h3>{mode === "import" ? "找回你的钱包" : "关注一个钱包"}</h3>
+                  <h3>{mode === "import" ? t("找回你的钱包") : t("关注一个钱包")}</h3>
                   <p>
                     {mode === "import"
-                      ? "输入助记词，恢复你的 Quantus 钱包。"
-                      : "添加公开地址，随时查看余额与交易。"}
+                      ? t("输入助记词，恢复你的 Quantus 钱包。")
+                      : t("添加公开地址，随时查看余额与交易。")}
                   </p>
                 </div>
                 <label className="field">
                   <span className="field-label-row">
-                    <span>{mode === "import" ? "助记词" : "钱包地址"}</span>
+                    <span>{mode === "import" ? t("助记词") : t("钱包地址")}</span>
                     <button
                       type="button"
                       className="text-button"
@@ -436,11 +438,11 @@ export function AddWalletDialog({
                       onClick={paste}
                     >
                       <ClipboardPaste size={15} />
-                      {pasting ? "正在读取…" : "粘贴"}
+                      {pasting ? t("正在读取…") : t("粘贴")}
                     </button>
                   </span>
                   <textarea
-                    aria-label={mode === "import" ? "助记词" : "钱包地址"}
+                    aria-label={mode === "import" ? t("助记词") : t("钱包地址")}
                     data-private={mode === "import" ? "true" : undefined}
                     rows={mode === "import" ? 5 : 3}
                     autoComplete="off"
@@ -460,23 +462,22 @@ export function AddWalletDialog({
                     }}
                     placeholder={
                       mode === "import"
-                        ? "按顺序输入单词，以空格分隔"
-                        : "粘贴完整的 Quantus 地址"
+                        ? t("按顺序输入单词，以空格分隔")
+                        : t("粘贴完整的 Quantus 地址")
                     }
                     autoFocus
                   />
                   {mode === "import" && words.length > 0 && (
-                    <small>已输入 {words.length} 个单词</small>
+                    <small>{t("已输入 {0} 个单词", words.length)}</small>
                   )}
                 </label>
                 {mode === "import" && (
                   <p className="hint">
-                    仅支持 ML-DSA-87。ML-DSA-65 和 Wormhole
-                    隐私账户请使用对应钱包。
+                    {t("仅支持 ML-DSA-87。ML-DSA-65 和 Wormhole 隐私账户请使用对应钱包。")}
                   </p>
                 )}
                 <label className="field">
-                  钱包名称（可选）
+                  {t("钱包名称（可选）")}
                   <input
                     maxLength={60}
                     value={name}
@@ -490,9 +491,9 @@ export function AddWalletDialog({
                 </label>
                 {mode === "import" ? (
                   <details className="flow-details">
-                    <summary>账户选项</summary>
+                    <summary>{t("账户选项")}</summary>
                     <label className="field">
-                      账户序号
+                      {t("账户序号")}
                       <input
                         type="number"
                         min="0"
@@ -506,7 +507,7 @@ export function AddWalletDialog({
                         }}
                       />
                       <small>
-                        通常为 0。路径 m/44′/189189′/{index || "0"}′/0′/0′
+                        {t("通常为 0。路径 m/44′/189189′/{0}′/0′/0′", index || "0")}
                       </small>
                     </label>
                   </details>
@@ -522,14 +523,14 @@ export function AddWalletDialog({
                           setError("");
                         }}
                       />
-                      这是 Wormhole 隐私地址
+                      {t("这是 Wormhole 隐私地址")}
                     </label>
                     <div className="soft-note">
                       <Eye size={16} />
                       <p>
                         {wormhole
-                          ? "Wormhole 地址仅展示公开入账；未花费余额与转出请在官方钱包查看。"
-                          : "观察钱包可以查看资产与记录，转账需要持有对应密钥。"}
+                          ? t("Wormhole 地址仅展示公开入账；未花费余额与转出请在官方钱包查看。")
+                          : t("观察钱包可以查看资产与记录，转账需要持有对应密钥。")}
                       </p>
                     </div>
                   </>
@@ -558,18 +559,18 @@ export function AddWalletDialog({
               }
             >
               {busy
-                ? "正在准备钱包…"
+                ? t("正在准备钱包…")
                 : mode === "create"
                   ? step === 0
                     ? generating
-                      ? "正在生成助记词…"
+                      ? t("正在生成助记词…")
                       : generationFailed
-                        ? "重新生成助记词"
-                        : "我已备份，继续"
-                    : "验证并创建钱包"
+                        ? t("重新生成助记词")
+                        : t("我已备份，继续")
+                    : t("验证并创建钱包")
                   : mode === "import"
-                    ? "导入钱包"
-                    : "添加钱包"}
+                    ? t("导入钱包")
+                    : t("添加钱包")}
               <ArrowRight size={17} />
             </button>
             {mode === "create" && step === 1 && (
@@ -579,7 +580,7 @@ export function AddWalletDialog({
                 disabled={busy}
                 onClick={back}
               >
-                返回查看助记词
+                {t("返回查看助记词")}
               </button>
             )}
           </div>

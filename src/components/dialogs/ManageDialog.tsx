@@ -19,8 +19,10 @@ import { MAINNET } from "../../lib/chain";
 import { errorText } from "../../lib/amount";
 import { copyText } from "../../lib/browser";
 import { downloadMnemonicBackup } from "../../lib/mnemonic-backup";
+import { useT } from "../../lib/i18n";
 
 type ManageView = "overview" | "rename" | "seed" | "type" | "remove";
+// Chinese source keys; translated at render time with t().
 const titles: Record<ManageView, string> = {
   overview: "钱包详情",
   rename: "重命名钱包",
@@ -42,6 +44,7 @@ export function ManageDialog({
   onWatchKindChange?: (kind: NonNullable<Wallet["watchKind"]>) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
+  const t = useT();
   const [view, setView] = useState<ManageView>("overview");
   const [name, setName] = useState(wallet.name);
   const [watchKind, setWatchKind] = useState<Wallet["watchKind"] | "">(
@@ -122,14 +125,15 @@ export function ManageDialog({
         const raw = localStorage.getItem(STORAGE_KEY) || "";
         const { data } = await unlockVault(password, raw);
         if (raw !== localStorage.getItem(STORAGE_KEY))
-          throw new Error("钱包数据已变化，请重新解锁");
+          throw new Error(t("钱包数据已变化，请重新解锁"));
         const verified = data.wallets.find(
           (entry) =>
             entry.id === wallet.id &&
             entry.address === wallet.address &&
             entry.kind === "mldsa87",
         );
-        if (!verified?.mnemonic) throw new Error("当前钱包没有可查看的助记词");
+        if (!verified?.mnemonic)
+          throw new Error(t("当前钱包没有可查看的助记词"));
         setSecret(verified.mnemonic);
       } finally {
         setPassword("");
@@ -139,11 +143,11 @@ export function ManageDialog({
   const accountType =
     wallet.kind === "watch"
       ? wallet.watchKind === "wormhole"
-        ? "Wormhole 观察账户"
+        ? t("Wormhole 观察账户")
         : wallet.watchKind === "standard"
-          ? "普通观察账户"
-          : "观察账户 · 类型待确认"
-      : "自主保管账户";
+          ? t("普通观察账户")
+          : t("观察账户 · 类型待确认")
+      : t("自主保管账户");
   const feedback = (error || message) && (
     <div className="flow-feedback">
       {error && (
@@ -162,7 +166,7 @@ export function ManageDialog({
 
   return (
     <Modal
-      title={titles[view]}
+      title={t(titles[view])}
       variant="flow"
       busy={busy}
       stepKey={`${view}:${!!secret}`}
@@ -183,7 +187,7 @@ export function ManageDialog({
             <span className="settings-profile-address">{accountType}</span>
           </div>
           <div className="account-detail-card">
-            <span className="label">钱包地址</span>
+            <span className="label">{t("钱包地址")}</span>
             <p className="account-detail-address">{wallet.address}</p>
             <div className="account-detail-actions">
               <button
@@ -197,17 +201,17 @@ export function ManageDialog({
                   try {
                     await copyText(wallet.address);
                     if (attempt === copyAttempt.current)
-                      setMessage("地址已复制");
+                      setMessage(t("地址已复制"));
                   } catch {
                     if (attempt === copyAttempt.current)
-                      setError("复制失败，请手动选中地址");
+                      setError(t("复制失败，请手动选中地址"));
                   } finally {
                     if (attempt === copyAttempt.current) setCopying(false);
                   }
                 }}
               >
                 <Copy size={15} />
-                {copying ? "正在复制…" : "复制地址"}
+                {copying ? t("正在复制…") : t("复制地址")}
               </button>
               <a
                 className="text-button"
@@ -220,7 +224,7 @@ export function ManageDialog({
               </a>
             </div>
           </div>
-          <section className="settings-group" aria-label="管理钱包">
+          <section className="settings-group" aria-label={t("管理钱包")}>
             <button
               className="settings-row"
               data-manage-view="rename"
@@ -230,7 +234,7 @@ export function ManageDialog({
                 <Pencil size={19} />
               </span>
               <span className="settings-row-copy">
-                <strong>重命名钱包</strong>
+                <strong>{t("重命名钱包")}</strong>
               </span>
               <ChevronRight size={17} />
             </button>
@@ -244,7 +248,7 @@ export function ManageDialog({
                   <KeyRound size={19} />
                 </span>
                 <span className="settings-row-copy">
-                  <strong>助记词备份</strong>
+                  <strong>{t("助记词备份")}</strong>
                 </span>
                 <ChevronRight size={17} />
               </button>
@@ -259,7 +263,7 @@ export function ManageDialog({
                   <SlidersHorizontal size={19} />
                 </span>
                 <span className="settings-row-copy">
-                  <strong>观察账户类型</strong>
+                  <strong>{t("观察账户类型")}</strong>
                 </span>
                 <ChevronRight size={17} />
               </button>
@@ -273,7 +277,7 @@ export function ManageDialog({
                 <Trash2 size={19} />
               </span>
               <span className="settings-row-copy">
-                <strong>移除钱包</strong>
+                <strong>{t("移除钱包")}</strong>
               </span>
               <ChevronRight size={17} />
             </button>
@@ -291,7 +295,7 @@ export function ManageDialog({
               await onUpdate(name.trim());
               returnFocus.current = "rename";
               setView("overview");
-              setMessage("钱包名称已更新");
+              setMessage(t("钱包名称已更新"));
             });
           }}
         >
@@ -300,13 +304,13 @@ export function ManageDialog({
               <span className="flow-symbol">
                 <Pencil size={28} />
               </span>
-              <h2>给钱包起个名字</h2>
-              <p>用容易辨认的名称区分你的账户。</p>
+              <h2>{t("给钱包起个名字")}</h2>
+              <p>{t("用容易辨认的名称区分你的账户。")}</p>
             </div>
             <label className="field">
-              钱包名称
+              {t("钱包名称")}
               <input
-                aria-label="钱包名称"
+                aria-label={t("钱包名称")}
                 autoFocus
                 required
                 value={name}
@@ -322,7 +326,7 @@ export function ManageDialog({
               className="button primary full"
               disabled={busy || !name.trim() || name.trim() === wallet.name}
             >
-              {busy ? "正在保存…" : "保存名称"}
+              {busy ? t("正在保存…") : t("保存名称")}
             </button>
           </div>
         </form>
@@ -342,7 +346,7 @@ export function ManageDialog({
               await onWatchKindChange(watchKind);
               returnFocus.current = "type";
               setView("overview");
-              setMessage("观察账户类型已更新");
+              setMessage(t("观察账户类型已更新"));
             });
           }}
         >
@@ -351,16 +355,17 @@ export function ManageDialog({
               <span className="flow-symbol">
                 <SlidersHorizontal size={28} />
               </span>
-              <h2>确认观察账户类型</h2>
+              <h2>{t("确认观察账户类型")}</h2>
               <p>
-                普通账户显示公开余额；Wormhole
-                隐私账户只显示公开入账。请按地址来源选择。
+                {t(
+                  "普通账户显示公开余额；Wormhole 隐私账户只显示公开入账。请按地址来源选择。",
+                )}
               </p>
             </div>
             <label className="field">
-              账户类型
+              {t("账户类型")}
               <select
-                aria-label="观察账户类型"
+                aria-label={t("观察账户类型")}
                 autoFocus
                 required
                 value={watchKind}
@@ -374,10 +379,10 @@ export function ManageDialog({
                 }}
               >
                 <option value="" disabled>
-                  请选择账户类型
+                  {t("请选择账户类型")}
                 </option>
-                <option value="standard">普通公开账户</option>
-                <option value="wormhole">Wormhole 隐私账户</option>
+                <option value="standard">{t("普通公开账户")}</option>
+                <option value="wormhole">{t("Wormhole 隐私账户")}</option>
               </select>
             </label>
             {feedback}
@@ -387,7 +392,7 @@ export function ManageDialog({
               className="button primary full"
               disabled={busy || !watchKind || watchKind === wallet.watchKind}
             >
-              {busy ? "正在保存…" : "保存账户类型"}
+              {busy ? t("正在保存…") : t("保存账户类型")}
             </button>
           </div>
         </form>
@@ -397,13 +402,13 @@ export function ManageDialog({
           <>
             <div className="flow-body">
               <div className="flow-heading">
-                <h2>你的助记词</h2>
-                <p>请按顺序保存。任何获得助记词的人都可以使用这个钱包。</p>
+                <h2>{t("你的助记词")}</h2>
+                <p>{t("请按顺序保存。任何获得助记词的人都可以使用这个钱包。")}</p>
               </div>
               <ol
                 className="mnemonic-grid"
                 data-private="true"
-                aria-label="钱包助记词"
+                aria-label={t("钱包助记词")}
               >
                 {secret
                   .trim()
@@ -415,7 +420,9 @@ export function ManageDialog({
                     </li>
                   ))}
               </ol>
-              <p className="flow-note">下载的 TXT 是明文文件，请离线保管。</p>
+              <p className="flow-note">
+                {t("下载的 TXT 是明文文件，请离线保管。")}
+              </p>
               <button
                 className="text-button"
                 onClick={() => {
@@ -425,7 +432,7 @@ export function ManageDialog({
                 }}
               >
                 <EyeOff size={16} />
-                隐藏助记词
+                {t("隐藏助记词")}
               </button>
               {feedback}
             </div>
@@ -437,14 +444,14 @@ export function ManageDialog({
                   setMessage("");
                   try {
                     downloadMnemonicBackup(secret, wallet.name, wallet.index);
-                    setMessage("助记词备份下载已开始");
+                    setMessage(t("助记词备份下载已开始"));
                   } catch (error) {
                     setError(errorText(error));
                   }
                 }}
               >
                 <Download size={18} />
-                下载助记词 TXT
+                {t("下载助记词 TXT")}
               </button>
             </div>
           </>
@@ -455,16 +462,16 @@ export function ManageDialog({
                 <span className="flow-symbol">
                   <KeyRound size={29} />
                 </span>
-                <h2>查看前，验证是你</h2>
-                <p>输入解锁密码后，在当前设备查看和备份助记词。</p>
+                <h2>{t("查看前，验证是你")}</h2>
+                <p>{t("输入解锁密码后，在当前设备查看和备份助记词。")}</p>
               </div>
               <label className="field">
-                解锁密码
+                {t("解锁密码")}
                 <input
                   type="password"
                   autoComplete="current-password"
                   autoFocus
-                  aria-label="查看助记词的密码"
+                  aria-label={t("查看助记词的密码")}
                   ref={passwordInput}
                   aria-invalid={!!error || undefined}
                   required
@@ -481,7 +488,7 @@ export function ManageDialog({
                 disabled={busy || !password}
               >
                 <Eye size={18} />
-                {busy ? "正在验证…" : "查看助记词"}
+                {busy ? t("正在验证…") : t("查看助记词")}
               </button>
             </div>
           </form>
@@ -493,12 +500,14 @@ export function ManageDialog({
               <span className="flow-symbol danger-text">
                 <Trash2 size={29} />
               </span>
-              <h2>移除 {wallet.name}？</h2>
+              <h2>{t("移除 {0}？", wallet.name)}</h2>
               <p>
-                这会从当前设备移除钱包，不会改变链上资产。
-                {wallet.kind === "watch"
-                  ? "之后可通过公开地址重新添加。"
-                  : "恢复时需要助记词或加密备份。"}
+                {t(
+                  "这会从当前设备移除钱包，不会改变链上资产。{0}",
+                  wallet.kind === "watch"
+                    ? t("之后可通过公开地址重新添加。")
+                    : t("恢复时需要助记词或加密备份。"),
+                )}
               </p>
             </div>
             <label className="check-row">
@@ -508,7 +517,7 @@ export function ManageDialog({
                 disabled={busy}
                 onChange={(event) => setAck(event.target.checked)}
               />
-              我已保存恢复此钱包所需的信息
+              {t("我已保存恢复此钱包所需的信息")}
             </label>
             {feedback}
           </div>
@@ -523,7 +532,7 @@ export function ManageDialog({
                 })
               }
             >
-              {busy ? "正在移除…" : "确认移除钱包"}
+              {busy ? t("正在移除…") : t("确认移除钱包")}
             </button>
           </div>
         </>

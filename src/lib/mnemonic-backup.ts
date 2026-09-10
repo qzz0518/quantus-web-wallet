@@ -1,6 +1,7 @@
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import { normalizeMnemonic, validateMnemonic } from "../crypto";
 import { download } from "./browser";
+import { t } from "./i18n";
 import { PROJECT_NAME } from "./project";
 
 export type MnemonicQuestion = {
@@ -17,7 +18,7 @@ function mnemonicWords(phrase: string, require24 = false) {
   const normalized = normalizeMnemonic(phrase);
   const words = normalized.split(" ");
   if (!validateMnemonic(normalized) || (require24 && words.length !== 24))
-    throw new Error(require24 ? "需要有效的 24 词助记词" : "助记词无效");
+    throw new Error(require24 ? t("需要有效的 24 词助记词") : t("助记词无效"));
   return words;
 }
 
@@ -81,7 +82,7 @@ export function checkMnemonicQuiz(
         !question.options.includes(words[question.position - 1]),
     )
   )
-    throw new Error("备份验证信息无效，请重新打开创建流程");
+    throw new Error(t("备份验证信息无效，请重新打开创建流程"));
   const complete = questions.every((question) =>
     question.options.includes(answers[question.position]),
   );
@@ -95,7 +96,7 @@ export function checkMnemonicQuiz(
 
 export function createMnemonicBackup(
   phrase: string,
-  walletName = "钱包",
+  walletName = t("钱包"),
   accountIndex = 0,
 ) {
   if (
@@ -103,13 +104,25 @@ export function createMnemonicBackup(
     accountIndex < 0 ||
     accountIndex > 2 ** 31 - 1
   )
-    throw new Error("账户序号无效");
+    throw new Error(t("账户序号无效"));
   const words = mnemonicWords(phrase);
-  const name = walletName.replace(/[\r\n\t]+/g, " ").trim() || "钱包";
+  const name = walletName.replace(/[\r\n\t]+/g, " ").trim() || t("钱包");
   const fileName = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").slice(0, 50);
   return {
     filename: `quantus-mnemonic-${fileName}.txt`,
-    text: `${PROJECT_NAME} · 助记词备份\n钱包：${name}\n账户类型：ML-DSA-87\n账户序号：${accountIndex}\n派生路径：m/44'/189189'/${accountIndex}'/0'/0'\n\n助记词（${words.length} 个单词）：\n${words.join(" ")}\n\n这是未加密的助记词文件。请离线保管，不要分享给任何人。\n`,
+    text: [
+      `${PROJECT_NAME} · ${t("助记词备份")}`,
+      t("钱包：{0}", name),
+      t("账户类型：ML-DSA-87"),
+      t("账户序号：{0}", accountIndex),
+      t("派生路径：{0}", `m/44'/189189'/${accountIndex}'/0'/0'`),
+      "",
+      t("助记词（{0} 个单词）：", words.length),
+      words.join(" "),
+      "",
+      t("这是未加密的助记词文件。请离线保管，不要分享给任何人。"),
+      "",
+    ].join("\n"),
   };
 }
 

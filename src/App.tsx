@@ -20,6 +20,7 @@ import {
   type Pending,
 } from "./lib/vault";
 import { errorText } from "./lib/amount";
+import { useT } from "./lib/i18n";
 import {
   AddWalletDialog,
   ManageDialog,
@@ -47,6 +48,7 @@ type Balance = Awaited<ReturnType<typeof readBalance>>;
 type Network = Awaited<ReturnType<typeof readNetwork>>;
 
 export default function App() {
+  const t = useT();
   useMotionPreferences();
   const [session, setSession] = useState<VaultSession | null>(null),
     [data, setData] = useState<VaultData | null>(null),
@@ -148,7 +150,7 @@ export default function App() {
       if (e.key === STORAGE_KEY) {
         storageRef.current = e.newValue;
         lock();
-        notify("钱包数据已在另一个标签页更新，请重新解锁");
+        notify(t("钱包数据已在另一个标签页更新，请重新解锁"));
       }
     };
     const activity = () => {
@@ -160,7 +162,7 @@ export default function App() {
     const id = setInterval(() => {
       if (sessionRef.current && Date.now() - lastActivity.current > 600_000) {
         lock();
-        notify("闲置超过 10 分钟，钱包已锁定");
+        notify(t("闲置超过 10 分钟，钱包已锁定"));
       }
     }, 15000);
     return () => {
@@ -185,18 +187,18 @@ export default function App() {
           const s = sessionRef.current,
             d = dataRef.current;
           if (!s || !d || savedEpoch !== epoch.current)
-            throw new Error("钱包已锁定，请重新解锁");
+            throw new Error(t("钱包已锁定，请重新解锁"));
           if (storageRef.current !== localStorage.getItem(STORAGE_KEY)) {
             lock();
-            throw new Error("钱包在其他标签页中有更改，请重新解锁");
+            throw new Error(t("钱包在其他标签页中有更改，请重新解锁"));
           }
           const next = mutate(d),
             encrypted = await encryptVault(s, next);
           if (savedEpoch !== epoch.current)
-            throw new Error("钱包已锁定，操作已取消");
+            throw new Error(t("钱包已锁定，操作已取消"));
           if (storageRef.current !== localStorage.getItem(STORAGE_KEY)) {
             lock();
-            throw new Error("钱包在其他标签页中有更改，请重新解锁");
+            throw new Error(t("钱包在其他标签页中有更改，请重新解锁"));
           }
           localStorage.setItem(STORAGE_KEY, encrypted);
           storageRef.current = encrypted;
@@ -217,10 +219,10 @@ export default function App() {
           raw = localStorage.getItem(STORAGE_KEY);
         if (storageRef.current !== raw) {
           lock();
-          throw new Error("钱包在其他标签页中有更改，请重新解锁");
+          throw new Error(t("钱包在其他标签页中有更改，请重新解锁"));
         }
         if (!d || !raw || !sessionRef.current || savedEpoch !== epoch.current)
-          throw new Error("请先解锁钱包");
+          throw new Error(t("请先解锁钱包"));
         await unlockVault(oldPassword, raw);
         const nextSession = await createSession(newPassword),
           encrypted = await encryptVault(nextSession, d);
@@ -228,7 +230,7 @@ export default function App() {
           savedEpoch !== epoch.current ||
           localStorage.getItem(STORAGE_KEY) !== raw
         )
-          throw new Error("钱包数据已变化，请重试");
+          throw new Error(t("钱包数据已变化，请重试"));
         disableBiometric();
         localStorage.setItem(STORAGE_KEY, encrypted);
         storageRef.current = encrypted;
@@ -270,7 +272,7 @@ export default function App() {
         values.flatMap((v) => (v.status === "fulfilled" ? [v.value] : [])),
       ),
     );
-    setBalanceError(errors.length ? "部分余额读取失败，请刷新重试" : "");
+    setBalanceError(errors.length ? t("部分余额读取失败，请刷新重试") : "");
     setLoading(false);
   }, []);
   const addresses = wallets
@@ -351,8 +353,8 @@ export default function App() {
             if (wallet?.address === tx.address) void loadHistory(tx.address);
             notify(
               state.status === "finalized"
-                ? "交易已获得最终确认"
-                : "交易执行失败，请查看记录",
+                ? t("交易已获得最终确认")
+                : t("交易执行失败，请查看记录"),
               state.status === "finalized",
             );
           }
@@ -416,7 +418,7 @@ export default function App() {
   async function saveWallet(w: Wallet) {
     await persist((d) => {
       if (d.wallets.some((v) => v.address === w.address))
-        throw new Error("这个地址已经存在");
+        throw new Error(t("这个地址已经存在"));
       return { ...d, wallets: [...d.wallets, w] };
     });
     setSelected(w.id);
@@ -428,7 +430,7 @@ export default function App() {
         raw,
         `quantus-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`,
       );
-      notify("已导出加密备份，请妥善保存", true);
+      notify(t("已导出加密备份，请妥善保存"), true);
     }
   }
   const pending = (data?.pending || []).filter(
@@ -460,9 +462,9 @@ export default function App() {
     }
     try {
       await copyText(wallet.address);
-      notify("地址已复制", true);
+      notify(t("地址已复制"), true);
     } catch {
-      notify("复制失败，请手动复制地址");
+      notify(t("复制失败，请手动复制地址"));
     }
   }
   function refresh() {

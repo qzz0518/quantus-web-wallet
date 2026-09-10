@@ -14,6 +14,7 @@ import {
   deviceError,
   type DeviceSupport,
 } from "../lib/biometric";
+import { useT } from "../lib/i18n";
 
 export function DeviceUnlockSettings({
   section,
@@ -28,6 +29,7 @@ export function DeviceUnlockSettings({
   onBusyChange?: (busy: boolean) => void;
   onDone?: () => void;
 }) {
+  const t = useT();
   const [support, setSupport] = useState<DeviceSupport | null>(null);
   const [enabled, setEnabled] = useState(() => hasBiometric());
   const [password, setPassword] = useState("");
@@ -84,7 +86,7 @@ export function DeviceUnlockSettings({
     try {
       await enrollBiometric(password, controller.current.signal);
       setEnabled(true);
-      setMessage("设备解锁已开启，下次锁定后即可使用");
+      setMessage(t("设备解锁已开启，下次锁定后即可使用"));
     } catch (error) {
       setError(deviceError(error));
     } finally {
@@ -102,13 +104,13 @@ export function DeviceUnlockSettings({
     setPasswordErrorField(null);
     if (newPassword.length < 6) {
       setPasswordErrorField("new");
-      setError("新密码至少需要 6 位");
+      setError(t("新密码至少需要 6 位"));
       newPasswordInput.current?.focus();
       return;
     }
     if (newPassword !== confirmation) {
       setPasswordErrorField("confirmation");
-      setError("两次输入的新密码不一致，请检查确认密码");
+      setError(t("两次输入的新密码不一致，请检查确认密码"));
       confirmationInput.current?.focus();
       return;
     }
@@ -125,7 +127,7 @@ export function DeviceUnlockSettings({
     } catch (error) {
       const text = deviceError(error);
       setError(text);
-      if (text.includes("密码不正确")) {
+      if (/密码不正确|incorrect password/i.test(text)) {
         setOldPassword("");
         setPasswordErrorField("current");
       }
@@ -139,9 +141,9 @@ export function DeviceUnlockSettings({
     setMessage("");
     try {
       onExport();
-      setMessage("备份下载已开始");
+      setMessage(t("备份下载已开始"));
     } catch {
-      setError("备份导出失败，请重试。");
+      setError(t("备份导出失败，请重试。"));
     }
   }
 
@@ -171,12 +173,12 @@ export function DeviceUnlockSettings({
                 <span className="flow-symbol">
                   <Check size={30} />
                 </span>
-                <h2>密码已更新</h2>
-                <p>请使用新密码解锁，并重新导出一份加密备份。</p>
+                <h2>{t("密码已更新")}</h2>
+                <p>{t("请使用新密码解锁，并重新导出一份加密备份。")}</p>
               </div>
               {deviceReset && (
                 <p className="flow-note">
-                  原设备解锁已停用，可返回设置重新开启。
+                  {t("原设备解锁已停用，可返回设置重新开启。")}
                 </p>
               )}
               {feedback}
@@ -184,11 +186,11 @@ export function DeviceUnlockSettings({
             <div className="flow-footer">
               <button className="button primary full" onClick={exportBackup}>
                 <Download size={18} />
-                导出新备份
+                {t("导出新备份")}
               </button>
               {onDone && (
                 <button className="button full" onClick={onDone}>
-                  完成
+                  {t("完成")}
                 </button>
               )}
             </div>
@@ -196,7 +198,7 @@ export function DeviceUnlockSettings({
         ) : (
           <form
             className="flow-form"
-            aria-label="修改解锁密码"
+            aria-label={t("修改解锁密码")}
             onSubmit={changePassword}
           >
             <div className="flow-body">
@@ -204,17 +206,17 @@ export function DeviceUnlockSettings({
                 <span className="flow-symbol">
                   <KeyRound size={29} />
                 </span>
-                <h2>更新解锁密码</h2>
-                <p>至少 6 位。修改后，请使用新密码解锁并重新备份钱包。</p>
+                <h2>{t("更新解锁密码")}</h2>
+                <p>{t("至少 6 位。修改后，请使用新密码解锁并重新备份钱包。")}</p>
               </div>
               <label className="field">
-                当前密码
+                {t("当前密码")}
                 <input
                   type="password"
                   autoComplete="current-password"
                   required
                   autoFocus
-                  aria-label="修改密码的当前密码"
+                  aria-label={t("修改密码的当前密码")}
                   ref={currentPasswordInput}
                   aria-invalid={passwordErrorField === "current" || undefined}
                   aria-describedby={
@@ -230,13 +232,13 @@ export function DeviceUnlockSettings({
                 />
               </label>
               <label className="field">
-                新密码
+                {t("新密码")}
                 <input
                   type="password"
                   minLength={6}
                   autoComplete="new-password"
                   required
-                  placeholder="至少 6 位"
+                  placeholder={t("至少 6 位")}
                   ref={newPasswordInput}
                   aria-invalid={passwordErrorField === "new" || undefined}
                   aria-describedby={
@@ -252,13 +254,13 @@ export function DeviceUnlockSettings({
                 />
               </label>
               <label className="field">
-                确认新密码
+                {t("确认新密码")}
                 <input
                   type="password"
                   minLength={6}
                   autoComplete="new-password"
                   required
-                  placeholder="再次输入新密码"
+                  placeholder={t("再次输入新密码")}
                   ref={confirmationInput}
                   aria-invalid={
                     passwordErrorField === "confirmation" || undefined
@@ -282,7 +284,7 @@ export function DeviceUnlockSettings({
                 className="button primary full"
                 disabled={busy || !oldPassword || !newPassword || !confirmation}
               >
-                {busy ? "正在更新…" : "更新密码"}
+                {busy ? t("正在更新…") : t("更新密码")}
               </button>
             </div>
           </form>
@@ -294,28 +296,30 @@ export function DeviceUnlockSettings({
               <span className="flow-symbol">
                 <Fingerprint size={31} />
               </span>
-              <h2>轻触一下，解锁钱包</h2>
+              <h2>{t("轻触一下，解锁钱包")}</h2>
               <p>
-                使用指纹、面容或设备验证快速解锁。可用方式由系统决定，密码解锁始终保留。
+                {t(
+                  "使用指纹、面容或设备验证快速解锁。可用方式由系统决定，密码解锁始终保留。",
+                )}
               </p>
             </div>
             {enabled ? (
               <div className="device-enabled-state">
                 <Check size={20} />
-                <strong>设备解锁已开启</strong>
-                <p>每次解锁都需要系统验证。</p>
+                <strong>{t("设备解锁已开启")}</strong>
+                <p>{t("每次解锁都需要系统验证。")}</p>
               </div>
             ) : support?.available ? (
               <form
                 id="enable-device-unlock"
                 className="flow-form"
-                aria-label="开启设备解锁"
+                aria-label={t("开启设备解锁")}
                 onSubmit={enable}
               >
                 <label className="field">
-                  验证当前密码
+                  {t("验证当前密码")}
                   <input
-                    aria-label="开启设备解锁的密码"
+                    aria-label={t("开启设备解锁的密码")}
                     ref={devicePasswordInput}
                     aria-describedby={error ? errorId : undefined}
                     type="password"
@@ -333,12 +337,12 @@ export function DeviceUnlockSettings({
               </form>
             ) : (
               <div className="flow-note">
-                <p>{support?.reason || "正在检测设备支持…"}</p>
+                <p>{support?.reason || t("正在检测设备支持…")}</p>
                 {support?.needsLocalhost && (
                   <>
                     <div className="button-row">
                       <button className="text-button" onClick={exportBackup}>
-                        导出加密备份
+                        {t("导出加密备份")}
                       </button>
                       <a
                         className="text-button"
@@ -346,12 +350,14 @@ export function DeviceUnlockSettings({
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        打开 localhost
+                        {t("打开 localhost")}
                         <ArrowUpRight size={13} />
                       </a>
                     </div>
                     <p>
-                      两个地址的浏览器存储相互独立。在新地址恢复备份后即可设置，旧地址的钱包仍会保留。
+                      {t(
+                        "两个地址的浏览器存储相互独立。在新地址恢复备份后即可设置，旧地址的钱包仍会保留。",
+                      )}
                     </p>
                   </>
                 )}
@@ -370,13 +376,13 @@ export function DeviceUnlockSettings({
                   try {
                     disableBiometric();
                     setEnabled(false);
-                    setMessage("设备解锁已停用，系统中的通行密钥可自行删除");
+                    setMessage(t("设备解锁已停用，系统中的通行密钥可自行删除"));
                   } catch (error) {
                     setError(deviceError(error));
                   }
                 }}
               >
-                停用设备解锁
+                {t("停用设备解锁")}
               </button>
             </div>
           ) : support?.available ? (
@@ -387,13 +393,13 @@ export function DeviceUnlockSettings({
                 disabled={busy || !password}
               >
                 <Fingerprint size={18} />
-                {busy ? "等待系统验证…" : "开启指纹 / 面容解锁"}
+                {busy ? t("等待系统验证…") : t("开启指纹 / 面容解锁")}
               </button>
             </div>
           ) : onDone ? (
             <div className="flow-footer">
               <button className="button primary full" onClick={onDone}>
-                返回设置
+                {t("返回设置")}
               </button>
             </div>
           ) : null}
