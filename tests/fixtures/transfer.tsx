@@ -27,8 +27,8 @@ const client = createChainClient({
     "0x87d495dc86f8a28cdd83e4836750940a0a02b22b9b33b42e34fb00868649b28b",
 });
 const mnemonic = await generateMnemonic();
-const sender = await deriveAccount(mnemonic, 0),
-  recipient = await deriveAccount(mnemonic, 1);
+const sender = await deriveAccount("mldsa87", mnemonic, 0),
+  recipient = await deriveAccount("mldsa87", mnemonic, 1);
 await initializeWasm();
 const alice = account(new Uint8Array(32));
 try {

@@ -8,8 +8,8 @@ self.onmessage = async (event: MessageEvent<CryptoRequest>) => {
   let response: CryptoResponse;
   try {
     const result = request.method === 'derive'
-      ? await deriveAccountCore(request.mnemonic, request.index)
-      : await signCallCore(request.mnemonic, request.index, request.callHex, request.context);
+      ? await deriveAccountCore(request.scheme, request.mnemonic, request.index)
+      : await signCallCore(request.scheme, request.mnemonic, request.index, request.callHex, request.context);
     response = { ok: true, result };
   } catch {
     // Do not forward vendor error text; it could include a secret input.

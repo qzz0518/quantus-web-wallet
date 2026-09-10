@@ -19,7 +19,10 @@ import { MAINNET } from "../../lib/chain";
 import { errorText } from "../../lib/amount";
 import { copyText } from "../../lib/browser";
 import { downloadMnemonicBackup } from "../../lib/mnemonic-backup";
+import { derivationPath, schemeLabel } from "../../crypto";
+import { walletScheme } from "../../lib/wallet";
 import { useT } from "../../lib/i18n";
+import { Select } from "../Select";
 
 type ManageView = "overview" | "rename" | "seed" | "type" | "remove";
 // Chinese source keys; translated at render time with t().
@@ -45,6 +48,7 @@ export function ManageDialog({
   onRemove: () => Promise<void>;
 }) {
   const t = useT();
+  const scheme = walletScheme(wallet);
   const [view, setView] = useState<ManageView>("overview");
   const [name, setName] = useState(wallet.name);
   const [watchKind, setWatchKind] = useState<Wallet["watchKind"] | "">(
@@ -130,7 +134,8 @@ export function ManageDialog({
           (entry) =>
             entry.id === wallet.id &&
             entry.address === wallet.address &&
-            entry.kind === "mldsa87",
+            entry.kind !== "watch" &&
+            entry.kind === wallet.kind,
         );
         if (!verified?.mnemonic)
           throw new Error(t("当前钱包没有可查看的助记词"));
@@ -147,7 +152,9 @@ export function ManageDialog({
         : wallet.watchKind === "standard"
           ? t("普通观察账户")
           : t("观察账户 · 类型待确认")
-      : t("自主保管账户");
+      : scheme
+        ? `${t("自主保管账户")} · ${schemeLabel(scheme)}`
+        : t("自主保管账户");
   const feedback = (error || message) && (
     <div className="flow-feedback">
       {error && (
@@ -189,6 +196,15 @@ export function ManageDialog({
           <div className="account-detail-card">
             <span className="label">{t("钱包地址")}</span>
             <p className="account-detail-address">{wallet.address}</p>
+            {scheme && (
+              <>
+                <span className="label">{t("签名方案与派生路径")}</span>
+                <p className="account-detail-address">
+                  {schemeLabel(scheme)} ·{" "}
+                  {derivationPath(scheme, wallet.index).replaceAll("'", "′")}
+                </p>
+              </>
+            )}
             <div className="account-detail-actions">
               <button
                 className="text-button"
@@ -364,26 +380,17 @@ export function ManageDialog({
             </div>
             <label className="field">
               {t("账户类型")}
-              <select
+              <Select<"standard" | "wormhole">
                 aria-label={t("观察账户类型")}
-                autoFocus
-                required
-                value={watchKind}
+                placeholder={t("请选择账户类型")}
+                value={watchKind ?? ""}
                 disabled={busy}
-                onChange={(event) => {
-                  if (
-                    event.target.value === "standard" ||
-                    event.target.value === "wormhole"
-                  )
-                    setWatchKind(event.target.value);
-                }}
-              >
-                <option value="" disabled>
-                  {t("请选择账户类型")}
-                </option>
-                <option value="standard">{t("普通公开账户")}</option>
-                <option value="wormhole">{t("Wormhole 隐私账户")}</option>
-              </select>
+                onChange={(kind) => setWatchKind(kind)}
+                options={[
+                  { value: "standard", label: t("普通公开账户") },
+                  { value: "wormhole", label: t("Wormhole 隐私账户") },
+                ]}
+              />
             </label>
             {feedback}
           </div>
@@ -443,7 +450,12 @@ export function ManageDialog({
                   setError("");
                   setMessage("");
                   try {
-                    downloadMnemonicBackup(secret, wallet.name, wallet.index);
+                    downloadMnemonicBackup(
+                      secret,
+                      wallet.name,
+                      wallet.index,
+                      scheme ?? "mldsa87",
+                    );
                     setMessage(t("助记词备份下载已开始"));
                   } catch (error) {
                     setError(errorText(error));

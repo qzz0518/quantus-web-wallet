@@ -98,7 +98,7 @@ export function WalletChooser({
               mode: "import" as const,
               icon: <ArrowDownToLine size={21} />,
               title: t("导入已有钱包"),
-              desc: t("通过 ML-DSA-87 助记词恢复"),
+              desc: t("通过助记词恢复 ML-DSA-65 或 ML-DSA-87 账户"),
               color: "lavender",
             },
             {

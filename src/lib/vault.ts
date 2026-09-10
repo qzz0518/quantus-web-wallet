@@ -1,11 +1,15 @@
 import { t } from "./i18n";
+import { isWalletScheme } from "../crypto/schemes";
+import type { WalletScheme } from "../crypto/types";
+
 export const STORAGE_KEY = "quantus.wallet.v1";
 const ITERATIONS = 600_000;
 export type Wallet = {
   id: string;
   name: string;
   address: string;
-  kind: "mldsa87" | "watch";
+  /** Signing accounts carry their ML-DSA scheme; older vaults only contain `mldsa87`. */
+  kind: WalletScheme | "watch";
   watchKind?: "standard" | "wormhole";
   index: number;
   mnemonic?: string;
@@ -76,7 +80,7 @@ export function validateData(value: unknown): VaultData {
       w.name.length > 60 ||
       typeof w.address !== "string" ||
       addresses.has(w.address) ||
-      !["mldsa87", "watch"].includes(w.kind) ||
+      !(w.kind === "watch" || isWalletScheme(w.kind)) ||
       !Number.isInteger(w.index) ||
       w.index < 0 ||
       w.index > 2 ** 31 - 1 ||
@@ -84,7 +88,7 @@ export function validateData(value: unknown): VaultData {
     )
       throw new Error(t("钱包数据格式无效"));
     if (
-      w.kind === "mldsa87" &&
+      w.kind !== "watch" &&
       (typeof w.mnemonic !== "string" || w.mnemonic.length > 1000)
     )
       throw new Error(t("钱包密钥数据无效"));

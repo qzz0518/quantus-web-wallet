@@ -130,9 +130,10 @@ export function SetupDialog({
         for (const wallet of data.wallets) {
           validateAddress(wallet.address);
           if (
+            wallet.kind !== "watch" &&
             wallet.mnemonic &&
-            (await deriveAccount(wallet.mnemonic, wallet.index)).address !==
-              wallet.address
+            (await deriveAccount(wallet.kind, wallet.mnemonic, wallet.index))
+              .address !== wallet.address
           )
             throw new Error(t("备份中的账户地址与密钥不一致"));
         }

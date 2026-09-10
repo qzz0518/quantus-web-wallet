@@ -1,12 +1,10 @@
 import { generateMnemonic as bip39Generate, validateMnemonic as bip39Validate } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
 import { t } from '../lib/i18n';
-import type { AccountPublic, CryptoRequest, CryptoResponse, SignContext } from './types';
+import type { AccountPublic, CryptoRequest, CryptoResponse, SignContext, WalletScheme } from './types';
 
-export type { AccountPublic, SignContext } from './types';
-
-export const WALLET_SCHEME = 'ML-DSA-87' as const;
-export const DERIVATION_PATH = "m/44'/189189'/<index>'/0'/0'";
+export type { AccountPublic, SignContext, WalletScheme } from './types';
+export { DEFAULT_SCHEME, SCHEMES, WALLET_SCHEMES, derivationPath, isWalletScheme, schemeLabel } from './schemes';
 
 export function normalizeMnemonic(phrase: string): string {
   return phrase.normalize('NFKD').trim().toLowerCase().split(/\s+/).join(' ');
@@ -51,15 +49,17 @@ function inWorker<T extends AccountPublic | string>(request: CryptoRequest): Pro
   });
 }
 
-export async function deriveAccount(mnemonic: string, index: number): Promise<AccountPublic> {
-  return inWorker({ method: 'derive', mnemonic: checkedMnemonic(mnemonic), index });
+/** `index` is the hardened account component; the scheme fixes the last path component. */
+export async function deriveAccount(scheme: WalletScheme, mnemonic: string, index: number): Promise<AccountPublic> {
+  return inWorker({ method: 'derive', scheme, mnemonic: checkedMnemonic(mnemonic), index });
 }
 
 export async function signCall(
+  scheme: WalletScheme,
   mnemonic: string,
   index: number,
   callHex: string,
   context: SignContext,
 ): Promise<string> {
-  return inWorker({ method: 'sign', mnemonic: checkedMnemonic(mnemonic), index, callHex, context });
+  return inWorker({ method: 'sign', scheme, mnemonic: checkedMnemonic(mnemonic), index, callHex, context });
 }

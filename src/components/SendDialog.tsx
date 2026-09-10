@@ -39,6 +39,7 @@ import { signCall } from "../crypto";
 import { copyText } from "../lib/browser";
 import { useT } from "../lib/i18n";
 import { readRecipientProfile, type RecipientProfile } from "../lib/recipient";
+import { Select } from "./Select";
 const mainnetServices = {
   prepareTransfer,
   estimateFee,
@@ -119,6 +120,7 @@ export function SendDialog({
         atomic,
       );
       const hex = await signCall(
+        wallet.kind,
         wallet.mnemonic,
         wallet.index,
         prepared.callHex,
@@ -485,23 +487,27 @@ export function SendDialog({
                 {wallets.some((w) => w.id !== wallet.id) && (
                   <label className="field">
                     {t("我的其他钱包")}
-                    <select
-                      value=""
-                      onChange={(event) => {
-                        setRecipient(event.target.value);
+                    <Select
+                      aria-label={t("我的其他钱包")}
+                      placeholder={t("选择一个钱包")}
+                      value={
+                        wallets.some((w) => w.id !== wallet.id && w.address === recipient.trim())
+                          ? recipient.trim()
+                          : ""
+                      }
+                      onChange={(address) => {
+                        setRecipient(address);
                         setRiskAck(false);
                         setError("");
                       }}
-                    >
-                      <option value="">{t("选择一个钱包")}</option>
-                      {wallets
+                      options={wallets
                         .filter((w) => w.id !== wallet.id)
-                        .map((w) => (
-                          <option key={w.id} value={w.address}>
-                            {w.name} · {shortAddress(w.address, 4)}
-                          </option>
-                        ))}
-                    </select>
+                        .map((w) => ({
+                          value: w.address,
+                          label: w.name,
+                          description: shortAddress(w.address, 6),
+                        }))}
+                    />
                   </label>
                 )}
                 {risk ? (

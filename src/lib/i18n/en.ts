@@ -1,5 +1,6 @@
 import { activity } from "./en/activity";
 import { lib } from "./en/lib";
+import { mldsa65 } from "./en/mldsa65";
 import { settings } from "./en/settings";
 import { setup } from "./en/setup";
 import { wallet } from "./en/wallet";
@@ -8,6 +9,7 @@ import { wallet } from "./en/wallet";
 export const en: Record<string, string> = {
   ...activity,
   ...lib,
+  ...mldsa65,
   ...settings,
   ...setup,
   ...wallet,
@@ -27,4 +29,5 @@ export const en: Record<string, string> = {
   "我已确认收款方能够从加密账户取出这笔资产，仍要继续。": "I have confirmed the recipient can withdraw from the encrypted account. Continue anyway.",
   "该地址在链上还没有任何记录。新账户属正常情况，否则请再核对一遍。": "This address has no on-chain history yet. That is normal for a new account; otherwise double-check it.",
   "正在核对收款地址…": "Checking the recipient…",
+  "账户类型：{0}": "Account type: {0}",
 };

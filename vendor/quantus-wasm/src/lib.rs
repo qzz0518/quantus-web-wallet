@@ -1,8 +1,10 @@
-//! WASM bindings for Quantus account derivation and ML-DSA-87 extrinsic signing.
+//! WASM bindings for Quantus account derivation and ML-DSA-65 / ML-DSA-87
+//! extrinsic signing.
 //!
-//! Exposes two entry points to JavaScript/TypeScript:
+//! Exposes to JavaScript/TypeScript:
 //! - [`account`]: 32-byte seed -> ML-DSA-87 keypair, Poseidon `AccountId32`, SS58 address.
-//! - [`signTransfer`]: 32-byte seed + transfer params -> signed v4 extrinsic bytes.
+//! - [`signTransfer`] / [`signCall`]: 32-byte seed + params -> signed v4 extrinsic bytes.
+//! - the `mnemonic` feature adds HD derivation and signing for both schemes.
 
 extern crate alloc;
 use alloc::string::String;
@@ -17,9 +19,13 @@ mod ext;
 #[cfg(feature = "mnemonic")]
 mod mnemonic;
 
+#[cfg(feature = "mnemonic")]
+mod wormhole;
+
 /// Account material derived from a seed. Byte fields surface as `Uint8Array`.
 #[wasm_bindgen]
 pub struct Account {
+    scheme: ext::Scheme,
     public_key: Vec<u8>,
     secret_key: Vec<u8>,
     account_id: Vec<u8>,
@@ -35,13 +41,19 @@ impl Drop for Account {
 
 #[wasm_bindgen]
 impl Account {
-    /// ML-DSA-87 public key (2592 bytes).
+    /// `"ml-dsa-65"` or `"ml-dsa-87"`.
+    #[wasm_bindgen(getter)]
+    pub fn scheme(&self) -> String {
+        String::from(self.scheme.name())
+    }
+
+    /// ML-DSA public key (1952 bytes for ML-DSA-65, 2592 bytes for ML-DSA-87).
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> Vec<u8> {
         self.public_key.clone()
     }
 
-    /// ML-DSA-87 secret key (4896 bytes).
+    /// ML-DSA secret key (4032 bytes for ML-DSA-65, 4896 bytes for ML-DSA-87).
     #[wasm_bindgen(getter, js_name = secretKey)]
     pub fn secret_key(&self) -> Vec<u8> {
         self.secret_key.clone()
@@ -60,7 +72,7 @@ impl Account {
     }
 }
 
-/// Derive a Quantus account from a 32-byte seed.
+/// Derive an ML-DSA-87 Quantus account from a 32-byte seed.
 #[wasm_bindgen]
 pub fn account(seed: &[u8]) -> Result<Account, JsError> {
     let keys = ext::derive_account(seed).map_err(to_js_error)?;
@@ -69,11 +81,16 @@ pub fn account(seed: &[u8]) -> Result<Account, JsError> {
 
 pub(crate) fn account_from_keys(keys: ext::AccountKeys) -> Account {
     Account {
+        scheme: keys.scheme,
         public_key: keys.public_key,
         secret_key: keys.secret_key,
         account_id: keys.account_id.to_vec(),
         address: keys.address,
     }
+}
+
+pub(crate) fn parse_scheme(name: &str) -> Result<ext::Scheme, JsError> {
+    ext::Scheme::parse(name).ok_or_else(|| JsError::new("scheme must be ml-dsa-65 or ml-dsa-87"))
 }
 
 /// Chain signing context as received from JS (camelCase fields).
@@ -114,15 +131,16 @@ struct JsTransferParams {
     ctx: JsSignContext,
 }
 
-/// Sign a balances/assets transfer, returning the SCALE-encoded v4 extrinsic.
+/// Sign a balances/assets transfer with the ML-DSA-87 seed account, returning
+/// the SCALE-encoded v4 extrinsic.
 #[wasm_bindgen(js_name = signTransfer)]
 pub fn sign_transfer(seed: &[u8], params: JsValue) -> Result<Vec<u8>, JsError> {
     let params = build_transfer_params(params)?;
     ext::sign_transfer(seed, &params).map_err(to_js_error)
 }
 
-/// Sign an already-encoded `RuntimeCall` (e.g. polkadot.js `tx.method.toU8a()`),
-/// returning the SCALE-encoded v4 extrinsic.
+/// Sign an already-encoded `RuntimeCall` (e.g. polkadot.js `tx.method.toU8a()`)
+/// with the ML-DSA-87 seed account, returning the SCALE-encoded v4 extrinsic.
 #[wasm_bindgen(js_name = signCall)]
 pub fn sign_call(seed: &[u8], call: &[u8], context: JsValue) -> Result<Vec<u8>, JsError> {
     let ctx = build_sign_context_from_value(context)?;
@@ -133,10 +151,25 @@ pub fn sign_call(seed: &[u8], call: &[u8], context: JsValue) -> Result<Vec<u8>, 
 /// Used to check browser signing against native runtime compatibility tests.
 #[wasm_bindgen(js_name = verifySignature)]
 pub fn verify_signature(public_key: &[u8], message: &[u8], signature: &[u8]) -> bool {
-    match qp_rusty_crystals_dilithium::ml_dsa_87::PublicKey::from_bytes(public_key) {
-        Ok(public) => public.verify(message, signature, Some(b"QUANTUS_EXTRINSIC")),
-        Err(_) => false,
-    }
+    ext::verify_signature(ext::Scheme::MlDsa87, public_key, message, signature)
+}
+
+/// Verify a raw signature of the named scheme using the mainnet extrinsic domain.
+#[wasm_bindgen(js_name = verifySignatureScheme)]
+pub fn verify_signature_scheme(
+    scheme: &str,
+    public_key: &[u8],
+    message: &[u8],
+    signature: &[u8],
+) -> Result<bool, JsError> {
+    Ok(ext::verify_signature(parse_scheme(scheme)?, public_key, message, signature))
+}
+
+/// Variant index the runtime's `DilithiumSignatureScheme` / `DilithiumSigner`
+/// enums use for the named scheme (`0` = ML-DSA-87, `1` = ML-DSA-65).
+#[wasm_bindgen(js_name = signatureVariant)]
+pub fn signature_variant(scheme: &str) -> Result<u8, JsError> {
+    Ok(parse_scheme(scheme)?.signature_variant())
 }
 
 pub(crate) fn build_transfer_params(params: JsValue) -> Result<ext::TransferParams, JsError> {

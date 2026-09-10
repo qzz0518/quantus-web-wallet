@@ -6,7 +6,7 @@ A browser wallet for Quantus.
 
 ## Features
 
-- Create, import and manage multiple ML-DSA-87 wallets and watch-only accounts.
+- Create, import and manage multiple ML-DSA-65 (the official wallet default) and ML-DSA-87 wallets plus watch-only accounts. Imports show the derived address first so it can be compared with the official wallet.
 - View balances, send QTC, receive with a QR code, and browse transaction history.
 - Download recovery words and confirm backups with a word-selection check.
 - Open accounts and transactions in the Quantus explorer.

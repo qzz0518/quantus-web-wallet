@@ -47,7 +47,7 @@ export class Account {
         }
     }
     /**
-     * ML-DSA-87 public key (2592 bytes).
+     * ML-DSA public key (1952 bytes for ML-DSA-65, 2592 bytes for ML-DSA-87).
      * @returns {Uint8Array}
      */
     get publicKey() {
@@ -57,7 +57,23 @@ export class Account {
         return v1;
     }
     /**
-     * ML-DSA-87 secret key (4896 bytes).
+     * `"ml-dsa-65"` or `"ml-dsa-87"`.
+     * @returns {string}
+     */
+    get scheme() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.account_scheme(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * ML-DSA secret key (4032 bytes for ML-DSA-65, 4896 bytes for ML-DSA-87).
      * @returns {Uint8Array}
      */
     get secretKey() {
@@ -70,7 +86,7 @@ export class Account {
 if (Symbol.dispose) Account.prototype[Symbol.dispose] = Account.prototype.free;
 
 /**
- * Derive a Quantus account from a 32-byte seed.
+ * Derive an ML-DSA-87 Quantus account from a 32-byte seed.
  * @param {Uint8Array} seed
  * @returns {Account}
  */
@@ -85,7 +101,7 @@ export function account(seed) {
 }
 
 /**
- * Derive a Quantus account from a mnemonic at the given HD indices.
+ * Derive an ML-DSA-87 Quantus account from a mnemonic at the given HD indices.
  * @param {string} mnemonic
  * @param {number} account
  * @param {number} change
@@ -103,6 +119,46 @@ export function accountFromMnemonic(mnemonic, account, change, address_index, pa
         throw takeFromExternrefTable0(ret[1]);
     }
     return Account.__wrap(ret[0]);
+}
+
+/**
+ * Derive a Quantus account from a mnemonic at the given HD indices for the
+ * named scheme (`"ml-dsa-65"` or `"ml-dsa-87"`).
+ * @param {string} scheme
+ * @param {string} mnemonic
+ * @param {number} account
+ * @param {number} change
+ * @param {number} address_index
+ * @param {string | null} [passphrase]
+ * @returns {Account}
+ */
+export function accountFromMnemonicScheme(scheme, mnemonic, account, change, address_index, passphrase) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    var ptr2 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len2 = WASM_VECTOR_LEN;
+    const ret = wasm.accountFromMnemonicScheme(ptr0, len0, ptr1, len1, account, change, address_index, ptr2, len2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return Account.__wrap(ret[0]);
+}
+
+/**
+ * Exposed for the JS bridge so its scheme table can be checked against this crate.
+ * @param {string} scheme
+ * @returns {number}
+ */
+export function canonicalAddressIndex(scheme) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.canonicalAddressIndex(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
 }
 
 /**
@@ -126,8 +182,8 @@ export function mnemonicToSeed(mnemonic, passphrase) {
 }
 
 /**
- * Sign an already-encoded `RuntimeCall` (e.g. polkadot.js `tx.method.toU8a()`),
- * returning the SCALE-encoded v4 extrinsic.
+ * Sign an already-encoded `RuntimeCall` (e.g. polkadot.js `tx.method.toU8a()`)
+ * with the ML-DSA-87 seed account, returning the SCALE-encoded v4 extrinsic.
  * @param {Uint8Array} seed
  * @param {Uint8Array} call
  * @param {any} context
@@ -148,7 +204,8 @@ export function signCall(seed, call, context) {
 }
 
 /**
- * Sign an already-encoded `RuntimeCall` from a mnemonic at the given HD indices.
+ * Sign an already-encoded `RuntimeCall` with ML-DSA-87 from a mnemonic at the
+ * given HD indices.
  * @param {string} mnemonic
  * @param {Uint8Array} call
  * @param {any} context
@@ -175,7 +232,39 @@ export function signCallFromMnemonic(mnemonic, call, context, account, change, a
 }
 
 /**
- * Sign a balances/assets transfer, returning the SCALE-encoded v4 extrinsic.
+ * Sign an already-encoded `RuntimeCall` from a mnemonic at the given HD indices
+ * for the named scheme.
+ * @param {string} scheme
+ * @param {string} mnemonic
+ * @param {Uint8Array} call
+ * @param {any} context
+ * @param {number} account
+ * @param {number} change
+ * @param {number} address_index
+ * @param {string | null} [passphrase]
+ * @returns {Uint8Array}
+ */
+export function signCallFromMnemonicScheme(scheme, mnemonic, call, context, account, change, address_index, passphrase) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(call, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    var ptr3 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len3 = WASM_VECTOR_LEN;
+    const ret = wasm.signCallFromMnemonicScheme(ptr0, len0, ptr1, len1, ptr2, len2, context, account, change, address_index, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
+ * Sign a balances/assets transfer with the ML-DSA-87 seed account, returning
+ * the SCALE-encoded v4 extrinsic.
  * @param {Uint8Array} seed
  * @param {any} params
  * @returns {Uint8Array}
@@ -193,7 +282,7 @@ export function signTransfer(seed, params) {
 }
 
 /**
- * Sign a transfer from a mnemonic at the given HD indices.
+ * Sign a transfer with ML-DSA-87 from a mnemonic at the given HD indices.
  * @param {string} mnemonic
  * @param {any} params
  * @param {number} account
@@ -217,6 +306,49 @@ export function signTransferFromMnemonic(mnemonic, params, account, change, addr
 }
 
 /**
+ * Sign a transfer from a mnemonic at the given HD indices for the named scheme.
+ * @param {string} scheme
+ * @param {string} mnemonic
+ * @param {any} params
+ * @param {number} account
+ * @param {number} change
+ * @param {number} address_index
+ * @param {string | null} [passphrase]
+ * @returns {Uint8Array}
+ */
+export function signTransferFromMnemonicScheme(scheme, mnemonic, params, account, change, address_index, passphrase) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    var ptr2 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len2 = WASM_VECTOR_LEN;
+    const ret = wasm.signTransferFromMnemonicScheme(ptr0, len0, ptr1, len1, params, account, change, address_index, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
+ * Variant index the runtime's `DilithiumSignatureScheme` / `DilithiumSigner`
+ * enums use for the named scheme (`0` = ML-DSA-87, `1` = ML-DSA-65).
+ * @param {string} scheme
+ * @returns {number}
+ */
+export function signatureVariant(scheme) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.signatureVariant(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
+}
+
+/**
  * Verify a raw ML-DSA-87 signature using the mainnet extrinsic domain.
  * Used to check browser signing against native runtime compatibility tests.
  * @param {Uint8Array} public_key
@@ -233,6 +365,78 @@ export function verifySignature(public_key, message, signature) {
     const len2 = WASM_VECTOR_LEN;
     const ret = wasm.verifySignature(ptr0, len0, ptr1, len1, ptr2, len2);
     return ret !== 0;
+}
+
+/**
+ * Verify a raw signature of the named scheme using the mainnet extrinsic domain.
+ * @param {string} scheme
+ * @param {Uint8Array} public_key
+ * @param {Uint8Array} message
+ * @param {Uint8Array} signature
+ * @returns {boolean}
+ */
+export function verifySignatureScheme(scheme, public_key, message, signature) {
+    const ptr0 = passStringToWasm0(scheme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(public_key, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(signature, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.verifySignatureScheme(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] !== 0;
+}
+
+/**
+ * SS58 wormhole receiving (`branch = 0`) or change (`branch = 1`) addresses
+ * for indices `start..start + count`. Secrets are not returned.
+ * @param {string} mnemonic
+ * @param {number} branch
+ * @param {number} start
+ * @param {number} count
+ * @param {string | null} [passphrase]
+ * @returns {string[]}
+ */
+export function wormholeAddresses(mnemonic, branch, start, count, passphrase) {
+    const ptr0 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.wormholeAddresses(ptr0, len0, branch, start, count, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+}
+
+/**
+ * 32-byte nullifier for the deposit with `transfer_count` to the wormhole
+ * account at (`branch`, `index`). Secrets are not returned.
+ * @param {string} mnemonic
+ * @param {number} branch
+ * @param {number} index
+ * @param {bigint} transfer_count
+ * @param {string | null} [passphrase]
+ * @returns {Uint8Array}
+ */
+export function wormholeNullifier(mnemonic, branch, index, transfer_count, passphrase) {
+    const ptr0 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.wormholeNullifier(ptr0, len0, branch, index, transfer_count, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
 }
 function __wbg_get_imports() {
     const import0 = {
@@ -517,6 +721,17 @@ function debugString(val) {
     }
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

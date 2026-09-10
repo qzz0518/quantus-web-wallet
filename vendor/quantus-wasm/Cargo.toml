@@ -2,7 +2,7 @@
 name = "quantus-wasm"
 version = "0.2.0"
 edition = "2021"
-description = "WASM bindings for Quantus account derivation and ML-DSA-87 extrinsic signing"
+description = "WASM bindings for Quantus account derivation and ML-DSA-65 / ML-DSA-87 extrinsic signing"
 license = "MIT"
 repository = "https://github.com/Quantus-Network/quantus-wasm"
 
@@ -11,10 +11,10 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # Chain crypto, pinned to the exact versions the Quantus runtime uses so that
-# addresses (Poseidon) and signatures (ML-DSA-87) are byte-identical.
+# addresses (Poseidon) and signatures (ML-DSA-65 / ML-DSA-87) are byte-identical.
 qp-poseidon-core = { version = "=3.1.0", default-features = false }
-qp-rusty-crystals-dilithium = { version = "=4.1.1", default-features = false, features = ["ml-dsa-87"] }
-qp-rusty-crystals-hdwallet = { version = "=4.1.1", optional = true }
+qp-rusty-crystals-dilithium = { version = "=4.1.1", default-features = false, features = ["ml-dsa-65", "ml-dsa-87"] }
+qp-rusty-crystals-hdwallet = { version = "=4.1.1", features = ["ml-dsa-65"], optional = true }
 zeroize = { version = "1.8", default-features = false, features = ["alloc"] }
 
 # SCALE codec + AccountId32/SS58 (sp-core does not pull sp-io/sp-runtime, so it

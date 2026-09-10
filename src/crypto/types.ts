@@ -1,3 +1,6 @@
+/** ML-DSA parameter set of a transparent account; both are regular Quantus accounts. */
+export type WalletScheme = 'mldsa65' | 'mldsa87';
+
 export interface AccountPublic {
   address: string;
   publicKey: string;
@@ -15,8 +18,8 @@ export interface SignContext {
 }
 
 export type CryptoRequest =
-  | { method: 'derive'; mnemonic: string; index: number }
-  | { method: 'sign'; mnemonic: string; index: number; callHex: string; context: SignContext };
+  | { method: 'derive'; scheme: WalletScheme; mnemonic: string; index: number }
+  | { method: 'sign'; scheme: WalletScheme; mnemonic: string; index: number; callHex: string; context: SignContext };
 
 export type CryptoResponse =
   | { ok: true; result: AccountPublic | string }

@@ -28,7 +28,7 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   // Children mount after the dialog is open so a field's autoFocus can win;
   // otherwise focus rests on the inert container instead of the first button.
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(() => typeof document === "undefined");
   const titleId = useId();
   const subtitleId = useId();
   const previousStep = useRef(`${title}:${stepKey}`);

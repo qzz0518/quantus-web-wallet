@@ -1,5 +1,11 @@
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import { normalizeMnemonic, validateMnemonic } from "../crypto";
+import {
+  derivationPath,
+  normalizeMnemonic,
+  schemeLabel,
+  validateMnemonic,
+  type WalletScheme,
+} from "../crypto";
 import { download } from "./browser";
 import { t } from "./i18n";
 import { PROJECT_NAME } from "./project";
@@ -98,6 +104,7 @@ export function createMnemonicBackup(
   phrase: string,
   walletName = t("钱包"),
   accountIndex = 0,
+  scheme: WalletScheme = "mldsa87",
 ) {
   if (
     !Number.isInteger(accountIndex) ||
@@ -113,9 +120,9 @@ export function createMnemonicBackup(
     text: [
       `${PROJECT_NAME} · ${t("助记词备份")}`,
       t("钱包：{0}", name),
-      t("账户类型：ML-DSA-87"),
+      t("账户类型：{0}", schemeLabel(scheme)),
       t("账户序号：{0}", accountIndex),
-      t("派生路径：{0}", `m/44'/189189'/${accountIndex}'/0'/0'`),
+      t("派生路径：{0}", derivationPath(scheme, accountIndex)),
       "",
       t("助记词（{0} 个单词）：", words.length),
       words.join(" "),
@@ -130,7 +137,8 @@ export function downloadMnemonicBackup(
   phrase: string,
   walletName?: string,
   accountIndex = 0,
+  scheme: WalletScheme = "mldsa87",
 ) {
-  const backup = createMnemonicBackup(phrase, walletName, accountIndex);
+  const backup = createMnemonicBackup(phrase, walletName, accountIndex, scheme);
   download(backup.text, backup.filename, "text/plain;charset=utf-8");
 }
