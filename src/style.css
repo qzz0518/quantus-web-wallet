@@ -869,6 +869,14 @@ input[type="number"]::-webkit-outer-spin-button {
 .balance-fraction {
   color: var(--muted);
 }
+/* A dash standing in for an unavailable balance reads as a stray rule at
+   display size; keep it quiet and small. */
+.hero-balance.no-value {
+  --balance-font-size: 40px;
+}
+.hero-balance.no-value > span {
+  color: var(--faint);
+}
 .hero-available {
   margin-top: 12px;
   font-size: 12px;
@@ -983,15 +991,22 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--muted);
   margin-top: 13px;
 }
+/* The three captions under the account card sit in the same place. */
 .account-privacy-note,
 .account-type-notice {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
   margin-top: 12px;
+  text-align: center;
+}
+button.account-type-notice {
+  width: 100%;
+  min-height: 44px;
 }
 
 /* An uncluttered start and a single, explicit next action. */
@@ -1205,8 +1220,15 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 14px;
   font-weight: 550;
 }
+/* The shortened address already stands in for the full one: keep it to a
+   single line rather than letting it stack up beside the amount. */
+.pending-row strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .wallet-transaction-main > small,
-.pending-row small {
+.pending-row > div > small {
   display: block;
   margin-top: 6px;
   font-size: 12px;
@@ -1264,6 +1286,11 @@ input[type="number"]::-webkit-outer-spin-button {
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.pending-row > b small {
+  font-size: 11px;
+  font-weight: 400;
 }
 .pending-row > a {
   color: var(--muted);
@@ -1317,6 +1344,7 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--warning);
   border-radius: 16px;
   padding: 16px 20px;
+  margin-bottom: 12px;
   font-size: 13px;
   line-height: 1.8;
 }

@@ -51,6 +51,9 @@ export function WalletOverview({
         : "—";
   const [whole, decimal] = amount.split(".");
   const groups = whole.split(",");
+  // "—" and the masked value are placeholders, not figures: they should not
+  // be set at the full display size.
+  const placeholder = amount === "—";
   return (
     <section className="wallet-overview">
       <div className="wallet-hero" aria-label={t("钱包余额")} ref={hero}>
@@ -78,7 +81,7 @@ export function WalletOverview({
           </button>
         </div>
         <div
-          className="hero-balance"
+          className={`hero-balance ${placeholder ? "no-value" : ""}`}
           style={
             {
               "--amount-characters": Math.max(amount.length, 1),
