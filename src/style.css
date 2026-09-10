@@ -285,8 +285,59 @@ textarea::placeholder {
   color: var(--faint);
 }
 textarea {
-  resize: vertical;
+  resize: none;
   line-height: 1.65;
+}
+/* Native checkbox replaced by a drawn box so it matches both themes. */
+input[type="checkbox"] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--input-line);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 5px;
+  margin-bottom: 2px;
+  border: 2px solid var(--bg);
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 120ms ease;
+}
+input[type="checkbox"]:checked {
+  background: var(--text);
+  border-color: var(--text);
+}
+input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+input[type="checkbox"]:focus-visible {
+  outline-offset: 2px;
+}
+/* Numeric fields use a plain text input; hide spinners for any that remain. */
+input[type="number"] {
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 .field {
   display: flex;
@@ -332,13 +383,7 @@ textarea {
   color: var(--muted);
 }
 .check-row input {
-  width: 19px;
-  height: 19px;
-  min-height: 19px;
-  flex-shrink: 0;
-  margin: 2px 0 0;
-  padding: 0;
-  accent-color: var(--accent);
+  margin-top: 3px;
 }
 .soft-note,
 .callout {
@@ -583,6 +628,107 @@ textarea {
 }
 .segmented > button:focus-visible {
   outline-offset: 0;
+}
+/* Custom select: trigger button plus a listbox, shared look with the theme menu. */
+.select {
+  position: relative;
+  width: 100%;
+}
+.select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 16px;
+  text-align: left;
+  transition: border-color 120ms ease;
+}
+.select-trigger[aria-expanded="true"] {
+  border-color: var(--input-line);
+}
+.select-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.select-trigger > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-trigger.placeholder > span {
+  color: var(--faint);
+}
+.select-trigger > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+.select-trigger[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+.select-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 264px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  animation: menu-in 160ms ease-out;
+}
+.select-list[data-placement="top"] {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.select-list > li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.select-list > li[data-active="true"] {
+  background: var(--surface-hover);
+}
+.select-list > li[aria-selected="true"] {
+  font-weight: 500;
+}
+.select-list > li[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.select-list > li > span {
+  flex: 1;
+  min-width: 0;
+}
+.select-list > li small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.select-list > li > svg:last-child {
+  flex-shrink: 0;
+  color: var(--focus);
 }
 .theme-menu {
   position: relative;
@@ -1406,11 +1552,32 @@ p.flow-success {
   padding: 0 28px 20px;
 }
 .flow-details summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
   font-size: 13px;
   min-height: 44px;
   padding: 14px 0;
   color: var(--muted);
   cursor: pointer;
+}
+.flow-details summary::-webkit-details-marker {
+  display: none;
+}
+.flow-details summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin: -3px 0 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.flow-details[open] summary::after {
+  margin-top: 3px;
+  transform: rotate(225deg);
 }
 .file-picker {
   display: flex;
