@@ -10,6 +10,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { SwapIcon } from "../SwapIcon";
 import { Modal } from "../Modal";
+import { FlowStatus } from "../FlowStatus";
 import type { Wallet } from "../../lib/vault";
 import { copyText, download } from "../../lib/browser";
 import { MAINNET } from "../../lib/chain";
@@ -176,16 +177,7 @@ export function ReceiveDialog({
           {t("在 Explorer 查看账户")}
           <ArrowUpRight size={14} />
         </a>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="flow-success" role="status">
-            {message}
-          </p>
-        )}
+        <FlowStatus error={error} message={message} />
       </div>
       <div className="flow-footer">
         <p className="flow-note centered">

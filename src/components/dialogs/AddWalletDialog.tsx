@@ -220,7 +220,7 @@ export function AddWalletDialog({
         const accountIndex = parseAccountIndex(index);
         const normalized = normalizeMnemonic(phrase);
         if (!validateMnemonic(normalized))
-          throw new Error("助记词无效，请检查单词和顺序");
+          throw new Error(t("助记词无效，请检查单词和顺序"));
         const derived = await deriveAccount(scheme, normalized, accountIndex);
         if (!mounted.current) return;
         setPreview({ address: derived.address });

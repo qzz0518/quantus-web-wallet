@@ -47,6 +47,15 @@ export function Toast({
     };
   }, [notice]);
   useLayoutEffect(() => {
+    const element = ref.current;
+    if (!visible || !element) return;
+    try {
+      element.showPopover?.();
+    } catch {
+      // Already shown, or the browser has no top layer for popovers.
+    }
+  }, [visible]);
+  useLayoutEffect(() => {
     // translate (not transform) preserves the toast's horizontal centering.
     const element = ref.current;
     if (!visible || !element || !motionAllowed()) return;
@@ -63,7 +72,9 @@ export function Toast({
   }, [visible]);
   if (!visible) return null;
   return (
-    <div className="toast" role="status" ref={ref}>
+    // `popover` puts the toast in the top layer, so it stays visible above an
+    // open modal dialog. Browsers without the API keep the plain fixed layout.
+    <div className="toast" role="status" ref={ref} popover="manual">
       {visible.success ? <Check size={16} /> : <Info size={16} />}
       {visible.message}
       <button aria-label={t("关闭提示")} onClick={onDismiss}>

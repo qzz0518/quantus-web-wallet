@@ -15,6 +15,7 @@ import {
   type DeviceSupport,
 } from "../lib/biometric";
 import { useT } from "../lib/i18n";
+import { FlowStatus } from "./FlowStatus";
 
 export function DeviceUnlockSettings({
   section,
@@ -148,19 +149,7 @@ export function DeviceUnlockSettings({
   }
 
   const feedback = (
-    <>
-      {error && (
-        <p className="error" id={errorId} role="alert">
-          {error}
-        </p>
-      )}
-      {message && (
-        <p className="flow-success" role="status">
-          <Check size={17} />
-          {message}
-        </p>
-      )}
-    </>
+    <FlowStatus error={error} errorId={errorId} message={message} />
   );
 
   return (

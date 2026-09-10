@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
-  Check,
   ChevronRight,
   Download,
   Fingerprint,
@@ -28,6 +27,7 @@ import { dismissModal } from "../../lib/motion";
 import { Modal } from "../Modal";
 import { AboutDialog } from "../dialogs/AboutDialog";
 import { WormholeRecoveryDialog } from "../dialogs/WormholeRecoveryDialog";
+import { FlowStatus } from "../FlowStatus";
 
 type SettingsPanel =
   | "password"
@@ -154,7 +154,7 @@ export function SettingsPage({
         <h2>{t("账户")}</h2>
         <SettingsRow
           icon={<WalletCards size={19} />}
-          title={unlocked && !walletCount ? t("添加钱包") : t("我的钱包")}
+          title={unlocked && !walletCount ? t("添加钱包") : t("全部钱包")}
           value={
             unlocked
               ? walletCount
@@ -295,17 +295,10 @@ export function SettingsPage({
                 "请将备份文件保存在另一台设备。修改密码或添加钱包后，记得重新备份。",
               )}
             </p>
-            {backupExported && (
-              <p className="flow-success" role="status">
-                <Check size={17} />
-                {t("备份下载已开始")}
-              </p>
-            )}
-            {backupError && (
-              <p className="error" role="alert">
-                {backupError}
-              </p>
-            )}
+            <FlowStatus
+              error={backupError}
+              message={backupExported ? t("备份下载已开始") : ""}
+            />
           </div>
           <div className="flow-footer">
             <button

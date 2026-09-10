@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowUpRight,
-  Check,
   ChevronRight,
   Copy,
   Download,
@@ -14,6 +13,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { Modal } from "../Modal";
+import { FlowStatus } from "../FlowStatus";
 import { unlockVault, STORAGE_KEY, type Wallet } from "../../lib/vault";
 import { MAINNET } from "../../lib/chain";
 import { errorText } from "../../lib/amount";
@@ -155,21 +155,7 @@ export function ManageDialog({
       : scheme
         ? `${t("自主保管账户")} · ${schemeLabel(scheme)}`
         : t("自主保管账户");
-  const feedback = (error || message) && (
-    <div className="flow-feedback">
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {message && (
-        <p className="flow-success" role="status">
-          <Check size={17} />
-          {message}
-        </p>
-      )}
-    </div>
-  );
+  const feedback = <FlowStatus error={error} message={message} />;
 
   return (
     <Modal

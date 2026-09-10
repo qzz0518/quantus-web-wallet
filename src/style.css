@@ -191,10 +191,6 @@ svg {
   border-radius: 50%;
   background: var(--surface);
 }
-.circle-button:hover,
-.icon-button:hover {
-  background: var(--surface-hover);
-}
 .circle-button.subtle {
   background: transparent;
   color: var(--muted);
@@ -214,16 +210,9 @@ svg {
   box-shadow: 0 1px 2px #111b1206;
   line-height: 1.4;
 }
-.button:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
 .button.primary {
   color: var(--accent-text);
   background: var(--accent);
-}
-.button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(0.91);
 }
 .button.danger {
   color: var(--danger);
@@ -239,9 +228,6 @@ svg {
   font-weight: 500;
   color: var(--muted);
   padding: 8px 0;
-}
-.text-button:hover {
-  color: var(--text);
 }
 .full {
   width: 100%;
@@ -262,13 +248,62 @@ svg {
   color: var(--danger);
 }
 .error {
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--danger-bg);
   padding: 12px 14px;
   margin: 12px 0;
   font-size: 13px;
   line-height: 1.75;
   overflow-wrap: anywhere;
+}
+/* One shared feedback slot. It reserves its height so a message that appears
+   after an action never moves the surrounding layout. */
+.flow-status {
+  /* Block plus an inline-level message: it follows the surrounding text
+     alignment, centred in the receive flow and leading in the forms.
+     A zero strut keeps the empty slot exactly as tall as a filled one. */
+  display: block;
+  min-height: 44px;
+  margin: 14px 0 0;
+  line-height: 0;
+}
+.flow-status > p {
+  display: inline-flex;
+  vertical-align: top;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: left;
+  overflow-wrap: anywhere;
+  animation: feedback-in 180ms var(--motion-ease);
+}
+.flow-status > p > svg {
+  margin-top: 3px;
+}
+.flow-status[data-tone="success"] > p {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.flow-status[data-tone="error"] > p {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.flow-status[data-tone="warning"] > p {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+/* In a footer the slot sits above the action, where reserved space would
+   push the button off its resting position. */
+.flow-status.tight {
+  min-height: 0;
+  margin: 0 0 12px;
+}
+.flow-footer > .flow-status {
+  margin-top: 0;
 }
 input,
 textarea,
@@ -283,6 +318,13 @@ select {
 input::placeholder,
 textarea::placeholder {
   color: var(--faint);
+}
+/* A rejected field reads as rejected: the ring matches the message, not the accent. */
+:is(input, textarea)[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+:is(input, textarea)[aria-invalid="true"]:focus-visible {
+  outline-color: var(--danger);
 }
 textarea {
   resize: none;
@@ -368,8 +410,15 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: space-between;
 }
 .field-label-row .text-button {
+  position: relative;
   min-height: 30px;
   padding: 0;
+}
+/* Keep the label row compact but give the action a full touch target. */
+.field-label-row .text-button::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
 }
 .check-row {
   display: flex;
@@ -446,6 +495,7 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 9px;
   align-items: center;
   justify-self: start;
+  min-height: 44px;
   font-size: 25px;
   font-weight: 650;
   letter-spacing: -1.3px;
@@ -618,9 +668,6 @@ input[type="number"]::-webkit-outer-spin-button {
   white-space: nowrap;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
-.segmented > button:hover {
-  color: var(--text);
-}
 .segmented > button[aria-checked="true"] {
   background: var(--bg);
   color: var(--text);
@@ -628,6 +675,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .segmented > button:focus-visible {
   outline-offset: 0;
+}
+/* A finger needs the full target even where the control is compact. */
+@media (hover: none) {
+  .segmented > button {
+    min-height: 42px;
+  }
 }
 /* Custom select: trigger button plus a listbox, shared look with the theme menu. */
 .select {
@@ -682,6 +735,8 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 6px;
   list-style: none;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--input-line) transparent;
   box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -755,9 +810,6 @@ input[type="number"]::-webkit-outer-spin-button {
 .theme-menu-list > button > span {
   flex: 1;
 }
-.theme-menu-list > button:hover {
-  background: var(--surface-hover);
-}
 .theme-menu-list > button[aria-checked="true"] > svg:last-child {
   color: var(--focus);
 }
@@ -794,11 +846,20 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--muted);
 }
 .balance-visibility {
+  position: relative;
   display: grid;
   place-items: center;
   width: 38px;
   height: 38px;
   color: var(--muted);
+}
+/* Keep the drawn size, widen the touch target to the 44px minimum. */
+.card-menu::after,
+.balance-visibility::after,
+.toast > button::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
 }
 .hero-balance {
   --balance-font-size: 68px;
@@ -831,6 +892,14 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .balance-fraction {
   color: var(--muted);
+}
+/* A dash standing in for an unavailable balance reads as a stray rule at
+   display size; keep it quiet and small. */
+.hero-balance.no-value {
+  --balance-font-size: 40px;
+}
+.hero-balance.no-value > span {
+  color: var(--faint);
 }
 .hero-available {
   margin-top: 12px;
@@ -885,6 +954,7 @@ input[type="number"]::-webkit-outer-spin-button {
   height: 23px;
 }
 .card-menu {
+  position: relative;
   display: grid;
   place-items: center;
   width: 36px;
@@ -945,15 +1015,22 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--muted);
   margin-top: 13px;
 }
+/* The three captions under the account card sit in the same place. */
 .account-privacy-note,
 .account-type-notice {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
   margin-top: 12px;
+  text-align: center;
+}
+button.account-type-notice {
+  width: 100%;
+  min-height: 44px;
 }
 
 /* An uncluttered start and a single, explicit next action. */
@@ -1143,9 +1220,6 @@ input[type="number"]::-webkit-outer-spin-button {
 .pending-row:last-child {
   border-bottom: 0;
 }
-.wallet-transaction:hover {
-  opacity: 0.75;
-}
 .transaction-icon {
   display: grid;
   place-items: center;
@@ -1170,8 +1244,15 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 14px;
   font-weight: 550;
 }
+/* The shortened address already stands in for the full one: keep it to a
+   single line rather than letting it stack up beside the amount. */
+.pending-row strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .wallet-transaction-main > small,
-.pending-row small {
+.pending-row > div > small {
   display: block;
   margin-top: 6px;
   font-size: 12px;
@@ -1212,6 +1293,12 @@ input[type="number"]::-webkit-outer-spin-button {
   margin-top: 6px;
   font-size: 11px;
 }
+.transaction-status.failed {
+  color: var(--danger);
+}
+.transaction-status.pending {
+  color: var(--warning);
+}
 .transaction-external {
   color: var(--muted);
   width: 14px;
@@ -1220,8 +1307,14 @@ input[type="number"]::-webkit-outer-spin-button {
   margin-bottom: 12px;
 }
 .pending-row > b {
+  flex-shrink: 0;
   font-size: 14px;
   font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.pending-row > b small {
+  font-size: 11px;
+  font-weight: 400;
 }
 .pending-row > a {
   color: var(--muted);
@@ -1275,11 +1368,21 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--warning);
   border-radius: 16px;
   padding: 16px 20px;
+  margin-bottom: 12px;
   font-size: 13px;
   line-height: 1.8;
 }
-.history-error .text-button {
+.history-error .text-button,
+.flow-note .text-button,
+.button-row .text-button {
   color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.flow-note .text-button,
+.button-row .text-button {
+  color: var(--text);
 }
 .load-more {
   display: flex;
@@ -1386,8 +1489,7 @@ input[type="number"]::-webkit-outer-spin-button {
     .flow-body,
     .flow-form,
     .flow-footer,
-    .device-settings,
-    .flow-feedback
+    .device-settings
   ) {
   margin-left: 28px;
   margin-right: 28px;
@@ -1416,6 +1518,7 @@ input[type="number"]::-webkit-outer-spin-button {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: var(--input-line) transparent;
   padding: 16px 28px 26px;
   min-width: 0;
 }
@@ -1480,15 +1583,6 @@ input[type="number"]::-webkit-outer-spin-button {
 .flow-summary > strong {
   font-weight: 500;
 }
-p.flow-success {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--green);
-  line-height: 1.8;
-  margin: 15px 0;
-}
 .flow-body.flow-success {
   display: flex;
   flex-direction: column;
@@ -1509,6 +1603,11 @@ p.flow-success {
   background: var(--green-soft);
   color: var(--green);
   border-radius: 50%;
+}
+/* An unconfirmed result is not a success: the emblem says so too. */
+.success-emblem.uncertain {
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 .flow-account {
   display: flex;
@@ -1541,9 +1640,6 @@ p.flow-success {
   color: var(--muted);
   font-size: 12px;
   margin-top: 6px;
-}
-.flow-feedback {
-  padding: 0 28px 20px;
 }
 .flow-details summary {
   display: flex;
@@ -1649,11 +1745,21 @@ p.flow-success {
     monospace;
 }
 .mnemonic-grid > :is(div, li) > span {
-  color: var(--faint);
+  /* Position numbers are read while the phrase is copied down by hand:
+     they need more contrast than a placeholder. */
+  color: var(--muted);
   font-size: 10px;
 }
 .mnemonic-grid > :is(div, li) > strong {
   font-weight: 500;
+}
+/* While the phrase is being generated the placeholder is the only child:
+   give it the whole grid instead of a third of the first row. */
+.mnemonic-grid > p {
+  grid-column: 1 / -1;
+  align-self: center;
+  text-align: center;
+  padding: 30px 0;
 }
 .mnemonic-actions {
   margin-top: 22px;
@@ -1790,10 +1896,6 @@ p.flow-success {
 .settings-row:not(:last-child) {
   border-bottom: 1px solid var(--line);
 }
-button.settings-row:hover,
-a.settings-row:hover {
-  background: var(--surface-soft);
-}
 .settings-row-icon {
   display: grid;
   place-items: center;
@@ -1846,7 +1948,6 @@ a.settings-row:hover {
   }
   .settings-appearance .segmented > button {
     flex: 1;
-    min-height: 38px;
   }
 }
 .settings-footer {
@@ -1879,6 +1980,12 @@ a.settings-row:hover {
   padding: 20px;
   border-radius: 18px;
 }
+.account-detail-card > .label {
+  display: block;
+}
+.account-detail-card > .label ~ .label {
+  margin-top: 18px;
+}
 .account-detail-address,
 .receive-address {
   font:
@@ -1902,12 +2009,22 @@ a.settings-row:hover {
   margin-bottom: 0;
 }
 .device-enabled-state {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
   background: var(--green-soft);
   color: var(--green);
   padding: 16px;
   border-radius: 16px;
   line-height: 1.8;
   font-size: 14px;
+}
+.device-enabled-state > p {
+  grid-column: 2;
+  font-size: 13px;
+  opacity: 0.85;
 }
 .install-instructions {
   background: var(--surface);
@@ -1949,8 +2066,13 @@ a.settings-row:hover {
 .receive-qr-panel {
   background: #fff;
   color: #171a18;
+  border: 1px solid #e6e8e3;
   border-radius: 24px;
   padding: 20px;
+  box-shadow: 0 1px 2px #17211808;
+}
+:root[data-theme="dark"] .receive-qr-panel {
+  border-color: transparent;
 }
 .receive-qr {
   display: flex;
@@ -2029,21 +2151,63 @@ a.settings-row:hover {
   gap: 9px;
   margin: 40px 0;
 }
-.amount-input > input {
+/* A hidden copy of the value sizes the box, so the unit stays beside the
+   number and the pair stays centred instead of drifting to the edges. */
+.amount-field {
+  position: relative;
+  display: inline-grid;
   min-width: 0;
-  width: 100%;
+  max-width: 100%;
+}
+.amount-field > span,
+.amount-field > input {
+  grid-area: 1 / 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   font-size: clamp(
     18px,
-    calc((100cqw - 56px) / (var(--amount-characters) * 0.65)),
+    calc((100cqw - 64px) / (var(--amount-characters) * 0.65)),
     54px
   );
   font-weight: 500;
+  line-height: 1.2;
   letter-spacing: -0.035em;
-  padding: 0;
   text-align: center;
+  white-space: pre;
 }
-.amount-input > span {
+.amount-field > span {
+  visibility: hidden;
+  overflow: hidden;
+}
+/* Zero width keeps the field out of the track sizing, so the hidden copy
+   alone decides how wide the box is; the minimum then fills that box. */
+.amount-field > input {
+  width: 0;
+  min-width: 100%;
+}
+/* The caret and a quiet rule carry the focus; a field-wide ring around a
+   display-sized number reads as an error box. */
+.amount-field > input:focus-visible {
+  outline: none;
+}
+.amount-field::after {
+  content: "";
+  grid-area: 1 / 1;
+  align-self: end;
+  height: 2px;
+  margin-bottom: -7px;
+  border-radius: 2px;
+  background: var(--focus);
+  opacity: 0;
+  transition: opacity 160ms var(--motion-ease);
+}
+.amount-input:focus-within .amount-field::after {
+  opacity: 1;
+}
+.amount-unit {
   flex-shrink: 0;
   white-space: nowrap;
   color: var(--muted);
@@ -2199,7 +2363,12 @@ a.settings-row:hover {
   border-radius: 50%;
 }
 .toast {
+  /* `popover` brings UA defaults (inset, margin, border); reset them first. */
   position: fixed;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  overflow: visible;
   z-index: 99;
   left: 50%;
   bottom: 26px;
@@ -2217,6 +2386,7 @@ a.settings-row:hover {
   line-height: 1.7;
 }
 .toast > button {
+  position: relative;
   display: grid;
   place-items: center;
   min-width: 30px;
@@ -2662,8 +2832,7 @@ a.settings-row:hover {
       .flow-body,
       .flow-form,
       .flow-footer,
-      .device-settings,
-      .flow-feedback
+      .device-settings
     ) {
     margin-left: 24px;
     margin-right: 24px;
@@ -2702,10 +2871,6 @@ a.settings-row:hover {
   }
   .receive-wallet strong {
     font-size: 21px;
-  }
-  .flow-feedback {
-    padding-left: 24px;
-    padding-right: 24px;
   }
   .toast {
     bottom: calc(98px + env(safe-area-inset-bottom));
@@ -2838,6 +3003,37 @@ a.settings-row:hover {
   )
   > svg:last-child {
   transition: transform 160ms var(--motion-ease);
+}
+/* Touch keeps :hover after a tap, so every hover state is pointer-only. */
+@media (hover: hover) and (pointer: fine) {
+  :where(.circle-button, .icon-button):hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+  .button:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+  .button.primary:hover:not(:disabled) {
+    background: var(--accent);
+    filter: brightness(0.91);
+  }
+  .text-button:hover {
+    color: var(--text);
+  }
+  .segmented > button:hover {
+    color: var(--text);
+  }
+  .theme-menu-list > button:hover {
+    background: var(--surface-hover);
+  }
+  button.settings-row:hover,
+  a.settings-row:hover {
+    background: var(--surface-soft);
+  }
+  .wallet-transaction:hover .wallet-transaction-main > strong {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--input-line);
+  }
 }
 @media (hover: hover) and (pointer: fine) {
   .text-button:hover > .lucide-arrow-up-right,

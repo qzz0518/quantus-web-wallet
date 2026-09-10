@@ -423,15 +423,15 @@ export default function App() {
     });
     setSelected(w.id);
   }
+  // Every caller reports the result in its own panel, so this does not also
+  // raise a toast; a failure is thrown for the caller to show.
   function exportVault() {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      download(
-        raw,
-        `quantus-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`,
-      );
-      notify(t("已导出加密备份，请妥善保存"), true);
-    }
+    if (!raw) throw new Error(t("未找到本机钱包，请返回创建钱包或恢复备份"));
+    download(
+      raw,
+      `quantus-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    );
   }
   const pending = (data?.pending || []).filter(
     (p) =>
