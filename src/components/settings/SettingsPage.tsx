@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
-  Check,
   ChevronRight,
   Download,
   Fingerprint,
@@ -26,6 +25,7 @@ import { LanguagePicker } from "../LanguagePicker";
 import { dismissModal } from "../../lib/motion";
 import { Modal } from "../Modal";
 import { AboutDialog } from "../dialogs/AboutDialog";
+import { FlowStatus } from "../FlowStatus";
 
 type SettingsPanel =
   | "password"
@@ -280,17 +280,10 @@ export function SettingsPage({
                 "请将备份文件保存在另一台设备。修改密码或添加钱包后，记得重新备份。",
               )}
             </p>
-            {backupExported && (
-              <p className="flow-success" role="status">
-                <Check size={17} />
-                {t("备份下载已开始")}
-              </p>
-            )}
-            {backupError && (
-              <p className="error" role="alert">
-                {backupError}
-              </p>
-            )}
+            <FlowStatus
+              error={backupError}
+              message={backupExported ? t("备份下载已开始") : ""}
+            />
           </div>
           <div className="flow-footer">
             <button

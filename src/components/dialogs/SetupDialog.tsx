@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Fingerprint,
@@ -57,6 +57,10 @@ export function SetupDialog({
   const fileRead = useRef(0);
   const passwordInput = useRef<HTMLInputElement>(null);
   const confirmationInput = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+  const [invalidField, setInvalidField] = useState<
+    "password" | "confirmation" | null
+  >(null);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -96,6 +100,7 @@ export function SetupDialog({
     event.preventDefault();
     if (busyRef.current || readingFile) return;
     if (mode === "create" && password !== confirmation) {
+      setInvalidField("confirmation");
       setError(t("两次输入的密码不一致，请检查确认密码"));
       confirmationInput.current?.focus();
       return;
@@ -103,6 +108,7 @@ export function SetupDialog({
     busyRef.current = true;
     setBusy(true);
     setError("");
+    setInvalidField(null);
     try {
       if (mode === "create") {
         if (localStorage.getItem(STORAGE_KEY) !== null)
@@ -146,7 +152,10 @@ export function SetupDialog({
         onOpen(session, data);
       }
     } catch (cause) {
-      if (mounted.current) setError(errorText(cause));
+      if (mounted.current) {
+        setError(errorText(cause));
+        setInvalidField("password");
+      }
     } finally {
       busyRef.current = false;
       if (mounted.current) {
@@ -274,6 +283,10 @@ export function SetupDialog({
               autoComplete={
                 mode === "create" ? "new-password" : "current-password"
               }
+              aria-invalid={invalidField === "password" || undefined}
+              aria-describedby={
+                invalidField === "password" ? errorId : undefined
+              }
               required
               minLength={mode === "create" ? 6 : 1}
               placeholder={mode === "create" ? t("至少 6 位") : t("输入密码")}
@@ -282,6 +295,7 @@ export function SetupDialog({
               onChange={(event) => {
                 setPassword(event.target.value);
                 setError("");
+                setInvalidField(null);
               }}
               autoFocus={mode !== "restore" && !deviceEnabled}
             />
@@ -293,6 +307,10 @@ export function SetupDialog({
                 ref={confirmationInput}
                 type="password"
                 autoComplete="new-password"
+                aria-invalid={invalidField === "confirmation" || undefined}
+                aria-describedby={
+                  invalidField === "confirmation" ? errorId : undefined
+                }
                 required
                 minLength={6}
                 placeholder={t("再次输入密码")}
@@ -301,6 +319,7 @@ export function SetupDialog({
                 onChange={(event) => {
                   setConfirmation(event.target.value);
                   setError("");
+                  setInvalidField(null);
                 }}
               />
             </label>
@@ -314,7 +333,7 @@ export function SetupDialog({
         </div>
         <div className="flow-footer">
           {error && (
-            <p role="alert" className="error">
+            <p role="alert" className="error" id={errorId}>
               {error}
             </p>
           )}

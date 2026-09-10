@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SwapIcon } from "./SwapIcon";
 import { Modal } from "./Modal";
+import { FlowStatus } from "./FlowStatus";
 import type { Wallet, Pending } from "../lib/vault";
 import {
   parseAmount,
@@ -354,11 +355,7 @@ export function SendDialog({
               />
               {copied ? t("哈希已复制") : t("复制交易哈希")}
             </button>
-            {copyError && (
-              <p className="error" role="alert">
-                {copyError}
-              </p>
-            )}
+            <FlowStatus error={copyError} />
             {error && (
               <p className="error" role="alert">
                 {error}
@@ -578,21 +575,25 @@ export function SendDialog({
                       } as CSSProperties
                     }
                   >
-                    <input
-                      key="send-amount"
-                      required
-                      inputMode="decimal"
-                      placeholder="0"
-                      autoComplete="off"
-                      value={amount}
-                      disabled={busy}
-                      onChange={(event) => {
-                        setAmount(event.target.value);
-                        setError("");
-                      }}
-                      autoFocus
-                    />
-                    <span>{services.symbol}</span>
+                    <span className="amount-field">
+                      {/* Sizes the field to its value so the unit stays beside it. */}
+                      <span aria-hidden="true">{amount || "0"}</span>
+                      <input
+                        key="send-amount"
+                        required
+                        inputMode="decimal"
+                        placeholder="0"
+                        autoComplete="off"
+                        value={amount}
+                        disabled={busy}
+                        onChange={(event) => {
+                          setAmount(event.target.value);
+                          setError("");
+                        }}
+                        autoFocus
+                      />
+                    </span>
+                    <span className="amount-unit">{services.symbol}</span>
                   </div>
                 </label>
                 <p className="flow-note centered">

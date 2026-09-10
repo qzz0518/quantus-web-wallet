@@ -33,6 +33,16 @@ const txLabel = (type: string) =>
     CANCELLED_REVERSIBLE: "已取消转账",
   })[type] || type.replaceAll("_", " ").toLowerCase();
 
+/** Colour tone of a transaction status, so a failure reads as a failure. */
+const statusTone = (status: string) =>
+  /SUCCESS|EXECUTED/.test(status)
+    ? "success"
+    : /FAILED|CANCELLED/.test(status)
+      ? "failed"
+      : /PENDING/.test(status)
+        ? "pending"
+        : "neutral";
+
 type ActivityPanelProps = {
   page: WalletPage;
   wallet?: Wallet;
@@ -279,9 +289,8 @@ export function ActivityPanel({
                     <small> QTC</small>
                   </strong>
                   <span
-                    className={`transaction-status ${/SUCCESS|EXECUTED/.test(tx.status) ? "success" : "neutral"}`}
+                    className={`transaction-status ${statusTone(tx.status)}`}
                   >
-                    <span />
                     {t(
                       {
                         SUCCESS: "成功",
