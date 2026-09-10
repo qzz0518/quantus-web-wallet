@@ -9,6 +9,7 @@ import {
   Languages,
   LifeBuoy,
   LockKeyhole,
+  LockKeyholeOpen,
   Palette,
   Smartphone,
   Wallet as WalletIcon,
@@ -16,11 +17,13 @@ import {
 } from "lucide-react";
 import type { Wallet } from "../../lib/vault";
 import { hasBiometric } from "../../lib/biometric";
+import { hasAutoUnlock } from "../../lib/auto-unlock";
 import { installPwa, usePwaInstall } from "../../lib/pwa";
 import { PROJECT_NAME } from "../../lib/project";
 import { shortAddress } from "../../lib/amount";
 import { useT } from "../../lib/i18n";
 import { DeviceUnlockSettings } from "../DeviceUnlockSettings";
+import { AutoUnlockSettings } from "../AutoUnlockSettings";
 import { ThemePicker } from "../ThemePicker";
 import { LanguagePicker } from "../LanguagePicker";
 import { dismissModal } from "../../lib/motion";
@@ -32,6 +35,7 @@ import { FlowStatus } from "../FlowStatus";
 type SettingsPanel =
   | "password"
   | "biometric"
+  | "autounlock"
   | "backup"
   | "install"
   | "about"
@@ -100,6 +104,7 @@ export function SettingsPage({
   const [backupError, setBackupError] = useState("");
   const installation = usePwaInstall();
   const deviceEnabled = unlocked && hasBiometric();
+  const autoUnlockEnabled = unlocked && hasAutoUnlock();
   const visibleWallet = unlocked ? wallet : undefined;
   const secured = (action: () => void) => {
     if (unlocked) action();
@@ -186,6 +191,18 @@ export function SettingsPage({
           onClick={() => secured(() => openPanel("biometric"))}
         />
         <SettingsRow
+          icon={<LockKeyholeOpen size={19} />}
+          title={t("免密模式")}
+          value={
+            unlocked
+              ? autoUnlockEnabled
+                ? t("已开启")
+                : t("未开启")
+              : t("解锁后查看")
+          }
+          onClick={() => secured(() => openPanel("autounlock"))}
+        />
+        <SettingsRow
           icon={<Download size={19} />}
           title={t("加密备份")}
           onClick={() => secured(() => openPanel("backup"))}
@@ -263,6 +280,17 @@ export function SettingsPage({
             onBusyChange={setPanelBusy}
             onDone={closePanel}
           />
+        </Modal>
+      )}
+      {panel === "autounlock" && (
+        <Modal
+          title={t("免密模式")}
+          variant="flow"
+          busy={panelBusy}
+          onClose={closePanel}
+          onBack={closePanel}
+        >
+          <AutoUnlockSettings onBusyChange={setPanelBusy} />
         </Modal>
       )}
       {panel === "backup" && (
