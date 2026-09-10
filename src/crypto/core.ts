@@ -1,5 +1,6 @@
-import init, { accountFromMnemonic, signCallFromMnemonic } from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
-import type { AccountPublic, SignContext } from './types';
+import init, { accountFromMnemonicScheme, signCallFromMnemonicScheme } from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
+import { SCHEMES, isWalletScheme } from './schemes';
+import type { AccountPublic, SignContext, WalletScheme } from './types';
 
 let initialization: Promise<unknown> | undefined;
 
@@ -23,12 +24,17 @@ export function assertIndex(index: number): void {
   }
 }
 
-export async function deriveAccountCore(mnemonic: string, index: number): Promise<AccountPublic> {
+function assertScheme(scheme: WalletScheme): void {
+  if (!isWalletScheme(scheme)) throw new Error('不支持的账户签名方案');
+}
+
+export async function deriveAccountCore(scheme: WalletScheme, mnemonic: string, index: number): Promise<AccountPublic> {
+  assertScheme(scheme);
   assertIndex(index);
   await initializeWasm();
   // Account is freed without reading its secretKey getter. Its Rust Drop wipes
   // the stored secret; the surrounding disposable worker also releases memory.
-  const handle = accountFromMnemonic(mnemonic, index, 0, 0);
+  const handle = accountFromMnemonicScheme(SCHEMES[scheme].wasmName, mnemonic, index, 0, SCHEMES[scheme].addressIndex);
   try {
     return { address: handle.address, publicKey: bytesToHex(handle.publicKey) };
   } finally {
@@ -37,11 +43,13 @@ export async function deriveAccountCore(mnemonic: string, index: number): Promis
 }
 
 export async function signCallCore(
+  scheme: WalletScheme,
   mnemonic: string,
   index: number,
   callHex: string,
   context: SignContext,
 ): Promise<string> {
+  assertScheme(scheme);
   assertIndex(index);
   const call = hexToBytes(callHex);
   if (call.length > 65536) throw new Error('交易数据过大');
@@ -53,5 +61,7 @@ export async function signCallCore(
   }
   if (!/^\d+$/.test(context.tip) || BigInt(context.tip) > (1n << 128n) - 1n) throw new Error('无效的小费');
   await initializeWasm();
-  return bytesToHex(signCallFromMnemonic(mnemonic, call, context, index, 0, 0));
+  return bytesToHex(signCallFromMnemonicScheme(
+    SCHEMES[scheme].wasmName, mnemonic, call, context, index, 0, SCHEMES[scheme].addressIndex,
+  ));
 }

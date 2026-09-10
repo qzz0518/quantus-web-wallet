@@ -180,10 +180,19 @@ describe("mnemonic backup verification", () => {
   });
 
   it("preserves a non-default account index so an imported wallet can be recovered", () => {
-    const backup = createMnemonicBackup(phrase, "Imported account", 7);
+    const backup = createMnemonicBackup(phrase, "Imported account", 7, "mldsa87");
+    expect(backup.text).toContain("账户类型：ML-DSA-87");
     expect(backup.text).toContain("账户序号：7");
     expect(backup.text).toContain("m/44'/189189'/7'/0'/0'");
     expect(() => createMnemonicBackup(phrase, "Invalid", -1)).toThrow();
+  });
+
+  it("records the ML-DSA-65 scheme and its official path component", () => {
+    const backup = createMnemonicBackup(phrase, "Official wallet", 2, "mldsa65");
+    expect(backup.text).toContain("账户类型：ML-DSA-65");
+    expect(backup.text).toContain("账户序号：2");
+    expect(backup.text).toContain("m/44'/189189'/2'/0'/1'");
+    expect(backup.text).not.toContain("ML-DSA-87");
   });
 
   it("can export an imported shorter mnemonic while new-wallet verification requires 24 words", () => {

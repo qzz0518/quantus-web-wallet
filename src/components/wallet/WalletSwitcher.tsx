@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { Wallet } from "../../lib/vault";
 import { shortAddress } from "../../lib/amount";
+import { useT } from "../../lib/i18n";
 import { Modal } from "../Modal";
 
 type WalletSwitcherProps = {
@@ -73,6 +74,7 @@ export function WalletChooser({
   onBack?: () => void;
   onChoose: (mode: "create" | "import" | "watch") => void;
 }) {
+  const t = useT();
   return (
     <Modal
       title="添加一个钱包"
@@ -95,7 +97,7 @@ export function WalletChooser({
               mode: "import" as const,
               icon: <ArrowDownToLine size={21} />,
               title: "导入已有钱包",
-              desc: "通过 ML-DSA-87 助记词恢复",
+              desc: t("通过助记词恢复 ML-DSA-65 或 ML-DSA-87 账户"),
               color: "lavender",
             },
             {

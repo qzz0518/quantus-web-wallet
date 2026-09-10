@@ -112,6 +112,7 @@ export function SendDialog({
         atomic,
       );
       const hex = await signCall(
+        wallet.kind,
         wallet.mnemonic,
         wallet.index,
         prepared.callHex,

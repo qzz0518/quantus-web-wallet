@@ -35,6 +35,49 @@ describe("encrypted vault", () => {
       unlockVault("test-only-password-long", JSON.stringify(tampered)),
     ).rejects.toThrow();
   });
+  it("loads a vault stored before ML-DSA-65 support without changing its records", async () => {
+    // Envelope produced by the previous release's data shape: an ML-DSA-87
+    // signing wallet, a watch wallet and one pending transfer. The phrase is the
+    // public upstream test vector; the password is fixture-only.
+    const legacy = '{"format":"quantus-vault","version":1,"kdf":"PBKDF2-SHA256","iterations":600000,"salt":"078RNWzMBtiqkR6/1VNTmw==","iv":"1O1nzHdZDAOahJEe","ciphertext":"JuROMjd9XDyrnoFyVxrVSpaeK8C/q5crFbAtDKKJrObyi36AwPBan/fCIrZ3sm9w9YUNvm5hgzZlLOy49UewnvQI8xOjvKGvKDcRYlO/hO2ongRdpDZNT1qkm7+HG7i3cAp6zzv9gaJKMW2U4Xg25CV1erIjY91V+GHbGTEClIdogYXJK+eUeLl0nj9n0cf28FhysLn16lCbvJATkBflVn6rMPtyn3V8xEXzaume0eOPrcVaDNfcRRrG+AeFbYRxRXwYYRD5gKJzoToVQYQ4FAtbsD1v5Ytfna+2GEQ1Siv47RDlkyEPw3+FSLMfxFEq5LjDuO6mvO7BfjL2fq+Ap5FXSq8xJLYPNoSzF1VxQZFqt8LyjglTtkjtDKB07FKWiCWyvJuEvgdRxsev/s+qDcdNUW9Tkjf2J8rvcqFWe6YccnYYXsLWHNtH21l06erJxcHfAWilh7qJV1SAJvfdi3mZjeN2QPwbZz2o9vEJVLBDbBrD6t+ybEmNzb61NYLKaMY9dkVby96wzxVaV5vZMfWwWfR0F6lzjKCAoknYh0crDq3r9GWAk066+/wRmKlKlSez26V3B68iqN+VmwyLkD9Z/disXjGumM85vdczHe+Xj2dbuOWNiJ65I83lBENhbkfoNMIk9UZWX7r34//uAgWYX7LxmerXlhKG0f81UtByGwtASBuzZeOSaQRQOxeuuHG5A72ObHuM8kira+TYAIlds7N6U9YAbCTyKsqrMcjZsAhDn+Ya9XNa/8MZeS9HyzjE3Ugur5rR45MwsAAoYn1OAKi7AwwKON9HI6JLoJzyKwtfWUw4a6fKGLOnwMn+apvYjdvUDPzOUwV+cMh2Hu7hcQAri4hlF4TmHNv023INYEyqH4jpYmWzJvAU7odWmS2FISnWMNstyYgy5KjhBr6YzfjnTZiD4wYE81FpUICpIOB/OKhn9P8JZMvUeEJfSVqd+EcDpLUnm0Us31D8fn+64Gfqo/LspwgtaF4KGc9Ork38J8jxRyWeLEX+UHu/UNTkQCZss4MWxRjK/arMlQgfI3FynSPalPyeiEZlHquYeCw//S3fpnpKf+TY/Xgdm+W5DICRQPX0RSsXwmc3GETgFHpo599EAPDUhC3EYI4="}';
+    const { data } = await unlockVault("fixture-password-2026", legacy);
+    expect(data.wallets.map((wallet) => wallet.kind)).toEqual(["mldsa87", "watch"]);
+    expect(data.wallets[0]).toEqual({
+      id: "legacy-1",
+      name: "旧钱包",
+      address: "qzm5QCox8Dp5A3oSXZZYHD8YoYgPz7enykZb6RPUropdCyN5h",
+      kind: "mldsa87",
+      index: 0,
+      mnemonic:
+        "orchard answer curve patient visual flower maze noise retreat penalty cage small earth domain scan pitch bottom crunch theme club client swap slice raven",
+      createdAt: 1757400000000,
+    });
+    expect(data.wallets[1].watchKind).toBe("standard");
+    expect(data.pending).toHaveLength(1);
+    // A vault that mixes the old and new signing kinds validates unchanged.
+    const mixed = {
+      ...data,
+      wallets: [
+        ...data.wallets,
+        { ...data.wallets[0], id: "new-65", address: "qzoyC4eRTrexYoutXABVsf61QJZxJim3iWvayRQwEjXWgA4mw", kind: "mldsa65" as const },
+      ],
+    };
+    expect(validateData(structuredClone(mixed))).toEqual(mixed);
+    const session = await createSession("fixture-password-2026");
+    expect((await unlockVault("fixture-password-2026", await encryptVault(session, mixed))).data).toEqual(mixed);
+  });
+
+  it("requires a mnemonic for both signing kinds and rejects unknown kinds", () => {
+    const wallet = { id: "k", name: "k", address: "qzk", index: 0, createdAt: 1 };
+    for (const kind of ["mldsa65", "mldsa87"]) {
+      expect(() => validateData({ version: 1, wallets: [{ ...wallet, kind }], pending: [] })).toThrow("钱包密钥数据无效");
+      expect(validateData({ version: 1, wallets: [{ ...wallet, kind, mnemonic: "words" }], pending: [] }).wallets[0].kind).toBe(kind);
+    }
+    for (const kind of ["mldsa44", "ml-dsa-65", "", undefined]) {
+      expect(() => validateData({ version: 1, wallets: [{ ...wallet, kind, mnemonic: "words" }], pending: [] })).toThrow("钱包数据格式无效");
+    }
+  });
+
   it("rejects duplicate wallets and secret-bearing watch records", () => {
     const w = {
       id: "x",

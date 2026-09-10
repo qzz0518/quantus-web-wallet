@@ -19,6 +19,9 @@ import { MAINNET } from "../../lib/chain";
 import { errorText } from "../../lib/amount";
 import { copyText } from "../../lib/browser";
 import { downloadMnemonicBackup } from "../../lib/mnemonic-backup";
+import { derivationPath, schemeLabel } from "../../crypto";
+import { walletScheme } from "../../lib/wallet";
+import { useT } from "../../lib/i18n";
 
 type ManageView = "overview" | "rename" | "seed" | "type" | "remove";
 const titles: Record<ManageView, string> = {
@@ -42,6 +45,8 @@ export function ManageDialog({
   onWatchKindChange?: (kind: NonNullable<Wallet["watchKind"]>) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
+  const t = useT();
+  const scheme = walletScheme(wallet);
   const [view, setView] = useState<ManageView>("overview");
   const [name, setName] = useState(wallet.name);
   const [watchKind, setWatchKind] = useState<Wallet["watchKind"] | "">(
@@ -127,7 +132,8 @@ export function ManageDialog({
           (entry) =>
             entry.id === wallet.id &&
             entry.address === wallet.address &&
-            entry.kind === "mldsa87",
+            entry.kind !== "watch" &&
+            entry.kind === wallet.kind,
         );
         if (!verified?.mnemonic) throw new Error("当前钱包没有可查看的助记词");
         setSecret(verified.mnemonic);
@@ -143,7 +149,9 @@ export function ManageDialog({
         : wallet.watchKind === "standard"
           ? "普通观察账户"
           : "观察账户 · 类型待确认"
-      : "自主保管账户";
+      : scheme
+        ? `${t("自主保管账户")} · ${schemeLabel(scheme)}`
+        : "自主保管账户";
   const feedback = (error || message) && (
     <div className="flow-feedback">
       {error && (
@@ -185,6 +193,15 @@ export function ManageDialog({
           <div className="account-detail-card">
             <span className="label">钱包地址</span>
             <p className="account-detail-address">{wallet.address}</p>
+            {scheme && (
+              <>
+                <span className="label">{t("签名方案与派生路径")}</span>
+                <p className="account-detail-address">
+                  {schemeLabel(scheme)} ·{" "}
+                  {derivationPath(scheme, wallet.index).replaceAll("'", "′")}
+                </p>
+              </>
+            )}
             <div className="account-detail-actions">
               <button
                 className="text-button"
@@ -436,7 +453,12 @@ export function ManageDialog({
                   setError("");
                   setMessage("");
                   try {
-                    downloadMnemonicBackup(secret, wallet.name, wallet.index);
+                    downloadMnemonicBackup(
+                      secret,
+                      wallet.name,
+                      wallet.index,
+                      scheme ?? "mldsa87",
+                    );
                     setMessage("助记词备份下载已开始");
                   } catch (error) {
                     setError(errorText(error));

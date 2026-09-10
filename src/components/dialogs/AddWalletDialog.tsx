@@ -10,11 +10,16 @@ import {
 import { Modal } from "../Modal";
 import type { Wallet } from "../../lib/vault";
 import {
+  DEFAULT_SCHEME,
+  derivationPath,
   deriveAccount,
   generateMnemonic,
   normalizeMnemonic,
+  schemeLabel,
   validateMnemonic,
+  type WalletScheme,
 } from "../../crypto";
+import { useT } from "../../lib/i18n";
 import { validateAddress } from "../../lib/chain";
 import { errorText, shortAddress } from "../../lib/amount";
 import {
@@ -26,6 +31,22 @@ import {
 } from "../../lib/mnemonic-backup";
 
 type WalletAction = "create" | "import" | "watch";
+
+function parseAccountIndex(value: string): number {
+  const accountIndex = Number(value);
+  if (
+    !Number.isInteger(accountIndex) ||
+    accountIndex < 0 ||
+    accountIndex > 2 ** 31 - 1
+  )
+    throw new Error("账户序号必须是有效的非负整数");
+  return accountIndex;
+}
+
+/** Display form of the HD path with typographic primes. */
+function displayPath(scheme: WalletScheme, index: string): string {
+  return derivationPath(scheme, index || "0").replaceAll("'", "′");
+}
 
 export function AddWalletDialog({
   mode,
@@ -58,9 +79,12 @@ export function AddWalletDialog({
   const [error, setError] = useState("");
   const [downloaded, setDownloaded] = useState(false);
   const [wormhole, setWormhole] = useState(false);
+  const [scheme, setScheme] = useState<WalletScheme>(DEFAULT_SCHEME);
+  const [preview, setPreview] = useState<{ address: string } | null>(null);
   const [saved, setSaved] = useState<{ name: string; address: string } | null>(
     null,
   );
+  const t = useT();
   const busyRef = useRef(false);
   const savedRef = useRef(false);
   const mounted = useRef(true);
@@ -115,6 +139,10 @@ export function AddWalletDialog({
       setStep(0);
       setError("");
       setIncorrect([]);
+    } else if (mode === "import" && step === 1 && !savedRef.current) {
+      setStep(0);
+      setPreview(null);
+      setError("");
     } else {
       pasteRequest.current++;
       (onBack || onClose)();
@@ -161,7 +189,7 @@ export function AddWalletDialog({
   function backup() {
     setError("");
     try {
-      downloadMnemonicBackup(phrase, name.trim() || defaultName);
+      downloadMnemonicBackup(phrase, name.trim() || defaultName, 0, scheme);
       setDownloaded(true);
     } catch (cause) {
       setError(errorText(cause));
@@ -184,14 +212,28 @@ export function AddWalletDialog({
     }
     busyRef.current = true;
     setBusy(true);
+    if (mode === "import" && step === 0) {
+      // Show the derived address first so it can be compared with the
+      // official wallet before anything is stored.
+      try {
+        const accountIndex = parseAccountIndex(index);
+        const normalized = normalizeMnemonic(phrase);
+        if (!validateMnemonic(normalized))
+          throw new Error("助记词无效，请检查单词和顺序");
+        const derived = await deriveAccount(scheme, normalized, accountIndex);
+        if (!mounted.current) return;
+        setPreview({ address: derived.address });
+        setStep(1);
+      } catch (cause) {
+        if (mounted.current) setError(errorText(cause));
+      } finally {
+        busyRef.current = false;
+        if (mounted.current) setBusy(false);
+      }
+      return;
+    }
     try {
-      const accountIndex = Number(index);
-      if (
-        !Number.isInteger(accountIndex) ||
-        accountIndex < 0 ||
-        accountIndex > 2 ** 31 - 1
-      )
-        throw new Error("账户序号必须是有效的非负整数");
+      const accountIndex = parseAccountIndex(index);
       const normalized = normalizeMnemonic(phrase);
       if (mode !== "watch" && !validateMnemonic(normalized))
         throw new Error("助记词无效，请检查单词和顺序");
@@ -205,8 +247,10 @@ export function AddWalletDialog({
       const target =
         mode === "watch"
           ? validateAddress(address.trim())
-          : (await deriveAccount(normalized, accountIndex)).address;
+          : (await deriveAccount(scheme, normalized, accountIndex)).address;
       if (!mounted.current) return;
+      if (mode === "import" && preview?.address !== target)
+        throw new Error(t("地址已变化，请返回重新查看后再导入"));
       if (wallets.some((wallet) => wallet.address === target))
         throw new Error("这个地址已经在钱包列表中");
       const walletName = name.trim() || defaultName;
@@ -214,7 +258,7 @@ export function AddWalletDialog({
         id: crypto.randomUUID(),
         name: walletName,
         address: target,
-        kind: mode === "watch" ? "watch" : "mldsa87",
+        kind: mode === "watch" ? "watch" : scheme,
         ...(mode === "watch"
           ? {
               watchKind: wormhole
@@ -360,6 +404,33 @@ export function AddWalletDialog({
                       </button>
                       <p>这是未加密的助记词文件，请离线保管，不要分享。</p>
                     </div>
+                    <details className="flow-details">
+                      <summary>{t("高级选项")}</summary>
+                      <label className="field">
+                        {t("签名方案")}
+                        <select
+                          aria-label={t("签名方案")}
+                          value={scheme}
+                          disabled={busy}
+                          onChange={(event) => {
+                            if (
+                              event.target.value === "mldsa65" ||
+                              event.target.value === "mldsa87"
+                            )
+                              setScheme(event.target.value);
+                            setError("");
+                          }}
+                        >
+                          <option value="mldsa65">
+                            {t("ML-DSA-65（官方钱包默认）")}
+                          </option>
+                          <option value="mldsa87">ML-DSA-87</option>
+                        </select>
+                        <small>
+                          {t("路径 {0}", displayPath(scheme, "0"))}
+                        </small>
+                      </label>
+                    </details>
                   </>
                 ) : (
                   <div className="word-questions" data-private="true">
@@ -416,6 +487,26 @@ export function AddWalletDialog({
                   </div>
                 )}
               </>
+            ) : mode === "import" && step === 1 && preview ? (
+              <>
+                <div className="flow-heading">
+                  <h3>{t("确认账户地址")}</h3>
+                  <p>
+                    {t("请与官方钱包收款页面显示的地址对比，一致后再导入。")}
+                  </p>
+                </div>
+                <div className="account-detail-card">
+                  <span className="label">{t("派生地址")}</span>
+                  <p className="account-detail-address">{preview.address}</p>
+                  <span className="label">{t("签名方案与派生路径")}</span>
+                  <p className="account-detail-address">
+                    {schemeLabel(scheme)} · {displayPath(scheme, index)}
+                  </p>
+                </div>
+                <p className="hint">
+                  {t("地址不一致时，请返回切换签名方案或账户序号。")}
+                </p>
+              </>
             ) : (
               <>
                 <div className="flow-heading">
@@ -470,10 +561,36 @@ export function AddWalletDialog({
                   )}
                 </label>
                 {mode === "import" && (
-                  <p className="hint">
-                    仅支持 ML-DSA-87。ML-DSA-65 和 Wormhole
-                    隐私账户请使用对应钱包。
-                  </p>
+                  <>
+                    <label className="field">
+                      {t("签名方案")}
+                      <select
+                        aria-label={t("签名方案")}
+                        value={scheme}
+                        disabled={busy}
+                        onChange={(event) => {
+                          if (
+                            event.target.value === "mldsa65" ||
+                            event.target.value === "mldsa87"
+                          )
+                            setScheme(event.target.value);
+                          setError("");
+                        }}
+                      >
+                        <option value="mldsa65">
+                          {t("ML-DSA-65（官方钱包默认）")}
+                        </option>
+                        <option value="mldsa87">
+                          {t("ML-DSA-87（早期版本）")}
+                        </option>
+                      </select>
+                    </label>
+                    <p className="hint">
+                      {t(
+                        "官方钱包与命令行工具当前默认使用 ML-DSA-65；Wormhole 隐私账户请使用官方钱包。",
+                      )}
+                    </p>
+                  </>
                 )}
                 <label className="field">
                   钱包名称（可选）
@@ -506,7 +623,7 @@ export function AddWalletDialog({
                         }}
                       />
                       <small>
-                        通常为 0。路径 m/44′/189189′/{index || "0"}′/0′/0′
+                        {t("通常为 0。路径 {0}", displayPath(scheme, index))}
                       </small>
                     </label>
                   </details>
@@ -553,7 +670,9 @@ export function AddWalletDialog({
                     ? generating || (!phrase && !generationFailed)
                     : !allAnswered
                   : mode === "import"
-                    ? !normalizedPhrase
+                    ? step === 0
+                      ? !normalizedPhrase
+                      : !preview
                     : !address.trim())
               }
             >
@@ -568,7 +687,9 @@ export function AddWalletDialog({
                         : "我已备份，继续"
                     : "验证并创建钱包"
                   : mode === "import"
-                    ? "导入钱包"
+                    ? step === 0
+                      ? t("查看地址")
+                      : t("确认导入")
                     : "添加钱包"}
               <ArrowRight size={17} />
             </button>

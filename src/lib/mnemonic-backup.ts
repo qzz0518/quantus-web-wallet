@@ -1,5 +1,11 @@
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import { normalizeMnemonic, validateMnemonic } from "../crypto";
+import {
+  derivationPath,
+  normalizeMnemonic,
+  schemeLabel,
+  validateMnemonic,
+  type WalletScheme,
+} from "../crypto";
 import { download } from "./browser";
 import { PROJECT_NAME } from "./project";
 
@@ -97,6 +103,7 @@ export function createMnemonicBackup(
   phrase: string,
   walletName = "钱包",
   accountIndex = 0,
+  scheme: WalletScheme = "mldsa87",
 ) {
   if (
     !Number.isInteger(accountIndex) ||
@@ -109,7 +116,7 @@ export function createMnemonicBackup(
   const fileName = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").slice(0, 50);
   return {
     filename: `quantus-mnemonic-${fileName}.txt`,
-    text: `${PROJECT_NAME} · 助记词备份\n钱包：${name}\n账户类型：ML-DSA-87\n账户序号：${accountIndex}\n派生路径：m/44'/189189'/${accountIndex}'/0'/0'\n\n助记词（${words.length} 个单词）：\n${words.join(" ")}\n\n这是未加密的助记词文件。请离线保管，不要分享给任何人。\n`,
+    text: `${PROJECT_NAME} · 助记词备份\n钱包：${name}\n账户类型：${schemeLabel(scheme)}\n账户序号：${accountIndex}\n派生路径：${derivationPath(scheme, accountIndex)}\n\n助记词（${words.length} 个单词）：\n${words.join(" ")}\n\n这是未加密的助记词文件。请离线保管，不要分享给任何人。\n`,
   };
 }
 
@@ -117,7 +124,8 @@ export function downloadMnemonicBackup(
   phrase: string,
   walletName?: string,
   accountIndex = 0,
+  scheme: WalletScheme = "mldsa87",
 ) {
-  const backup = createMnemonicBackup(phrase, walletName, accountIndex);
+  const backup = createMnemonicBackup(phrase, walletName, accountIndex, scheme);
   download(backup.text, backup.filename, "text/plain;charset=utf-8");
 }
