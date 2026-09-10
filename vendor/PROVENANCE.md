@@ -8,7 +8,7 @@ Validated on 2026-09-09 (ML-DSA-87) and 2026-09-10 (ML-DSA-65) against Quantus m
 - Runtime reference: [Quantus-Network/chain](https://github.com/Quantus-Network/chain/tree/f5828f0bd827f476cad299d0b092da128f863f5c), commit `f5828f0bd827f476cad299d0b092da128f863f5c`.
 - `qp-poseidon-core = 3.1.0`; `qp-rusty-crystals-dilithium = 4.1.1` (features `ml-dsa-65`, `ml-dsa-87`); `qp-rusty-crystals-hdwallet = 4.1.1` (feature `ml-dsa-65` added to the default `ml-dsa-87`). These versions match the mainnet chain workspace. Original upstream WASM 0.2.0 used older 2.x crypto dependencies and ML-DSA-87 only. Enabling the extra features does not change `Cargo.lock`.
 - Current mainnet requires the ML-DSA context bytes `QUANTUS_EXTRINSIC` for both schemes. The original WASM signs with an empty context and therefore cannot produce current mainnet extrinsic signatures unchanged.
-- Adaptation is recorded in `quantus-wasm-mainnet.patch`, including the dependency update, API changes, mainnet context, public signature verification helpers, tests, wiping `Account` secret storage on drop, and the ML-DSA-65 support described below.
+- Adaptation is recorded in `quantus-wasm-mainnet.patch`, including the dependency update, API changes, mainnet context, public signature verification helpers, tests, wiping `Account` secret storage on drop, the ML-DSA-65 support described below, and the feature-gated Wormhole exit prover (`src/prover.rs`, see the last section). The official proof fixture in `test-data/` is copied verbatim and is not part of the patch.
 - SS58 prefix 189, HD path `m/44'/189189'/<account>'/<change>'/<addressIndex>'`, empty BIP39 passphrase. The browser bridge always uses `change = 0` and fixes the last component by scheme, following the official CLI/wallet defaults:
 
 | Scheme | Bridge path | Runtime enum variant (`DilithiumSignatureScheme` / `DilithiumSigner`) | Signature + public key |
@@ -41,7 +41,7 @@ mise exec -- cargo test --manifest-path vendor/quantus-wasm/Cargo.toml --locked 
 mise exec -- bun test ./src/crypto/crypto.test.ts
 ```
 
-`scripts/build-wasm.sh` installs the wasm32 target and the matching wasm-bindgen CLI if missing. Cargo.lock records crate checksums. Build-machine paths are remapped before compilation. `browser/` must be committed together with the source adaptation. The 2026-09-10 artifact `browser/quantus_wasm_bg.wasm` (ML-DSA-65 plus wormhole helpers) has SHA-256 `317c97560e7dc6a4edf77d91a64301cd2a67d86bca0485b0870ff9c5de6df8f8` and was reproduced byte-for-byte from a clean crate build; the previous ML-DSA-87-only artifact was likewise reproduced before the change.
+`scripts/build-wasm.sh` installs the wasm32 target and the matching wasm-bindgen CLI if missing. Cargo.lock records crate checksums. Build-machine paths are remapped before compilation. `browser/` must be committed together with the source adaptation. The 2026-09-10 artifact `browser/quantus_wasm_bg.wasm` (ML-DSA-65 plus wormhole helpers) has SHA-256 `274682ff674de1d37b75fed630439d47168d2f4108d8cbb1d6d59fabb81407cd` and was reproduced byte-for-byte from a clean crate build; the previous ML-DSA-87-only artifact was likewise reproduced before the change. Adding the exit prover dependencies moved three shared crates in `Cargo.lock` (`anyhow` 1.0.102 → 1.0.104 as pinned by the official circuit crates, `log` 0.4.32 → 0.4.28, `once_cell` 1.21.4 → 1.21.3), which changed the main artifact from SHA-256 `317c97560e7dc6a4edf77d91a64301cd2a67d86bca0485b0870ff9c5de6df8f8` to the value above without any source change to the signing code; the JS glue is unchanged.
 
 ## Verification and scope
 
@@ -57,6 +57,52 @@ JS tests load the real generated WASM, validate upstream mnemonic/address vector
 Read-only mainnet check (2026-09-10, block 20290): a fresh ML-DSA-65 `balances.transfer_keep_alive` signed by the bridge decoded against live `state_getMetadata` (extrinsic v4, `MultiAddress::Id` of the derived account, `DilithiumSignatureScheme` variant `1 = Dilithium65` with a 5261-byte payload, transaction extensions, call and arguments, no trailing bytes). `payment_queryInfo` priced it (`partialFee = 8198025000`). `system_dryRun` is refused by the public node as unsafe, so `state_call TaggedTransactionQueue_validate_transaction` was used instead: the runtime returned `Invalid(Payment)` for the unfunded test account (signature accepted, fee check failed as expected) and `Invalid(BadProof)` when one signature byte or the signer was altered; forcing the variant byte to `0` failed to decode. Nothing was broadcast (`author_submitExtrinsic` was never called) and no funds were spent. An ML-DSA-65 mainnet transfer with a funded account has not been executed.
 
 The application bridge performs each derivation/signing operation in a disposable Web Worker and never reads the WASM secret-key getter. Rust secret-key storage is wiped when its Account handle is freed; JS strings and browser process memory cannot provide a physical secure-erasure guarantee.
+
+## Wormhole exit prover (`browser-prover/`)
+
+Validated on 2026-09-10 against the same mainnet runtime (`specVersion = 152`).
+
+### Sources
+
+- Circuit crates exactly as pinned by the mainnet chain lockfile at commit `f5828f0bd827f476cad299d0b092da128f863f5c` (`Cargo.lock` lines for `qp-wormhole-*`): `qp-wormhole-circuit`, `qp-wormhole-prover`, `qp-wormhole-aggregator`, `qp-wormhole-inputs`, `qp-wormhole-verifier`, `qp-zk-circuits-common` = **4.3.0**; `qp-plonky2`, `qp-plonky2-verifier` = **1.5.5**; `qp-poseidon-core` = 3.1.0. All from crates.io (checksums in `Cargo.lock`). The aggregator is compiled without its `multithread` (rayon) feature; the artifact is single-threaded.
+- Runtime reference for the rules (`pallets/wormhole`, `pallets/zk-tree`, `primitives/header`, `node/src/zktree_rpc.rs`, `runtime/src/configs/mod.rs`) at the same chain commit. `pallets/wormhole/build.rs` defaults `QP_NUM_LEAF_PROOFS = 7` and `QP_NUM_PRIVATE_BATCH_PROOFS = 53`; the release workflow builds with those defaults.
+- `test-data/private_batch.hex` is `pallets/wormhole/test-data/private_batch.hex` from that commit: a real private-batch proof produced by the official CLI (`quantus wormhole multi round`), used by the runtime's own tests.
+
+### What is built
+
+`src/prover.rs` (feature `wormhole-prover`, off by default) derives the deposit secrets with `qp-rusty-crystals-hdwallet`, re-checks every chain-supplied leaf, Merkle path and header, builds one leaf proof per deposit (`qp-wormhole-prover`), pads with the official dummy leaf and aggregates with the official **private-batch** circuit (`PrivateBatchProver`, `standard_recursion_zk_config` with 135/60 wires, degree 2^15, 162 public inputs). The result is for `wormhole.verifyPrivateBatch`.
+
+The public-batch circuit (`verifyPublicBatch`, 53 inner private batches) was measured natively with the same crates, single-threaded: circuit build 49.6 s, proving 106 s, **peak RSS 10.24 GB**, proof 223,616 bytes. That does not fit a 4 GiB wasm32 module, so the browser cannot produce public batches and the aggregator rebate (`VolumeFeesAggregatorRate`) does not apply to wallet exits.
+
+`scripts/build-prover.sh` builds the artifact with cargo profile `prover` (release, `opt-level = 3`), `--max-memory=4294967296`, an 8 MiB shadow stack, `--remap-path-prefix`, `--locked`, and wasm-bindgen 0.2.125 (`--target web`) into `browser-prover/` (`quantus_prover_bg.wasm`, 4,078,078 bytes). The main signing artifact in `browser/` is built without the feature and does not change.
+
+### Verification and pins
+
+- Rebuilding the private-batch circuit from the pinned crates gives verifier-only data of 552 bytes (blake2-256 `2837095057dc397e73616f4c6490f05a9b42c90044097bd465d44516aef51fa9`), common circuit data of 1,197 bytes (blake2-256 `575bfae2b0a1ad5f273242d0d344c0b623d77f1df868a39ac7062d8e715dfd88`) and circuit digest `e912c68ce58e801247829313c4a0f9e12d6c24f501e617252de459b67b624549`. `src/prover.rs` pins all three and refuses to return a proof if the rebuilt circuit differs.
+- The mainnet runtime code (`state_getStorage(":code")` from `https://rpc1-mainnet.quantus.com`, 673,534 bytes, zstd-compressed with the 8-byte Substrate prefix; 3,375,109 bytes decompressed) contains these exact verifier-only and common bytes at offsets 2,370,793 and 2,371,345 — the `private_batch_verifier.bin` / `private_batch_common.bin` embedded by `pallets/wormhole/build.rs`. Proofs that verify locally therefore verify on chain.
+- The official fixture proof verifies against the rebuilt verifier (`prover::tests::official_fixture_verifies_against_pinned_artifacts`), a tampered or truncated copy does not.
+- Every proof is verified before it is returned the way the pallet verifies it: verifier artifacts deserialized from bytes, `ensure_batch_verifier_profile` (config, ≥100 security bits, 162 public inputs), the canonical-encoding round trip (`NonCanonicalProofEncoding`), `parse_private_batch_public_inputs`, and `WormholeVerifier::verify` from `qp-wormhole-verifier` 4.3.0; the parsed public inputs are then compared with the requested exit, block and nullifiers.
+- Leaf hashing is pinned to the `pallet-zk-tree` golden vector, header hashing to the `qp-header` vector, and nullifiers to the `qp-wormhole-circuit` vectors in `src/wormhole.rs`; the prover additionally requires its two nullifier implementations to agree per input.
+- Rules confirmed from the pallet: amounts committed in quanta of `SCALE_DOWN_FACTOR = 10^10` planck (`= Vesting.PayoutQuantum`); the circuit locks `out · 10000 ≤ in · (10000 − bps)` per private segment; the pallet settles `ceil(out · bps / (10000 − bps))` quanta, burns `ceil(burnRate · fee)` and mints the rest to the block author; public inputs `[num_exit_slots, asset_id, volume_fee_bps, block_hash(4), block_number, 14 × (sum, exit(4)), 7 × nullifier(4)]`; proof size cap 512 KiB; block reference valid for `BlockHashCount = 4096` blocks; pool longevity 5 blocks; unsigned origin, `Pays::No`.
+
+### Measurements (headless Chrome, Apple Silicon, single thread)
+
+| Inputs | Total | Leaf proofs | Circuit build | Private batch prove | Verify | wasm memory | Proof |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 54.6 s | 0.7 s | 13.6 s | 40.0 s | 0.04 s | 910 MiB linear memory, ~1.7 GB renderer RSS | 151,156 bytes |
+| 7 | 60.2 s | 4.8 s | 13.5 s | 41.0 s | 0.04 s | 910 MiB linear memory, ~1.6 GB renderer RSS | 151,156 bytes |
+
+Native single-threaded reference: private batch build 4.5 s, prove 12.4 s, 1.61 GB RSS.
+
+### Rebuild
+
+```sh
+mise exec -- bash scripts/build-prover.sh
+mise exec -- cargo test --manifest-path vendor/quantus-wasm/Cargo.toml --locked --lib --features wormhole-prover
+QUANTUS_DEV_TEST=1 bun test src/lib/wormhole/exit.dev.test.ts   # needs the local dev node on :9945
+```
+
+`[profile.test]` uses `opt-level = 3` because the prover tests run the real circuits.
 
 ## Licenses
 

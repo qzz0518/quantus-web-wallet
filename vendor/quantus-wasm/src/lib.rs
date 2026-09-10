@@ -5,6 +5,8 @@
 //! - [`account`]: 32-byte seed -> ML-DSA-87 keypair, Poseidon `AccountId32`, SS58 address.
 //! - [`signTransfer`] / [`signCall`]: 32-byte seed + params -> signed v4 extrinsic bytes.
 //! - the `mnemonic` feature adds HD derivation and signing for both schemes.
+//! - the `wormhole-prover` feature adds the in-browser Wormhole exit prover
+//!   (`wormholeProveExit`), built as a separate, lazily loaded artifact.
 
 extern crate alloc;
 use alloc::string::String;
@@ -21,6 +23,9 @@ mod mnemonic;
 
 #[cfg(feature = "mnemonic")]
 mod wormhole;
+
+#[cfg(feature = "wormhole-prover")]
+mod prover;
 
 /// Account material derived from a seed. Byte fields surface as `Uint8Array`.
 #[wasm_bindgen]

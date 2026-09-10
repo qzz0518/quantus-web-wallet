@@ -78,6 +78,12 @@ export interface WormholeRules {
   /** `System.BlockHashCount`: how long a proof's block reference stays valid. */
   blockHashCount: number;
   existentialDepositPlanck: string;
+  /** `Wormhole.VolumeFeesBurnRate` in parts per million (the rest of the fee goes to the block author). */
+  burnRatePpm?: number;
+  /** Proof the browser can build: a private batch; the aggregator rebate only exists for public batches. */
+  batchKind?: "private-batch";
+  /** RPC endpoint the rules were read from. */
+  rpcUrl?: string;
 }
 
 /** Preview for a set of selected unspent deposits before proving. */
@@ -94,6 +100,8 @@ export interface WormholeExitSummary {
   rebatePlanck: string;
   /** Amount credited to the exit account. */
   netPlanck: string;
+  /** Fee the pallet settles on the minted amount (`ceil(net · bps / (10000 − bps))`), split between burn and block author. */
+  settledFeePlanck?: string;
 }
 
 export type WormholeExitPhase =
@@ -138,4 +146,8 @@ export interface WormholeExitReceipt {
   message: string;
   createdAt: number;
   endpoint: string;
+  /** Times the identical bytes were re-broadcast after the pool dropped them (5-block longevity). */
+  resubmits?: number;
+  /** Serialized proof size in bytes (`Wormhole.MAX_PROOF_BYTES` is 512 KiB). */
+  proofBytes?: number;
 }
