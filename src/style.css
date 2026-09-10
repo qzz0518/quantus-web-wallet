@@ -1836,6 +1836,316 @@ button.account-type-notice {
 .tools-heading > h1 {
   font-size: 22px;
 }
+/* Mining calculator: inputs stacked on phones, inputs left and results right from 900px. */
+.mining-intro {
+  margin: 12px 0 0;
+}
+.mining-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 32px;
+}
+.mining-column {
+  min-width: 0;
+}
+.mining-card {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 18px 20px;
+  font-variant-numeric: tabular-nums;
+}
+.mining-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -6px 0 2px;
+}
+.mining-updated {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mining-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin: 14px 0 0;
+}
+.mining-stats > div {
+  min-width: 0;
+}
+.mining-stats dt {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.mining-stats dd {
+  margin: 3px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.mining-stats dd > small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--faint);
+}
+.mining-stats > .highlight dd {
+  color: var(--green);
+}
+.mining-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.mining-callout {
+  margin: 14px 0 0;
+}
+.mining-card .error {
+  margin: 12px 0 0;
+}
+.mining-card .field {
+  margin: 16px 0 0;
+}
+.mining-card > .field:first-child,
+.mining-card > .mining-fields:first-child > .field {
+  margin-top: 0;
+}
+.mining-card .check-row {
+  margin: 12px 0 0;
+}
+.mining-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+}
+.mining-fields.split {
+  grid-template-columns: minmax(0, 1fr) 96px;
+}
+.mining-field > span:first-child {
+  display: block;
+}
+.mining-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mining-input > input {
+  flex: 1;
+}
+.mining-input:has(.mining-input-suffix) > input {
+  padding-right: 88px;
+}
+.mining-input:has(.segmented) > input {
+  padding-right: 128px;
+}
+.mining-input-suffix {
+  position: absolute;
+  right: 14px;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  pointer-events: none;
+}
+.mining-input-suffix .segmented {
+  pointer-events: auto;
+  padding: 2px;
+  background: var(--bg);
+}
+.mining-input-suffix .segmented > button {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+.mining-input-suffix .segmented > button[aria-checked="true"] {
+  background: var(--surface);
+}
+.mining-segmented {
+  display: flex;
+  width: 100%;
+}
+.mining-segmented > button {
+  flex: 1;
+  min-width: 0;
+}
+.mining-segmented > button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mining-card > .mining-segmented {
+  margin-bottom: 4px;
+}
+.mining-card > .mining-segmented + .mining-fields,
+.mining-card > .mining-segmented + .field {
+  margin-top: 16px;
+}
+.mining-device {
+  padding: 16px 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.mining-device-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.mining-device-head .text-button {
+  min-height: 32px;
+}
+.mining-add {
+  margin-top: 10px;
+}
+.mining-inline-button {
+  min-height: 0;
+  padding: 0;
+  font-weight: 400;
+  text-decoration: underline;
+}
+.mining-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.mining-hero > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mining-hero > strong {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.mining-hero em {
+  font-style: normal;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.mining-hero > small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.mining-table-wrap {
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.mining-card.mining-table-wrap {
+  margin: 0;
+  padding: 6px 20px;
+}
+.mining-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.mining-table th,
+.mining-table td {
+  padding: 9px 10px;
+  text-align: right;
+  font-weight: 400;
+  border-bottom: 1px solid var(--line);
+}
+.mining-table th:first-child,
+.mining-table td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.mining-table th:last-child,
+.mining-table td:last-child {
+  padding-right: 0;
+}
+.mining-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: normal;
+  vertical-align: bottom;
+}
+.mining-table td > small {
+  display: block;
+  margin-top: 2px;
+}
+.mining-table tbody th {
+  font-weight: 500;
+}
+.mining-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.mining-table small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.mining-table .positive {
+  color: var(--green);
+}
+.mining-table .negative {
+  color: var(--danger);
+}
+.mining-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 84px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.mining-method code {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.mining-method ul {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+.mining-method li + li {
+  margin-top: 8px;
+}
+@media (max-width: 700px) {
+  .mining-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mining-fields.split {
+    grid-template-columns: minmax(0, 1fr) 84px;
+  }
+  /* Stacked fields keep their spacing even when the pair opens the card. */
+  .mining-fields:not(.split) > .field + .field {
+    margin-top: 16px;
+  }
+}
+@media (min-width: 900px) {
+  .settings-page.mining-page {
+    max-width: 1080px;
+  }
+  .mining-grid {
+    grid-template-columns: minmax(0, 11fr) minmax(0, 12fr);
+    align-items: start;
+  }
+}
 .settings-page {
   max-width: 580px;
   margin: 0 auto;
