@@ -56,7 +56,7 @@ describe("wormhole recovery dialog", () => {
     expect(html).toContain("加密账户恢复");
     expect(html).toContain("找回转入加密账户的资产");
     expect(html).toContain("0.04%");
-    expect(html).toContain("1 GB");
+    expect(html).toContain("1.5 GB");
     expect(html).toContain("详细教程");
     expect(html).toContain("<ol");
     expect(html).toContain("开始扫描");

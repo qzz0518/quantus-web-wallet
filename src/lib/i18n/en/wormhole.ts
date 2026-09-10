@@ -42,11 +42,11 @@ export const wormhole: Record<string, string> = {
   "收到资产的那个官方钱包的助记词（24 个单词）。可选：官方钱包里显示的加密账户地址，用于核对是否匹配。":
     "The seed phrase (24 words) of the official wallet that received the funds. Optional: the encrypted account address shown in the official wallet, to check that it matches.",
   "费用": "Costs",
-  "链上按取回金额收取 0.04% 的成交量费用；金额先向下取整到 0.01 QTC，每笔入账不足 0.01 QTC 的零头会丢失。取回到自己的账户时，费用的一半会作为返还打回收款账户。":
-    "The chain charges a 0.04% volume fee on the withdrawn amount. Amounts are first rounded down to 0.01 QTC, and the remainder below 0.01 QTC of each deposit is lost. When withdrawing to your own account, half of the fee comes back to the receiving account as a rebate.",
+  "链上按取回金额收取 0.04% 的成交量费用；金额先向下取整到 0.01 QTC，每笔入账不足 0.01 QTC 的零头会丢失。费用一半销毁、一半归出块矿工，没有返还。":
+    "The chain charges a 0.04% volume fee on the withdrawn amount. Amounts are first rounded down to 0.01 QTC, and the remainder below 0.01 QTC of each deposit is lost. Half of the fee is burned and half goes to the block producer; there is no rebate.",
   "设备要求": "Device requirements",
-  "生成零知识证明需要约 1 GB 内存，建议在桌面浏览器中操作；只查看余额不需要。":
-    "Generating the zero-knowledge proof needs about 1 GB of memory; a desktop browser is recommended. Viewing the balance does not need it.",
+  "生成零知识证明需要约 1.5 GB 内存和一分钟左右，建议在桌面浏览器中操作；只查看余额不需要。":
+    "Generating the zero-knowledge proof needs about 1.5 GB of memory and roughly a minute; a desktop browser is recommended. Viewing the balance does not need it.",
   "隐私": "Privacy",
   "助记词只在本页面和本地签名组件中使用，不会存储或上传。官方索引服务与节点会看到派生出的地址和你的 IP 地址。":
     "The seed phrase is used only on this page and in the local signing module; it is never stored or uploaded. The official indexer and RPC node see the derived addresses and your IP address.",
@@ -144,10 +144,9 @@ export const wormhole: Record<string, string> = {
   "舍去零头": "Remainder lost",
   "链上费用（{0}%）": "Chain fee ({0}%)",
   "链上费用": "Chain fee",
-  "预计返还": "Expected rebate",
   "实际到账": "You receive",
-  "生成证明需要约 1 GB 内存，可能持续几分钟，建议使用桌面浏览器并保持页面打开。手机浏览器可能因内存不足而失败。":
-    "Generating the proof needs about 1 GB of memory and may take a few minutes. Use a desktop browser and keep the page open; mobile browsers may fail for lack of memory.",
+  "生成证明需要约 1.5 GB 内存，通常一分钟左右，建议使用桌面浏览器并保持页面打开。手机浏览器可能因内存不足而失败。":
+    "Generating the proof needs about 1.5 GB of memory and usually takes about a minute. Use a desktop browser and keep the page open; mobile browsers may fail for lack of memory.",
   "我确认收款账户由我本人控制，并了解费用、舍去的零头以及取回不可撤销。":
     "I confirm I control the receiving account and understand the fee, the lost remainder and that a withdrawal cannot be undone.",
   "生成证明并提交": "Generate proof and submit",

@@ -469,7 +469,7 @@ export function WormholeRecoveryDialog({
                 <div>
                   <strong>{t("费用")}</strong>
                   {t(
-                    "链上按取回金额收取 0.04% 的成交量费用；金额先向下取整到 0.01 QTC，每笔入账不足 0.01 QTC 的零头会丢失。取回到自己的账户时，费用的一半会作为返还打回收款账户。",
+                    "链上按取回金额收取 0.04% 的成交量费用；金额先向下取整到 0.01 QTC，每笔入账不足 0.01 QTC 的零头会丢失。费用一半销毁、一半归出块矿工，没有返还。",
                   )}
                 </div>
               </li>
@@ -477,7 +477,7 @@ export function WormholeRecoveryDialog({
                 <MemoryStick size={18} />
                 <div>
                   <strong>{t("设备要求")}</strong>
-                  {t("生成零知识证明需要约 1 GB 内存，建议在桌面浏览器中操作；只查看余额不需要。")}
+                  {t("生成零知识证明需要约 1.5 GB 内存和一分钟左右，建议在桌面浏览器中操作；只查看余额不需要。")}
                 </div>
               </li>
               <li>
@@ -907,8 +907,6 @@ export function WormholeRecoveryDialog({
                 <strong>{summary.value ? qtc(summary.value.dustPlanck) : "…"}</strong>
                 <span>{rules ? t("链上费用（{0}%）", (rules.volumeFeeBps / 100).toString()) : t("链上费用")}</span>
                 <strong>{summary.value ? qtc(summary.value.feePlanck) : "…"}</strong>
-                <span>{t("预计返还")}</span>
-                <strong>{summary.value ? qtc(summary.value.rebatePlanck) : "…"}</strong>
                 <span>{t("实际到账")}</span>
                 <strong>{summary.value ? qtc(summary.value.netPlanck) : "…"}</strong>
               </div>
@@ -916,7 +914,7 @@ export function WormholeRecoveryDialog({
             <div className="callout">
               <MemoryStick size={17} />
               <div>
-                <p>{t("生成证明需要约 1 GB 内存，可能持续几分钟，建议使用桌面浏览器并保持页面打开。手机浏览器可能因内存不足而失败。")}</p>
+                <p>{t("生成证明需要约 1.5 GB 内存，通常一分钟左右，建议使用桌面浏览器并保持页面打开。手机浏览器可能因内存不足而失败。")}</p>
               </div>
             </div>
             <label className="check-row">

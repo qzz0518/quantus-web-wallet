@@ -5,6 +5,7 @@ import { settings } from "./en/settings";
 import { setup } from "./en/setup";
 import { wallet } from "./en/wallet";
 import { wormhole } from "./en/wormhole";
+import { wormholeExit } from "./en/wormhole-exit";
 
 /** English translations keyed by the Chinese source text, merged from per-area fragments. */
 export const en: Record<string, string> = {
@@ -15,6 +16,7 @@ export const en: Record<string, string> = {
   ...setup,
   ...wallet,
   ...wormhole,
+  ...wormholeExit,
   外观模式: "Appearance",
   跟随系统: "System",
   白天: "Light",
