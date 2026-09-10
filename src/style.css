@@ -1745,7 +1745,9 @@ button.account-type-notice {
     monospace;
 }
 .mnemonic-grid > :is(div, li) > span {
-  color: var(--faint);
+  /* Position numbers are read while the phrase is copied down by hand:
+     they need more contrast than a placeholder. */
+  color: var(--muted);
   font-size: 10px;
 }
 .mnemonic-grid > :is(div, li) > strong {
