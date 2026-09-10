@@ -37,6 +37,7 @@ function updateAt<T>(list: T[], index: number, patch: Partial<T>): T[] {
 function RentLine({ row, currency, priced }: { row: DeviceYield | null; currency: string; priced: boolean }) {
   const t = useT();
   const perDay = row?.breakEvenRentPerDay ?? null;
+  const perHour = row?.breakEvenRentPerHour ?? null;
   const unit = (suffix: string) => (currency ? `${currency}${suffix}` : suffix);
   return (
     <p className="mining-rent-line">
@@ -48,6 +49,10 @@ function RentLine({ row, currency, priced }: { row: DeviceYield | null; currency
         </span>
       ) : (
         <span className={`mining-rent-values ${signClass(perDay) ?? ""}`}>
+          <b>
+            {formatFiat(perHour ?? perDay / 24, "")}
+            <em>{unit(t("/小时"))}</em>
+          </b>
           <b>
             {formatFiat(perDay, "")}
             <em>{unit(t("/天"))}</em>

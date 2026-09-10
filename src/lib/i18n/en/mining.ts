@@ -68,6 +68,8 @@ export const mining: Record<string, string> = {
   "保本租金": "Break-even rent",
   "需要 QTC 价格": "needs a QTC price",
   "/天": "/day",
+  "/小时": "/hour",
+  "{0} / 小时 · 租金已含电费": "{0} / hour · rent covers the electricity",
   "算力与功耗": "Hashrate and power",
   "单卡算力": "Hashrate per card",
   "算力单位": "Hashrate unit",

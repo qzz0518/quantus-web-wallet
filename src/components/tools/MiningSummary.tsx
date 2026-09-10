@@ -96,7 +96,11 @@ export function MiningSummary({
           value: priced && total ? bare(total.breakEvenRentPerDay) : "—",
           unit: currency || undefined,
           tone: priced && total ? signClass(total.breakEvenRentPerDay) : undefined,
-          hint: !priced ? needPrice : t("租金已含电费，全部产值都能付租金"),
+          hint: !priced
+            ? needPrice
+            : total && total.breakEvenRentPerHour !== null
+              ? t("{0} / 小时 · 租金已含电费", bare(total.breakEvenRentPerHour))
+              : t("租金已含电费，全部产值都能付租金"),
         }
       : {
           key: "kwh",
