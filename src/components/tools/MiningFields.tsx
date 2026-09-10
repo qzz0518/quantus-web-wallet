@@ -88,8 +88,8 @@ export function NumberField({
 }
 
 export const UNIT_OPTIONS: { value: HashrateUnit; label: string }[] = [
-  { value: "MH", label: "MH/s" },
-  { value: "GH", label: "GH/s" },
+  { value: "MH", label: "MH" },
+  { value: "GH", label: "GH" },
 ];
 
 /**

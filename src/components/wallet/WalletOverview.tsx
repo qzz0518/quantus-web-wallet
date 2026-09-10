@@ -148,9 +148,18 @@ export function WalletOverview({
           style={{ "--card-h": walletHue(wallet.address) } as CSSProperties}
         >
           <div className="account-panel-top">
-            <span className="account-card-brand">
+            <span className="account-card-brand" aria-label="quantus">
               <WalletLogo />
-              quantus
+            </span>
+            <span className="account-card-type">
+              <i aria-hidden="true" />
+              {kind === "wormhole"
+                ? t("加密账户")
+                : wallet.kind === "watch"
+                  ? kind === "unknown"
+                    ? t("观察账户 · 类型待确认")
+                    : t("观察账户")
+                  : t("Quantus 主网账户")}
             </span>
             <button
               className="card-menu"
@@ -164,16 +173,6 @@ export function WalletOverview({
             className="account-card-identity"
             onClick={() => onOpen("manage")}
           >
-            <span className="account-card-type">
-              <i aria-hidden="true" />
-              {kind === "wormhole"
-                ? t("加密账户")
-                : wallet.kind === "watch"
-                  ? kind === "unknown"
-                    ? t("观察账户 · 类型待确认")
-                    : t("观察账户")
-                  : t("Quantus 主网账户")}
-            </span>
             <strong>{wallet.name}</strong>
           </button>
           <div className="account-card-footer">

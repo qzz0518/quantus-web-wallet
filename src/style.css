@@ -951,24 +951,28 @@ input[type="number"]::-webkit-outer-spin-button {
     hsl(var(--card-h) 26% 17%) 72%,
     hsl(calc(var(--card-h) - 27) 16% 25%)
   );
-  min-height: 208px;
+  min-height: 176px;
 }
 .account-panel-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+}
+/* The wallet is the subject; the brand mark just anchors the corner. */
+.account-panel-top > .card-menu {
+  margin-left: auto;
 }
 .account-card-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 18px;
-  font-weight: 550;
-  letter-spacing: -0.9px;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: #ffffff14;
 }
 .account-card-brand .brand-symbol {
-  width: 23px;
-  height: 23px;
+  width: 17px;
+  height: 17px;
 }
 .card-menu {
   position: relative;
@@ -988,7 +992,7 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 7px;
   text-align: left;
   margin-top: auto;
-  padding: 22px 0 0;
+  padding: 18px 0 0;
   min-width: 0;
 }
 .account-card-type {
@@ -1010,7 +1014,7 @@ input[type="number"]::-webkit-outer-spin-button {
   opacity: 0.75;
 }
 .account-card-identity > strong {
-  font-size: 22px;
+  font-size: 25px;
   line-height: 1.5;
   font-weight: 450;
   max-width: 100%;
@@ -2080,7 +2084,7 @@ button.account-type-notice {
   color: var(--muted);
 }
 .mining-per-gh {
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding-top: 14px;
   border-top: 1px solid var(--line);
 }
@@ -2176,9 +2180,16 @@ button.account-type-notice {
   overflow: visible;
   right: 6px;
 }
-/* Inside the narrow form column these fields get a line each. */
+/* Two compact columns: the value, its unit and the hint stay together. */
 .mining-row-more .mining-fields {
-  grid-template-columns: minmax(0, 1fr);
+  gap: 16px 12px;
+}
+.mining-row-more .mining-input > input {
+  padding: 12px 14px;
+  font-size: 15px;
+}
+.mining-row-more .mining-input:has(.segmented) > input {
+  padding-right: 78px;
 }
 .mining-input-suffix {
   position: absolute;
@@ -2722,11 +2733,21 @@ button.account-type-notice {
   padding: 20px;
   border-radius: 18px;
 }
-.account-detail-card > .label {
-  display: block;
+.account-detail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
-.account-detail-card > .label ~ .label {
-  margin-top: 18px;
+.account-detail-path {
+  font:
+    11px/1.6 "SFMono-Regular",
+    Consolas,
+    monospace;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .receive-address {
   display: block;
@@ -2748,17 +2769,39 @@ button.account-type-notice {
 .account-detail-address,
 .receive-address {
   font:
-    13px/1.8 "SFMono-Regular",
+    13px/1.9 "SFMono-Regular",
     Consolas,
     monospace;
   overflow-wrap: anywhere;
   margin-top: 12px;
 }
+.account-detail-address {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: inherit;
+  text-align: left;
+  letter-spacing: 0.02em;
+}
+@media (hover: hover) and (pointer: fine) {
+  .account-detail-address:hover {
+    background: var(--surface-hover);
+  }
+}
+.account-detail-copy {
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
+  background: var(--surface-soft);
+}
 .account-detail-actions {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 .manage-profile {
   margin-top: 0;

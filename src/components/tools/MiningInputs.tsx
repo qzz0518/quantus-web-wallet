@@ -115,7 +115,7 @@ function Tuning({
           suffix="W"
           hint={
             gpu?.powerW !== null && gpu?.powerW !== undefined
-              ? t("典型值 {0} W，可修改", gpu.powerW)
+              ? t("典型值，可修改")
               : t("整机满载功耗，用于电费")
           }
         />

@@ -127,6 +127,8 @@ export const settings: Record<string, string> = {
   "复制失败，请手动选中地址": "Copy failed. Select the address manually.",
   "正在复制…": "Copying…",
   "复制地址": "Copy address",
+  "复制完整地址": "Copy the full address",
+  "在 Explorer 查看": "View in Explorer",
   "管理钱包": "Manage wallet",
   "钱包名称已更新": "Wallet name updated",
   "给钱包起个名字": "Name your wallet",

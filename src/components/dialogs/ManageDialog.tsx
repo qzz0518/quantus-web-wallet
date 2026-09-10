@@ -180,20 +180,38 @@ export function ManageDialog({
             <span className="settings-profile-address">{accountType}</span>
           </div>
           <div className="account-detail-card">
-            <span className="label">{t("钱包地址")}</span>
-            <p className="account-detail-address">{wallet.address}</p>
-            {scheme && (
-              <>
-                <span className="label">{t("签名方案与派生路径")}</span>
-                <p className="account-detail-address">
-                  {schemeLabel(scheme)} ·{" "}
+            <div className="account-detail-head">
+              <span className="label">{t("钱包地址")}</span>
+              {scheme && (
+                <span className="account-detail-path">
                   {derivationPath(scheme, wallet.index).replaceAll("'", "′")}
-                </p>
-              </>
-            )}
+                </span>
+              )}
+            </div>
+            <button
+              className="account-detail-address"
+              aria-label={t("复制完整地址")}
+              disabled={copying}
+              onClick={async () => {
+                const attempt = ++copyAttempt.current;
+                setError("");
+                setMessage("");
+                setCopying(true);
+                try {
+                  await copyText(wallet.address);
+                  if (attempt === copyAttempt.current) setMessage(t("地址已复制"));
+                } catch {
+                  if (attempt === copyAttempt.current) setError(t("复制失败，请手动选中地址"));
+                } finally {
+                  if (attempt === copyAttempt.current) setCopying(false);
+                }
+              }}
+            >
+              {wallet.address}
+            </button>
             <div className="account-detail-actions">
               <button
-                className="text-button"
+                className="button account-detail-copy"
                 disabled={copying}
                 onClick={async () => {
                   const attempt = ++copyAttempt.current;
@@ -221,7 +239,7 @@ export function ManageDialog({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Explorer
+                {t("在 Explorer 查看")}
                 <ArrowUpRight size={15} />
               </a>
             </div>

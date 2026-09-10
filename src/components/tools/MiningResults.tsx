@@ -49,6 +49,11 @@ type Props = {
  * of figures that appear nowhere else. Difficulty growth, the GPU table and
  * the method stay folded until asked for.
  */
+/** Hashrate per unit of money, the shape rental markets quote. */
+function ratioText(mh: number): string {
+  return mh >= 1000 ? `${trimNumber(mh / 1000, 2)} GH` : `${formatInteger(mh)} MH`;
+}
+
 export function MiningResults({ network, model, result, terms, pool, luck, loading }: Props) {
   const t = useT();
   const [compareSoftware, setCompareSoftware] = useState<Software>("pool");
@@ -310,25 +315,12 @@ export function MiningResults({ network, model, result, terms, pool, luck, loadi
               hint={priced ? undefined : t("填写 QTC 价格")}
             />
             <Stat
-              label={t("最低算价比")}
-              value={perGh.ratePerHour === null ? "—" : `${bare(perGh.ratePerHour)} ${currency}`}
-              hint={
-                perGh.ratePerDay === null
-                  ? t("填写 QTC 价格")
-                  : t("每 GH/s 每小时；每天 {0}", bare(perGh.ratePerDay))
-              }
-            />
-            <Stat
               label={t("保本算价比")}
-              value={
-                perGh.ratePerHour === null
-                  ? "—"
-                  : t("{0} MH", formatInteger(1000 / perGh.ratePerHour))
-              }
+              value={perGh.ratePerHour === null ? "—" : ratioText(1000 / perGh.ratePerHour)}
               hint={
                 perGh.ratePerHour === null
                   ? t("填写 QTC 价格")
-                  : t("每 {0} 每小时；租赁报价高于此值才有利润", currency)
+                  : t("每 {0} 每小时，租赁报价高于此值才有利润；每 GH/s 每小时 {1}", currency, bare(perGh.ratePerHour))
               }
             />
           </dl>
