@@ -390,6 +390,54 @@ export function verifySignatureScheme(scheme, public_key, message, signature) {
     }
     return ret[0] !== 0;
 }
+
+/**
+ * SS58 wormhole receiving (`branch = 0`) or change (`branch = 1`) addresses
+ * for indices `start..start + count`. Secrets are not returned.
+ * @param {string} mnemonic
+ * @param {number} branch
+ * @param {number} start
+ * @param {number} count
+ * @param {string | null} [passphrase]
+ * @returns {string[]}
+ */
+export function wormholeAddresses(mnemonic, branch, start, count, passphrase) {
+    const ptr0 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.wormholeAddresses(ptr0, len0, branch, start, count, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+}
+
+/**
+ * 32-byte nullifier for the deposit with `transfer_count` to the wormhole
+ * account at (`branch`, `index`). Secrets are not returned.
+ * @param {string} mnemonic
+ * @param {number} branch
+ * @param {number} index
+ * @param {bigint} transfer_count
+ * @param {string | null} [passphrase]
+ * @returns {Uint8Array}
+ */
+export function wormholeNullifier(mnemonic, branch, index, transfer_count, passphrase) {
+    const ptr0 = passStringToWasm0(mnemonic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(passphrase) ? 0 : passStringToWasm0(passphrase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.wormholeNullifier(ptr0, len0, branch, index, transfer_count, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -673,6 +721,17 @@ function debugString(val) {
     }
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

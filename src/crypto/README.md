@@ -24,4 +24,6 @@ Each derive/sign request gets a new module Worker, which loads local WASM and is
 
 This module supports transparent ML-DSA-65 and ML-DSA-87 accounts. Wormhole private balances require their separate proving/spending protocol and must not be presented as an equivalent import.
 
+For future Wormhole balance scanning the WASM module additionally exports `wormholeAddresses(mnemonic, branch, start, count)` (SS58 addresses at `m/44'/189189189'/0'/<branch>'/<index>'`, branch 0 = receive, 1 = change) and `wormholeNullifier(mnemonic, branch, index, transferCount)` (`H(H("~nullif~" || secret || transferCount))`, matching the official circuit). Neither returns secrets; the UI does not use them yet and they are not wired into the worker bridge.
+
 See `../../vendor/PROVENANCE.md` for upstream pins, the mainnet context adaptation, licenses, rebuild and validation instructions. `core.ts` is an internal bridge used by the Worker and offline tests; UI code should import `index.ts`.

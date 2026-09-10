@@ -19,6 +19,9 @@ mod ext;
 #[cfg(feature = "mnemonic")]
 mod mnemonic;
 
+#[cfg(feature = "mnemonic")]
+mod wormhole;
+
 /// Account material derived from a seed. Byte fields surface as `Uint8Array`.
 #[wasm_bindgen]
 pub struct Account {

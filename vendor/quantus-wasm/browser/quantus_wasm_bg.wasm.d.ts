@@ -21,6 +21,8 @@ export const signTransferFromMnemonicScheme: (a: number, b: number, c: number, d
 export const signatureVariant: (a: number, b: number) => [number, number, number];
 export const verifySignature: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const verifySignatureScheme: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number];
+export const wormholeAddresses: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
+export const wormholeNullifier: (a: number, b: number, c: number, d: number, e: bigint, f: number, g: number) => [number, number, number, number];
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
 export const __wbindgen_exn_store: (a: number) => void;
@@ -28,4 +30,5 @@ export const __externref_table_alloc: () => number;
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __externref_table_dealloc: (a: number) => void;
 export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __externref_drop_slice: (a: number, b: number) => void;
 export const __wbindgen_start: () => void;

@@ -25,6 +25,12 @@ Validated on 2026-09-09 (ML-DSA-87) and 2026-09-10 (ML-DSA-65) against Quantus m
 - `src/mnemonic.rs`: `accountFromMnemonicScheme`, `signCallFromMnemonicScheme`, `signTransferFromMnemonicScheme` take the scheme name (`"ml-dsa-65"` / `"ml-dsa-87"`) and explicit path components, deriving with `qp_rusty_crystals_hdwallet::ml_dsa_65::derive_key_from_mnemonic` / `ml_dsa_87::derive_key_from_mnemonic`. `canonicalAddressIndex(scheme)` exposes the default last path component (1 for ML-DSA-65, 0 for ML-DSA-87). The existing ML-DSA-87 functions (`accountFromMnemonic`, `signCallFromMnemonic`, `signTransferFromMnemonic`, `verifySignature`) keep their signatures and output.
 - `src/lib.rs`: `Account.scheme` getter, `verifySignatureScheme`, `signatureVariant`.
 
+### Wormhole scanning helpers (2026-09-10)
+
+`src/wormhole.rs` exports `wormholeAddresses(mnemonic, branch, start, count)` and `wormholeNullifier(mnemonic, branch, index, transferCount)` for future private-balance scanning. Addresses come from `qp_rusty_crystals_hdwallet::generate_wormhole_from_seed` at `m/44'/189189189'/0'/<branch>'/<index>'` (branch 0 receive, 1 change) and are returned as SS58 (prefix 189) only. The nullifier is `Poseidon2(Poseidon2(felts("~nullif~") || digest(secret) || u64_felts(transferCount)))` computed with `qp-poseidon-core 3.1.0` (`string_to_felts`, `bytes_to_digest`, `u64_to_felts`, `hash_twice`). Wormhole secrets never cross the JS boundary. The UI does not use these functions yet.
+
+Verification: a throwaway program built only from the official crates (`qp-wormhole-circuit = 4.3.0`, `qp-wormhole-inputs = 4.3.0`, `qp-zk-circuits-common = 4.3.0`, the versions pinned by the chain workspace at `f5828f0`, plus `qp-rusty-crystals-hdwallet 4.1.1`) produced the reference values pinned in the tests: for the upstream test phrase, wormhole pair addresses at receive 0/1 and change 0/2 equal `UnspendableAccount::from_secret` of the same secret (the circuit's Poseidon2 matches the hdwallet's), and `Nullifier::from_preimage` nullifiers for fixed secrets (`[7; 32]`/42, `[0; 32]`/0, `[0xab; 32]`/424242) and derived secrets (receive 0 at counts 0, 1, `u64::MAX`; change 2 at 424242) equal this module's output byte for byte. `nullifier.rs` and `unspendable_account.rs` are identical in 4.3.0 and 4.4.0. No on-chain spent-nullifier lookup was performed.
+
 ## Rebuild
 
 The checked-in browser artifact allows ordinary frontend builds without Rust. To regenerate it, use Rust 1.97.1, the committed Cargo.lock and wasm-bindgen CLI 0.2.125:
@@ -35,11 +41,11 @@ mise exec -- cargo test --manifest-path vendor/quantus-wasm/Cargo.toml --locked 
 mise exec -- bun test ./src/crypto/crypto.test.ts
 ```
 
-`scripts/build-wasm.sh` installs the wasm32 target and the matching wasm-bindgen CLI if missing. Cargo.lock records crate checksums. Build-machine paths are remapped before compilation. `browser/` must be committed together with the source adaptation. The 2026-09-10 artifact `browser/quantus_wasm_bg.wasm` has SHA-256 `732e51287e8c0bf442d1add4ae6c4f288152f9d323e2f3b8a54570d4f978652c` and was reproduced byte-for-byte from a clean crate build; the previous ML-DSA-87-only artifact was likewise reproduced before the change.
+`scripts/build-wasm.sh` installs the wasm32 target and the matching wasm-bindgen CLI if missing. Cargo.lock records crate checksums. Build-machine paths are remapped before compilation. `browser/` must be committed together with the source adaptation. The 2026-09-10 artifact `browser/quantus_wasm_bg.wasm` (ML-DSA-65 plus wormhole helpers) has SHA-256 `317c97560e7dc6a4edf77d91a64301cd2a67d86bca0485b0870ff9c5de6df8f8` and was reproduced byte-for-byte from a clean crate build; the previous ML-DSA-87-only artifact was likewise reproduced before the change.
 
 ## Verification and scope
 
-The native Rust tests (`cargo test --locked --lib`, 20 tests) compare account IDs, SCALE signature/signer variants and eras with official Substrate/Quantus runtime crates for both schemes:
+The native Rust tests (`cargo test --locked --lib`, 24 tests) compare account IDs, SCALE signature/signer variants and eras with official Substrate/Quantus runtime crates for both schemes:
 
 - Account ids for raw seeds match `qp_dilithium_crypto::Dilithium87Pair` / `Dilithium65Pair::from_seed` and `DilithiumSigner::{Dilithium87, Dilithium65}::into_account`; the ML-DSA-65 signer variant encodes as `1`.
 - The signature field equals `DilithiumSignatureScheme::Dilithium87(..)` / `Dilithium65(..)` encoding, and `DilithiumSignatureScheme::verify` accepts the ML-DSA-65 envelope for the Poseidon account only.

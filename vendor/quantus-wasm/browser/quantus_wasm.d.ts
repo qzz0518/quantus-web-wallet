@@ -107,6 +107,18 @@ export function verifySignature(public_key: Uint8Array, message: Uint8Array, sig
  */
 export function verifySignatureScheme(scheme: string, public_key: Uint8Array, message: Uint8Array, signature: Uint8Array): boolean;
 
+/**
+ * SS58 wormhole receiving (`branch = 0`) or change (`branch = 1`) addresses
+ * for indices `start..start + count`. Secrets are not returned.
+ */
+export function wormholeAddresses(mnemonic: string, branch: number, start: number, count: number, passphrase?: string | null): string[];
+
+/**
+ * 32-byte nullifier for the deposit with `transfer_count` to the wormhole
+ * account at (`branch`, `index`). Secrets are not returned.
+ */
+export function wormholeNullifier(mnemonic: string, branch: number, index: number, transfer_count: bigint, passphrase?: string | null): Uint8Array;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
@@ -131,6 +143,8 @@ export interface InitOutput {
     readonly signatureVariant: (a: number, b: number) => [number, number, number];
     readonly verifySignature: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly verifySignatureScheme: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number];
+    readonly wormholeAddresses: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
+    readonly wormholeNullifier: (a: number, b: number, c: number, d: number, e: bigint, f: number, g: number) => [number, number, number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;
@@ -138,6 +152,7 @@ export interface InitOutput {
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __externref_table_dealloc: (a: number) => void;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

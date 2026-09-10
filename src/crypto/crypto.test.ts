@@ -3,9 +3,11 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { u8aToHex } from '@polkadot/util';
 import { blake2AsHex, decodeAddress } from '@polkadot/util-crypto';
+import { hexToU8a } from '@polkadot/util';
+import { encodeAddress } from '@polkadot/util-crypto';
 import {
   account, accountFromMnemonic, accountFromMnemonicScheme, canonicalAddressIndex, signatureVariant,
-  verifySignature, verifySignatureScheme,
+  verifySignature, verifySignatureScheme, wormholeAddresses, wormholeNullifier,
 } from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
 import { bytesToHex, deriveAccountCore, hexToBytes, initializeWasm, signCallCore } from './core';
 import { DEFAULT_SCHEME, SCHEMES, WALLET_SCHEMES, derivationPath, generateMnemonic, normalizeMnemonic, validateMnemonic } from './index';
@@ -157,6 +159,28 @@ describe('official Quantus browser cryptography', () => {
     expect(verifySignature(publicKey, payload, signature)).toBe(true);
     payload[3] ^= 1;
     expect(verifySignature(publicKey, payload, signature)).toBe(false);
+  });
+
+  test('wormhole scanning helpers return official addresses and nullifiers without secrets', () => {
+    // Address bytes from qp-rusty-crystals-hdwallet 4.1.1 (equal to the
+    // qp-wormhole-circuit 4.3.0 unspendable account for the same secret) and
+    // nullifiers from qp-wormhole-circuit 4.3.0 Nullifier::from_preimage.
+    const receive = wormholeAddresses(PHRASE, 0, 0, 2);
+    expect(receive).toEqual([
+      encodeAddress(hexToU8a('0xdfcfd6e59c75d208e84f54a887537bcf7b04265790ec79960bf49de123404d0e'), 189),
+      encodeAddress(hexToU8a('0x24a982ac06d7d8c2365a50de4a05df3e1ab31e378b9c8a3c4585335aa191c2d6'), 189),
+    ]);
+    expect(wormholeAddresses(PHRASE, 1, 2, 1)).toEqual([
+      encodeAddress(hexToU8a('0xd5ff0b2c9d6cf5270bc39ce64a9192b61804ebb3d16c6185537700ca000f8885'), 189),
+    ]);
+    expect(receive.every((address) => address.startsWith('qz'))).toBe(true);
+    expect(bytesToHex(wormholeNullifier(PHRASE, 0, 0, 0n))).toBe('0x2cbb73e7f9fad1070f8e729eb8e2b55d05d844dfea6622e12a7884eec1fe5bdc');
+    expect(bytesToHex(wormholeNullifier(PHRASE, 0, 0, 1n))).toBe('0x1fbb362bdac58e0ccc763f7bd97c6a6e231186d8aa531b9ad33f9ce89a6b287e');
+    expect(bytesToHex(wormholeNullifier(PHRASE, 0, 0, 18446744073709551615n))).toBe('0x045b756536aaad9a9174df74e2c7e32b0bc3b66ccfc00b8f63d175d725bcb307');
+    expect(bytesToHex(wormholeNullifier(PHRASE, 1, 2, 424242n))).toBe('0xbfcd88744ff455e13effce2e580374c2deb5fc648f9a77d4a64be21351bd4c63');
+    expect(() => wormholeAddresses(PHRASE, 2, 0, 1)).toThrow();
+    expect(() => wormholeAddresses(PHRASE, 0, 0, 5000)).toThrow();
+    expect(() => wormholeNullifier('not a phrase', 0, 0, 0n)).toThrow();
   });
 
   test('ML-DSA-65 v4 envelope uses signature variant 1 and verifies', async () => {
