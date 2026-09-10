@@ -31,6 +31,15 @@ import {
 } from "./components/WalletDialogs";
 import { SendDialog } from "./components/SendDialog";
 import { disableBiometric } from "./lib/biometric";
+import {
+  autoUnlock,
+  clearManualLock,
+  enableAutoUnlock,
+  hasAutoUnlock,
+  manuallyLocked,
+  markManualLock,
+} from "./lib/auto-unlock";
+import { LoaderCircle } from "lucide-react";
 import { hasPublicBalance, isWormhole } from "./lib/wallet";
 import { WalletLayout } from "./components/wallet/WalletLayout";
 import { WalletOverview } from "./components/wallet/WalletOverview";
@@ -56,6 +65,12 @@ export default function App() {
     [hasVault, setHasVault] = useState(
       () => !!localStorage.getItem(STORAGE_KEY),
     ),
+    // A fresh page load always retries the password-free mode; a manual lock
+    // only holds until then.
+    [booting, setBooting] = useState(() => {
+      clearManualLock();
+      return hasAutoUnlock();
+    }),
     [selected, setSelected] = useState(""),
     [dialog, setDialog] = useState<WalletDialog>(null),
     [page, setPage] = useState<WalletPage>(() =>
@@ -120,6 +135,7 @@ export default function App() {
     balanceEpoch = useRef(0),
     tracking = useRef(new Map<string, AbortController>()),
     lastActivity = useRef(Date.now()),
+    autoUnlocking = useRef(false),
     storageRef = useRef(localStorage.getItem(STORAGE_KEY));
   sessionRef.current = session;
   dataRef.current = data;
@@ -150,12 +166,21 @@ export default function App() {
     tracking.current.clear();
     setHasVault(!!localStorage.getItem(STORAGE_KEY));
   }, []);
+  // "Lock wallet" means it: the page stays locked until it is loaded again.
+  const lockManually = useCallback(() => {
+    markManualLock();
+    lock();
+  }, [lock]);
   useEffect(() => {
     const changed = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) {
         storageRef.current = e.newValue;
         lock();
-        notify(t("钱包数据已在另一个标签页更新，请重新解锁"));
+        notify(
+          hasAutoUnlock() && !manuallyLocked()
+            ? t("钱包数据已在另一个标签页更新")
+            : t("钱包数据已在另一个标签页更新，请重新解锁"),
+        );
       }
     };
     const activity = () => {
@@ -165,7 +190,13 @@ export default function App() {
     for (const event of ["pointerdown", "keydown", "touchstart"])
       window.addEventListener(event, activity, { passive: true });
     const id = setInterval(() => {
-      if (sessionRef.current && Date.now() - lastActivity.current > 600_000) {
+      // The password-free mode exists so the wallet stays open on a private
+      // computer; the idle lock is skipped while it is on.
+      if (
+        sessionRef.current &&
+        !hasAutoUnlock() &&
+        Date.now() - lastActivity.current > 600_000
+      ) {
         lock();
         notify(t("闲置超过 10 分钟，钱包已锁定"));
       }
@@ -236,11 +267,18 @@ export default function App() {
           localStorage.getItem(STORAGE_KEY) !== raw
         )
           throw new Error(t("钱包数据已变化，请重试"));
+        // The new vault has a new salt, which invalidates the stored wrap; the
+        // mode is re-wrapped with the new key so it stays on.
+        const keepAutoUnlock = hasAutoUnlock();
         disableBiometric();
         localStorage.setItem(STORAGE_KEY, encrypted);
         storageRef.current = encrypted;
         sessionRef.current = nextSession;
         setSession(nextSession);
+        if (keepAutoUnlock)
+          await enableAutoUnlock(newPassword).catch(() => {
+            notify(t("免密模式已关闭，可在设置中重新开启"));
+          });
       });
     queue.current = operation;
     return operation;
@@ -406,6 +444,34 @@ export default function App() {
     }
     setDialog(target);
   };
+  const openedRef = useRef(opened);
+  openedRef.current = opened;
+  // Password-free mode: open the vault on page load, and again after a lock
+  // this page did not ask for (another tab changed the vault). A manual lock
+  // is honoured until the next page load.
+  useEffect(() => {
+    if (session || !hasVault || autoUnlocking.current) return;
+    if (!hasAutoUnlock() || manuallyLocked()) {
+      setBooting(false);
+      return;
+    }
+    autoUnlocking.current = true;
+    const generation = epoch.current;
+    autoUnlock()
+      .then((result) => {
+        if (!result) {
+          notify(t("免密模式已失效，请使用密码解锁"));
+          return;
+        }
+        if (epoch.current !== generation || sessionRef.current) return;
+        openedRef.current(result.session, result.data);
+      })
+      .catch(() => notify(t("免密解锁未完成，请使用密码解锁")))
+      .finally(() => {
+        autoUnlocking.current = false;
+        setBooting(false);
+      });
+  }, [session, hasVault, notify]);
   function opened(s: VaultSession, d: VaultData) {
     epoch.current++;
     setSession(s);
@@ -504,7 +570,7 @@ export default function App() {
         }
         onPageChange={navigate}
         onOpen={open}
-        onLock={lock}
+        onLock={lockManually}
         onRefresh={refresh}
       >
         {page === "settings" ? (
@@ -518,7 +584,7 @@ export default function App() {
             onWallets={() => open(wallets.length ? "wallets" : "choose")}
             onExport={exportVault}
             onChangePassword={changePassword}
-            onLock={lock}
+            onLock={lockManually}
             onUnlock={() => open("unlock")}
           />
         ) : page === "tools" ? (
@@ -528,6 +594,11 @@ export default function App() {
             unlocked={!!session}
             onUnlock={() => open("unlock")}
           />
+        ) : booting ? (
+          <div className="wallet-booting" role="status" aria-live="polite">
+            <LoaderCircle size={24} className="spin" aria-hidden="true" />
+            <span>{t("正在解锁钱包…")}</span>
+          </div>
         ) : !session || !wallet ? (
           <Welcome
             hasVault={hasVault}

@@ -26,6 +26,7 @@ import {
   deviceError,
   disableBiometric,
 } from "../../lib/biometric";
+import { disableAutoUnlock } from "../../lib/auto-unlock";
 import { useT } from "../../lib/i18n";
 
 export function SetupDialog({
@@ -147,7 +148,10 @@ export function SetupDialog({
         if (mode === "unlock" && localStorage.getItem(STORAGE_KEY) !== raw)
           throw new Error(t("钱包数据已变化，请重新解锁"));
         if (mode === "restore") {
-          persistNewVault(raw, disableBiometric);
+          persistNewVault(raw, () => {
+            disableBiometric();
+            void disableAutoUnlock();
+          });
         }
         onOpen(session, data);
       }

@@ -1,4 +1,5 @@
 import { activity } from "./en/activity";
+import { autoUnlock } from "./en/auto-unlock";
 import { lib } from "./en/lib";
 import { mldsa65 } from "./en/mldsa65";
 import { settings } from "./en/settings";
@@ -10,6 +11,7 @@ import { wormholeExit } from "./en/wormhole-exit";
 /** English translations keyed by the Chinese source text, merged from per-area fragments. */
 export const en: Record<string, string> = {
   ...activity,
+  ...autoUnlock,
   ...lib,
   ...mldsa65,
   ...settings,

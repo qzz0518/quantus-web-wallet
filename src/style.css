@@ -2427,6 +2427,17 @@ button.account-type-notice {
 .spin {
   animation: spin 1s linear infinite;
 }
+/* Password-free mode opens the vault before the welcome screen would show. */
+.wallet-booting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 46vh;
+  color: var(--muted);
+  font-size: 14px;
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
