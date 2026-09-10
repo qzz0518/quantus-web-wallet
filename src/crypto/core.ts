@@ -1,6 +1,14 @@
-import init, { accountFromMnemonicScheme, signCallFromMnemonicScheme } from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
+import init, {
+  accountFromMnemonicScheme, signCallFromMnemonicScheme, wormholeAddresses, wormholeNullifier,
+} from '../../vendor/quantus-wasm/browser/quantus_wasm.js';
 import { SCHEMES, isWalletScheme } from './schemes';
-import type { AccountPublic, SignContext, WalletScheme } from './types';
+import type { AccountPublic, SignContext, WalletScheme, WormholeBranch, WormholeNullifierInput } from './types';
+
+/** Upper bound of one `wormholeAddresses` call in the WASM module. */
+export const WORMHOLE_MAX_DERIVE_COUNT = 4096;
+/** Upper bound of one nullifier batch; keeps a single worker well inside its timeout. */
+export const WORMHOLE_MAX_NULLIFIER_BATCH = 1000;
+const U64_MAX = (1n << 64n) - 1n;
 
 let initialization: Promise<unknown> | undefined;
 
@@ -64,4 +72,45 @@ export async function signCallCore(
   return bytesToHex(signCallFromMnemonicScheme(
     SCHEMES[scheme].wasmName, mnemonic, call, context, index, 0, SCHEMES[scheme].addressIndex,
   ));
+}
+
+function assertBranch(branch: unknown): asserts branch is WormholeBranch {
+  if (branch !== 0 && branch !== 1) throw new Error('Wormhole 分支必须是 0 或 1');
+}
+
+/** SS58 addresses of `start..start + count` on `branch`; secrets stay in the WASM module. */
+export async function deriveWormholeAddressesCore(
+  mnemonic: string,
+  branch: WormholeBranch,
+  start: number,
+  count: number,
+): Promise<string[]> {
+  assertBranch(branch);
+  assertIndex(start);
+  if (!Number.isSafeInteger(count) || count < 1 || count > WORMHOLE_MAX_DERIVE_COUNT) {
+    throw new Error('Wormhole 地址派生数量无效');
+  }
+  assertIndex(start + count - 1);
+  await initializeWasm();
+  const addresses = wormholeAddresses(mnemonic, branch, start, count);
+  if (addresses.length !== count) throw new Error('Wormhole 地址派生结果不完整');
+  return addresses;
+}
+
+/** 0x-hex nullifiers, one per input, in input order. */
+export async function computeWormholeNullifiersCore(
+  mnemonic: string,
+  inputs: WormholeNullifierInput[],
+): Promise<string[]> {
+  if (!Array.isArray(inputs) || inputs.length > WORMHOLE_MAX_NULLIFIER_BATCH) throw new Error('Wormhole 空值符批次无效');
+  const counts = inputs.map((input) => {
+    assertBranch(input.branch);
+    assertIndex(input.index);
+    if (typeof input.transferCount !== 'string' || !/^\d+$/.test(input.transferCount)) throw new Error('Wormhole 入账计数无效');
+    const count = BigInt(input.transferCount);
+    if (count > U64_MAX) throw new Error('Wormhole 入账计数无效');
+    return count;
+  });
+  await initializeWasm();
+  return inputs.map((input, position) => bytesToHex(wormholeNullifier(mnemonic, input.branch, input.index, counts[position])));
 }
