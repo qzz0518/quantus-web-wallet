@@ -8,6 +8,8 @@ import type { Assumptions, Costs, Device } from "./math";
  */
 export const STORAGE_KEY = "quantus-wallet-mining-v1";
 export const CUSTOM_GPU = "custom";
+/** The quote asset of the market the price comes from; kept in sync with data.ts. */
+export const DEFAULT_CURRENCY = "USDT";
 
 export type Software = "pool" | "stock";
 export type HashrateUnit = "MH" | "GH";
@@ -50,7 +52,8 @@ export type MiningInputs = {
   hardwareCost: string;
   amortiseDays: string;
   currency: string;
-  price: string;
+  /** Null follows the market's last price; a string is the user's own figure, empty included. */
+  price: string | null;
 };
 
 export const UNIT_FACTOR: Record<HashrateUnit, number> = { MH: 1e6, GH: 1e9 };
@@ -111,8 +114,9 @@ export function defaultInputs(terms: PoolTerms): MiningInputs {
     rentPer: "day",
     hardwareCost: "",
     amortiseDays: "365",
-    currency: "USD",
-    price: "",
+    // The market quotes QTC in USDT, so that is what the other amounts default to.
+    currency: DEFAULT_CURRENCY,
+    price: null,
   };
 }
 
@@ -165,7 +169,8 @@ export function normalizeInputs(raw: unknown, terms: PoolTerms): MiningInputs {
     hardwareCost: text(data.hardwareCost, ""),
     amortiseDays: text(data.amortiseDays, base.amortiseDays),
     currency: text(data.currency, base.currency, 12),
-    price: text(data.price, ""),
+    // An override that was left blank is no override: fall back to the market.
+    price: typeof data.price === "string" && data.price.trim() !== "" && data.price.length <= 32 ? data.price : null,
   };
 }
 
@@ -196,22 +201,35 @@ function defaultStorage(): Storage | null {
   }
 }
 
+export type PriceSource = "market" | "manual" | "none";
+
 export type Model = {
   devices: Device[];
   assumptions: Assumptions;
   costs: Costs;
   currency: string;
+  /** Where `assumptions.price` came from, so the UI can say so. */
+  priceSource: PriceSource;
   /** True when at least one device row has a usable hashrate. */
   ready: boolean;
 };
+
+/** What the price field shows: the user's own text, or the market's digits. */
+export function priceFieldText(inputs: MiningInputs, marketText: string | null): string {
+  return inputs.price ?? marketText ?? "";
+}
 
 function deviceLabel(row: DeviceInput, terms: PoolTerms): string {
   const gpu = terms.gpus.find((item) => item.id === row.gpu);
   return gpu ? gpu.short : CUSTOM_GPU;
 }
 
-/** Turn the text inputs into numbers; blanks become 0 or null as the math expects. */
-export function toModel(inputs: MiningInputs, terms: PoolTerms): Model {
+/**
+ * Turn the text inputs into numbers; blanks become 0 or null as the math
+ * expects. `marketPrice` is the exchange's last price and is used only when
+ * the user has not entered one of their own.
+ */
+export function toModel(inputs: MiningInputs, terms: PoolTerms, marketPrice: number | null = null): Model {
   const num = (value: string) => parseNumber(value) ?? 0;
   const power = (value: string) => (value.trim() === "" ? null : parseNumber(value));
   let devices: Device[];
@@ -238,12 +256,15 @@ export function toModel(inputs: MiningInputs, terms: PoolTerms): Model {
     }));
   }
   const rent = num(inputs.rent);
+  const market = marketPrice !== null && Number.isFinite(marketPrice) && marketPrice > 0 ? marketPrice : null;
+  const price = inputs.price === null ? (market ?? 0) : num(inputs.price);
+  const priceSource: PriceSource = price <= 0 ? "none" : inputs.price === null ? "market" : "manual";
   return {
     devices,
     assumptions: {
       uptime: Math.min(100, num(inputs.uptime)) / 100,
       poolFeePercent: inputs.poolFee === null ? terms.poolFeePercent : num(inputs.poolFee),
-      price: num(inputs.price),
+      price,
     },
     costs:
       inputs.costMode === "rental"
@@ -255,6 +276,7 @@ export function toModel(inputs: MiningInputs, terms: PoolTerms): Model {
             amortiseDays: num(inputs.amortiseDays),
           },
     currency: inputs.currency.trim(),
+    priceSource,
     ready: devices.some((device) => device.hashrate > 0 && device.quantity > 0),
   };
 }

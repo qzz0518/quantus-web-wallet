@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  breakEvenRentPerDay,
+  breakEvenRentPerHour,
   deriveNetwork,
   estimate,
   estimateDevice,
@@ -177,6 +179,67 @@ describe("whole setup", () => {
     expect(result.total.qtcPerDay).toBe(0);
     expect(result.total.share).toBe(0);
     expect(result.total.costPerQtc).toBeNull();
+  });
+});
+
+describe("break-even rent", () => {
+  const derived = deriveNetwork(NETWORK);
+  test("is the output's value minus the costs the rent does not cover", () => {
+    // 0.1137 QTC/day × 20 = 2.2748 revenue, less 0.912 of electricity.
+    const row = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 20 }, ELECTRICITY);
+    expect(row.breakEvenRentPerDay).toBeCloseTo(row.qtcPerDay * 20 - 0.912, 9);
+    expect(row.breakEvenRentPerDay).toBeCloseTo(1.363, 2);
+    expect(row.breakEvenRentPerHour).toBeCloseTo(row.breakEvenRentPerDay! / 24, 12);
+  });
+  test("renting a whole rig already includes the power, so the whole revenue can pay for it", () => {
+    const rented = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 20 }, { mode: "rental", rentPerDay: 2.4 });
+    expect(rented.breakEvenRentPerDay).toBeCloseTo(rented.revenuePerDay, 12);
+    // The rent actually being paid does not change what the rig could afford.
+    const cheaper = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 20 }, { mode: "rental", rentPerDay: 0.1 });
+    expect(cheaper.breakEvenRentPerDay).toBeCloseTo(rented.breakEvenRentPerDay!, 12);
+  });
+  test("goes negative when electricity alone costs more than the output is worth", () => {
+    const row = estimateDevice(derived, RTX4090, ASSUMED, ELECTRICITY);
+    expect(row.breakEvenRentPerDay).toBeLessThan(0);
+    expect(row.breakEvenRentPerDay).toBeCloseTo(row.qtcPerDay * 0.5 - 0.912, 9);
+  });
+  test("without a price there is nothing to value the output with", () => {
+    const unpriced = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 0 }, ELECTRICITY);
+    expect(unpriced.breakEvenRentPerDay).toBeNull();
+    expect(unpriced.breakEvenRentPerHour).toBeNull();
+    const rented = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 0 }, { mode: "rental", rentPerDay: 2.4 });
+    expect(rented.breakEvenRentPerDay).toBeNull();
+  });
+  test("an unknown power draw only blocks the own-hardware case", () => {
+    const noPower = { ...RTX4090, powerW: null };
+    expect(estimateDevice(derived, noPower, { ...ASSUMED, price: 20 }, ELECTRICITY).breakEvenRentPerDay).toBeNull();
+    const rented = estimateDevice(derived, noPower, { ...ASSUMED, price: 20 }, { mode: "rental", rentPerDay: 2.4 });
+    expect(rented.breakEvenRentPerDay).toBeCloseTo(rented.revenuePerDay, 12);
+  });
+  test("hardware amortisation is not deducted: you would not pay for both", () => {
+    const costs: Costs = { mode: "electricity", pricePerKwh: 0.1, hardwareCost: 1800, amortiseDays: 360 };
+    const owned = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 20 }, costs);
+    const rentedOut = estimateDevice(derived, RTX4090, { ...ASSUMED, price: 20 }, ELECTRICITY);
+    expect(owned.breakEvenRentPerDay).toBeCloseTo(rentedOut.breakEvenRentPerDay!, 12);
+  });
+  test("the rig's budget is the sum of its rows", () => {
+    const RTX5090: Device = { id: "rtx-5090", label: "RTX 5090", hashrate: 1_491_900_000, quantity: 2, powerW: 500, minerFeePercent: 5 };
+    const result = estimate(NETWORK, [RTX4090, RTX5090], { ...ASSUMED, price: 20 }, ELECTRICITY);
+    const rows = result.devices.reduce((sum, row) => sum + row.breakEvenRentPerDay!, 0);
+    expect(result.total.breakEvenRentPerDay).toBeCloseTo(rows, 9);
+    expect(result.total.breakEvenRentPerHour).toBeCloseTo(result.total.breakEvenRentPerDay! / 24, 12);
+  });
+  test("the bare functions answer without an estimate and never return NaN", () => {
+    expect(breakEvenRentPerDay(2, 3, 1)).toBe(5);
+    expect(breakEvenRentPerDay(2, 3, 0)).toBe(6);
+    expect(breakEvenRentPerDay(2, 3, 10)).toBe(-4);
+    expect(breakEvenRentPerDay(2, 0, 1)).toBeNull();
+    expect(breakEvenRentPerDay(2, -1, 1)).toBeNull();
+    expect(breakEvenRentPerDay(2, NaN, 1)).toBeNull();
+    expect(breakEvenRentPerDay(2, 3, null)).toBeNull();
+    expect(breakEvenRentPerDay(NaN, 3, 1)).toBe(-1);
+    expect(breakEvenRentPerHour(24)).toBe(1);
+    expect(breakEvenRentPerHour(null)).toBeNull();
   });
 });
 
