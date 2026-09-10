@@ -121,7 +121,9 @@ export function walletPwa(): Plugin {
         for (const item of await readdir(resolve(output, directory), { withFileTypes: true })) {
           const file = `${directory}/${item.name}`;
           if (item.isDirectory()) await collect(file);
-          else if (/\.(js|css|wasm|svg|png|woff2)$/.test(file)) assetFiles.push(file);
+          // The Wormhole prover (~4 MB wasm + worker chunk) is fetched on demand,
+          // not precached with the shell.
+          else if (/\.(js|css|wasm|svg|png|woff2)$/.test(file) && !/prover/i.test(item.name)) assetFiles.push(file);
         }
       }
       await collect(config.build.assetsDir);

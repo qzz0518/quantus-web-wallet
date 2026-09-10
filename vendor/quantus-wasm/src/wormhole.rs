@@ -51,14 +51,14 @@ fn check_branch(branch: u32) -> Result<(), String> {
     }
 }
 
-fn seed_from_mnemonic(mnemonic: &str, passphrase: Option<&str>) -> Result<SensitiveBytes64, String> {
+pub(crate) fn seed_from_mnemonic(mnemonic: &str, passphrase: Option<&str>) -> Result<SensitiveBytes64, String> {
     let mut seed = SensitiveBytes64::zeroed();
     mnemonic_to_seed(String::from(mnemonic), passphrase, &mut seed)
         .map_err(|e| alloc::format!("mnemonic_to_seed failed: {e}"))?;
     Ok(seed)
 }
 
-fn pair_at(seed: &SensitiveBytes64, branch: u32, index: u32) -> Result<WormholePair, String> {
+pub(crate) fn pair_at(seed: &SensitiveBytes64, branch: u32, index: u32) -> Result<WormholePair, String> {
     check_branch(branch)?;
     if index >= HARDENED_LIMIT {
         return Err(String::from("wormhole index must be below 2^31"));
