@@ -120,18 +120,20 @@ function Tuning({
           }
         />
       </div>
-      <NumberField
-        label={t("矿工软件费")}
-        value={row.minerFee}
-        onChange={(minerFee) => onChange({ minerFee })}
-        placeholder="0"
-        suffix="%"
-        hint={
-          row.software === "pool"
+      <div className="mining-fields mining-fee-row">
+        <NumberField
+          label={t("矿工软件费")}
+          value={row.minerFee}
+          onChange={(minerFee) => onChange({ minerFee })}
+          placeholder="0"
+          suffix="%"
+        />
+        <p className="mining-fee-note">
+          {row.software === "pool"
             ? t("矿池自带矿工，算力更高，内置 {0}% 开发者费。", terms.minerDevFeePercent)
-            : t("官方 quantus-miner，无内置费用。")
-        }
-      />
+            : t("官方 quantus-miner，无内置费用。")}
+        </p>
+      </div>
     </>
   );
 }

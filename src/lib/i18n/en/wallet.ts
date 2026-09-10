@@ -36,6 +36,7 @@ export const wallet: Record<string, string> = {
   "哈希已复制": "Hash copied",
   "复制交易哈希": "Copy transaction hash",
   "在 Explorer 查看": "View in Explorer",
+  "区块浏览器": "Explorer",
   "完成": "Done",
   "付款钱包": "From",
   "收款地址": "Recipient address",

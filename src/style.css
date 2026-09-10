@@ -839,7 +839,8 @@ input[type="number"]::-webkit-outer-spin-button {
   display: grid;
   grid-template-columns: 1.12fr 1fr;
   gap: 64px;
-  align-items: center;
+  /* The hero sets the row height and the card fills it, so the two columns end together. */
+  align-items: stretch;
   padding: 18px 0 38px;
 }
 .wallet-hero {
@@ -935,7 +936,20 @@ input[type="number"]::-webkit-outer-spin-button {
   flex: 1;
 }
 .account-card-wrapper {
+  position: relative;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.account-card-wrapper > .wallet-account-panel {
+  flex: 1;
+}
+/* On desktop the caption hangs below the card so it never shortens it. */
+.account-card-wrapper > .account-card-caption,
+.account-card-wrapper > .account-privacy-note,
+.account-card-wrapper > .account-type-notice {
+  position: absolute;
+  inset: 100% 0 auto;
 }
 .wallet-account-panel {
   --card-h: 147;
@@ -2184,6 +2198,16 @@ button.account-type-notice {
 .mining-row-more .mining-fields {
   gap: 16px 12px;
 }
+.mining-fee-row {
+  margin-top: 16px;
+  align-items: end;
+}
+.mining-fee-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
 .mining-row-more .mining-input > input {
   padding: 12px 14px;
   font-size: 15px;
@@ -2790,18 +2814,18 @@ button.account-type-notice {
     background: var(--surface-hover);
   }
 }
-.account-detail-copy {
-  min-height: 40px;
-  padding: 0 18px;
+
+.account-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.account-detail-action {
+  min-height: 44px;
+  padding: 0 12px;
   font-size: 13px;
   background: var(--surface-soft);
-}
-.account-detail-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
 }
 .manage-profile {
   margin-top: 0;
@@ -3335,6 +3359,11 @@ button.account-type-notice {
   .wallet-hero,
   .account-card-wrapper {
     width: 100%;
+  }
+  .account-card-wrapper > .account-card-caption,
+  .account-card-wrapper > .account-privacy-note,
+  .account-card-wrapper > .account-type-notice {
+    position: static;
   }
   .hero-balance-label {
     font-size: 14px;

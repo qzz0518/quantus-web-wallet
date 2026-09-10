@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowUpRight,
+  Check,
   ChevronRight,
   Copy,
   Download,
@@ -13,6 +14,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { Modal } from "../Modal";
+import { SwapIcon } from "../SwapIcon";
 import { FlowStatus } from "../FlowStatus";
 import { unlockVault, STORAGE_KEY, type Wallet } from "../../lib/vault";
 import { MAINNET } from "../../lib/chain";
@@ -61,6 +63,7 @@ export function ManageDialog({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
   const busyRef = useRef(false);
   const copyAttempt = useRef(0);
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -155,6 +158,24 @@ export function ManageDialog({
       : scheme
         ? `${t("自主保管账户")} · ${schemeLabel(scheme)}`
         : t("自主保管账户");
+  async function copyAddress() {
+    const attempt = ++copyAttempt.current;
+    setError("");
+    setCopying(true);
+    try {
+      await copyText(wallet.address);
+      if (attempt === copyAttempt.current) {
+        setCopied(true);
+        setTimeout(() => {
+          if (attempt === copyAttempt.current) setCopied(false);
+        }, 1800);
+      }
+    } catch {
+      if (attempt === copyAttempt.current) setError(t("复制失败，请手动选中地址"));
+    } finally {
+      if (attempt === copyAttempt.current) setCopying(false);
+    }
+  }
   const feedback = <FlowStatus error={error} message={message} />;
 
   return (
@@ -192,55 +213,28 @@ export function ManageDialog({
               className="account-detail-address"
               aria-label={t("复制完整地址")}
               disabled={copying}
-              onClick={async () => {
-                const attempt = ++copyAttempt.current;
-                setError("");
-                setMessage("");
-                setCopying(true);
-                try {
-                  await copyText(wallet.address);
-                  if (attempt === copyAttempt.current) setMessage(t("地址已复制"));
-                } catch {
-                  if (attempt === copyAttempt.current) setError(t("复制失败，请手动选中地址"));
-                } finally {
-                  if (attempt === copyAttempt.current) setCopying(false);
-                }
-              }}
+              onClick={() => void copyAddress()}
             >
               {wallet.address}
             </button>
             <div className="account-detail-actions">
               <button
-                className="button account-detail-copy"
+                type="button"
+                className="button account-detail-action"
                 disabled={copying}
-                onClick={async () => {
-                  const attempt = ++copyAttempt.current;
-                  setError("");
-                  setMessage("");
-                  setCopying(true);
-                  try {
-                    await copyText(wallet.address);
-                    if (attempt === copyAttempt.current)
-                      setMessage(t("地址已复制"));
-                  } catch {
-                    if (attempt === copyAttempt.current)
-                      setError(t("复制失败，请手动选中地址"));
-                  } finally {
-                    if (attempt === copyAttempt.current) setCopying(false);
-                  }
-                }}
+                onClick={() => void copyAddress()}
               >
-                <Copy size={15} />
-                {copying ? t("正在复制…") : t("复制地址")}
+                <SwapIcon active={copied} idle={<Copy size={16} />} done={<Check size={16} />} />
+                {copying ? t("正在复制…") : copied ? t("已复制") : t("复制地址")}
               </button>
               <a
-                className="text-button"
+                className="button account-detail-action"
                 href={`${MAINNET.explorerUrl}/accounts/${wallet.address}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t("在 Explorer 查看")}
-                <ArrowUpRight size={15} />
+                {t("区块浏览器")}
+                <ArrowUpRight size={16} />
               </a>
             </div>
           </div>
