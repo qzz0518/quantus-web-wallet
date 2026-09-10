@@ -172,18 +172,15 @@ export function MiningNetwork({ data, network }: { data: DataState & { refresh: 
             </span>
           </summary>
           <div className="mining-fold-body">
+            {/* Only what the line above cannot fit; the difficulty, block
+                time and reward are already on it. */}
             <dl className="mining-stats">
-              <Stat
-                label={t("出块时间（近 {0} 块均值）", data.chain?.sampledBlocks ?? 200)}
-                value={data.chain ? formatSeconds(data.chain.blockTimeSeconds) : "—"}
-                hint={data.chain ? t("上一块 {0}", formatSeconds(data.chain.lastBlockDurationMs / 1000)) : undefined}
-              />
-              <Stat
-                label={t("区块奖励（近 {0} 块均值）", data.reward?.samples ?? 50)}
-                value={data.reward ? `${formatQtc(planckToQtc(data.reward.blockRewardPlanck))} QTC` : "—"}
-              />
               <Stat label={t("每日出块")} value={network ? formatInteger(blocksPerDay) : "—"} />
               <Stat label={t("区块高度")} value={data.chain ? formatInteger(data.chain.height) : "—"} />
+              <Stat
+                label={t("上一块")}
+                value={data.chain ? formatSeconds(data.chain.lastBlockDurationMs / 1000) : "—"}
+              />
             </dl>
             <p className="mining-note">
               {t("全网算力 = 难度 ÷ 实测出块时间，不是任何矿池上报的数字。")}

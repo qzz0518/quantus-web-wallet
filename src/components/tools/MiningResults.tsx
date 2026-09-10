@@ -20,13 +20,17 @@ import {
 } from "../../lib/mining/math";
 import { Fold, Stat, signClass } from "./MiningFields";
 
+/**
+ * Every period except the day: the headline already answers "per day", so
+ * repeating it here would print the same three figures twice.
+ */
 const PERIODS: { key: string; factor: number }[] = [
   { key: "每小时", factor: 1 / 24 },
-  { key: "每天", factor: 1 },
   { key: "每周", factor: 7 },
   { key: "30 天", factor: DAYS_PER_MONTH },
 ];
-const SENSITIVITY = [1, 1.5, 2];
+/** The current difficulty is the headline; only the growth cases are new. */
+const SENSITIVITY = [1.5, 2];
 
 type Props = {
   network: Network | null;
@@ -38,9 +42,10 @@ type Props = {
 };
 
 /**
- * Supporting detail for the headline figures: the whole rig's rent budget,
- * output by period, the cost breakdown, and — folded away until asked for —
- * per-GPU rows, difficulty sensitivity, the GPU table and the method.
+ * What the headline cannot say: the same estimate over the other periods,
+ * with the cost beside the revenue so the profit adds up, plus the handful
+ * of figures that appear nowhere else. Difficulty growth, the GPU table and
+ * the method stay folded until asked for.
  */
 export function MiningResults({ network, model, result, terms, pool, loading }: Props) {
   const t = useT();
@@ -51,7 +56,6 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
   /** Table cells carry no unit; the column header or the note under the table names the currency. */
   const bare = (value: number | null) => (value === null ? "—" : formatFiat(value, ""));
   const fiatIfPriced = (value: number | null) => (priced ? bare(value) : "—");
-  const withCurrency = (label: string) => (currency ? `${label} (${currency})` : label);
   const currencyNote = currency ? t("金额单位：{0}。", currency) + " " : "";
   const rentMode = costs.mode === "rental";
 
@@ -112,11 +116,9 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
 
   const { total } = result;
   const derived = result.network;
-  const cashUnknown = total.runningCostPerDay === null;
   const hardware = costs.mode === "electricity" && costs.hardwareCost > 0;
-  // Without rent or amortisation the profit is exactly the rent budget, so a
-  // profit column beside it would just repeat the same number.
-  const showProfit = rentMode || hardware;
+  // Several rows make a sum worth stating; a single row is just the input.
+  const manyRows = result.devices.length > 1;
   const payback = (days: number | null): string => {
     if (days === null) return "—";
     if (!Number.isFinite(days)) return t("无法回本");
@@ -127,54 +129,21 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
   const poolBlocksPerDay = pool ? Math.min(derived.blocksPerDay, (pool.poolHashrate / derived.hashrate) * derived.blocksPerDay) : null;
   const luckDay = poolBlocksPerDay !== null ? luckDeviation(poolBlocksPerDay) : null;
   const luckWeek = poolBlocksPerDay !== null ? luckDeviation(poolBlocksPerDay * 7) : null;
-  const rentHint = !priced ? t("填写 QTC 价格后显示") : cashUnknown ? t("填写功耗后显示") : null;
 
   return (
     <>
       <section className="settings-group" aria-label={t("估算结果")}>
         <h2>{t("估算结果")}</h2>
         <div className="mining-card">
-          <div className="mining-budget">
-            <div className="mining-budget-head">
-              <strong>{t("整机保本租金")}</strong>
-              <small>
-                {rentMode
-                  ? t("租金已含电费，全部产值都可用来付租金")
-                  : t("产值减去电费后还能付出的最高租金")}
-              </small>
-            </div>
-            {rentHint ? (
-              <p className="mining-budget-empty">
-                <span aria-hidden="true">—</span>
-                {rentHint}
-              </p>
-            ) : (
-              <div className="mining-budget-figures">
-                <div>
-                  <strong className={signClass(total.breakEvenRentPerHour)}>
-                    {bare(total.breakEvenRentPerHour)}
-                    {currency && <em>{currency}</em>}
-                  </strong>
-                  <span>{t("每小时")}</span>
-                </div>
-                <div>
-                  <strong className={signClass(total.breakEvenRentPerDay)}>
-                    {bare(total.breakEvenRentPerDay)}
-                    {currency && <em>{currency}</em>}
-                  </strong>
-                  <span>{t("每天")}</span>
-                </div>
-              </div>
-            )}
-          </div>
           <div className="mining-table-wrap">
             <table className="mining-table">
               <thead>
                 <tr>
                   <th>{t("周期")}</th>
                   <th>QTC</th>
-                  <th>{withCurrency(t("收入"))}</th>
-                  <th>{withCurrency(t("利润"))}</th>
+                  <th>{t("收入")}</th>
+                  <th>{rentMode ? t("租金") : t("成本")}</th>
+                  <th>{t("利润")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,6 +152,7 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
                     <th scope="row">{t(key)}</th>
                     <td>{formatQtc(planckToQtc(mulPlanck(total.planckPerDay, factor)))}</td>
                     <td>{fiatIfPriced(total.revenuePerDay * factor)}</td>
+                    <td>{total.costPerDay === null ? "—" : bare(total.costPerDay * factor)}</td>
                     <td className={priced && total.profitPerDay !== null ? signClass(total.profitPerDay) : undefined}>
                       {priced && total.profitPerDay !== null ? bare(total.profitPerDay * factor) : "—"}
                     </td>
@@ -191,14 +161,21 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
               </tbody>
             </table>
           </div>
+          <p className="mining-note">
+            {currencyNote}
+            {t("每天的产量、利润和保本线见上方；这里是同一台机器换算到其他周期。")}
+          </p>
           <dl className="mining-stats">
-            <Stat label={t("总算力")} value={formatHashrate(total.hashrate)} hint={t("占全网 {0}", formatPercent(total.share, 3))} />
-            <Stat
-              label={rentMode ? t("保本价（租金）") : t("保本价（电费）")}
-              value={total.breakEvenPrice === null ? "—" : `${fiat(total.breakEvenPrice)}/QTC`}
-              highlight
-              hint={cashUnknown ? t("填写功耗后显示") : total.breakEvenPrice === 0 ? t("没有运行成本") : undefined}
-            />
+            {manyRows && <Stat label={t("总算力")} value={formatHashrate(total.hashrate)} />}
+            {costs.mode === "electricity" && (
+              <Stat
+                label={t("每日用电")}
+                value={total.kwhPerDay === null ? "—" : t("{0} kWh", trimNumber(total.kwhPerDay, 1))}
+                hint={total.kwhPerDay === null ? t("填写功耗后显示") : undefined}
+              />
+            )}
+            {hardware && <Stat label={t("电费 / 天")} value={fiat(total.electricityPerDay)} />}
+            {hardware && <Stat label={t("折旧 / 天")} value={fiat(total.hardwarePerDay)} />}
             {hardware && (
               <Stat
                 label={t("保本价（含折旧）")}
@@ -206,18 +183,6 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
                 highlight
               />
             )}
-            {rentMode ? (
-              <Stat label={t("租金 / 天")} value={fiat(total.rentPerDay)} />
-            ) : (
-              <Stat
-                label={t("电费 / 天")}
-                value={fiat(total.electricityPerDay)}
-                hint={total.kwhPerDay === null ? t("填写功耗后显示") : t("{0} kWh", trimNumber(total.kwhPerDay, 1))}
-              />
-            )}
-            {hardware && <Stat label={t("折旧 / 天")} value={fiat(total.hardwarePerDay)} />}
-            <Stat label={t("利润率")} value={priced && total.margin !== null ? formatPercent(total.margin) : "—"} hint={priced ? undefined : t("填写价格后显示")} />
-            <Stat label={t("总成本 / 枚")} value={total.costPerQtc === null ? "—" : `${fiat(total.costPerQtc)}/QTC`} />
             {hardware && (
               <Stat label={t("回本时间")} value={priced ? payback(total.paybackDays) : "—"} hint={priced ? undefined : t("填写价格后显示")} />
             )}
@@ -230,19 +195,15 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
         </div>
       </section>
 
-      {result.devices.length > 1 && (
+      {manyRows && (
         <Fold title={t("各显卡明细")} meta={t("{0} 张卡", result.devices.length)}>
           <div className="mining-table-wrap">
             <table className="mining-table">
               <thead>
                 <tr>
                   <th>{t("显卡")}</th>
-                  <th>{t("保本租金 / 天")}</th>
                   <th>{t("QTC / 天")}</th>
-                  <th>{t("保本价")}</th>
                   <th>{rentMode ? t("租金 / 天") : t("电费 / 天")}</th>
-                  <th>{t("算力")}</th>
-                  {showProfit && <th>{t("利润 / 天")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -252,14 +213,8 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
                       {row.device.label === "custom" ? t("自定义") : row.device.label}
                       {row.device.quantity !== 1 && <small> × {row.device.quantity}</small>}
                     </th>
-                    <td className={signClass(row.breakEvenRentPerDay)}>{bare(row.breakEvenRentPerDay)}</td>
                     <td>{formatQtc(row.qtcPerDay)}</td>
-                    <td>{row.breakEvenPrice === null ? "—" : bare(row.breakEvenPrice)}</td>
                     <td>{bare(rentMode ? row.rentPerDay : row.electricityPerDay)}</td>
-                    <td>{formatHashrate(row.hashrate)}</td>
-                    {showProfit && (
-                      <td className={signClass(priced ? row.profitPerDay : null)}>{priced ? bare(row.profitPerDay) : "—"}</td>
-                    )}
                   </tr>
                 ))}
               </tbody>
@@ -267,7 +222,7 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
           </div>
           <p className="mining-note">
             {currencyNote}
-            {t("租金和设备成本按算力占比分摊到各显卡。")}
+            {t("每张卡的产量，以及租金和设备成本按算力占比分摊到它的份额。")}
           </p>
         </Fold>
       )}
@@ -278,27 +233,23 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
             <thead>
               <tr>
                 <th>{t("全网算力")}</th>
-                <th>{t("保本租金 / 天")}</th>
                 <th>{t("QTC / 天")}</th>
                 <th>{t("保本价")}</th>
-                {showProfit && <th>{t("利润 / 天")}</th>}
+                <th>{t("利润 / 天")}</th>
               </tr>
             </thead>
             <tbody>
               {sensitivity.map(({ factor, result: scaled }) => (
                 <tr key={factor}>
                   <th scope="row">
-                    {factor === 1 ? t("当前") : `× ${factor}`}
+                    {`× ${factor}`}
                     <small> {formatHashrate(scaled.network.hashrate)}</small>
                   </th>
-                  <td className={signClass(scaled.total.breakEvenRentPerDay)}>{bare(scaled.total.breakEvenRentPerDay)}</td>
                   <td>{formatQtc(scaled.total.qtcPerDay)}</td>
                   <td>{scaled.total.breakEvenPrice === null ? "—" : bare(scaled.total.breakEvenPrice)}</td>
-                  {showProfit && (
-                    <td className={signClass(priced ? scaled.total.profitPerDay : null)}>
-                      {priced ? bare(scaled.total.profitPerDay) : "—"}
-                    </td>
-                  )}
+                  <td className={signClass(priced ? scaled.total.profitPerDay : null)}>
+                    {priced ? bare(scaled.total.profitPerDay) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -333,28 +284,23 @@ export function MiningResults({ network, model, result, terms, pool, loading }: 
             <thead>
               <tr>
                 <th>{t("显卡")}</th>
-                <th>{t("保本租金 / 天")}</th>
-                <th>{t("QTC / 天")}</th>
-                {!rentMode && <th>{t("保本价")}</th>}
-                {!rentMode && <th>{t("电费 / 天")}</th>}
                 <th>{t("算力 / 功耗")}</th>
+                <th>{t("QTC / 天")}</th>
+                <th>{t("保本租金 / 天")}</th>
+                {!rentMode && <th>{t("保本价")}</th>}
               </tr>
             </thead>
             <tbody>
               {comparison.map(({ gpu, row }) => (
                 <tr key={gpu.id}>
                   <th scope="row">{gpu.short}</th>
-                  <td className={signClass(row.breakEvenRentPerDay)}>
-                    {bare(row.breakEvenRentPerDay)}
-                    {row.breakEvenRentPerHour !== null && <small>{t("{0} / 小时", bare(row.breakEvenRentPerHour))}</small>}
-                  </td>
-                  <td>{formatQtc(row.qtcPerDay)}</td>
-                  {!rentMode && <td>{row.breakEvenPrice === null ? "—" : bare(row.breakEvenPrice)}</td>}
-                  {!rentMode && <td>{bare(row.electricityPerDay)}</td>}
                   <td>
                     {formatHashrate(row.hashrate)}
                     <small>{powerText(gpu)}</small>
                   </td>
+                  <td>{formatQtc(row.qtcPerDay)}</td>
+                  <td className={signClass(row.breakEvenRentPerDay)}>{bare(row.breakEvenRentPerDay)}</td>
+                  {!rentMode && <td>{row.breakEvenPrice === null ? "—" : bare(row.breakEvenPrice)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -386,10 +332,10 @@ function Method() {
           <li>{t("全网算力 = 链上难度 ÷ 近 200 块的实测平均出块时间；每日出块 = 86400 ÷ 出块时间；区块奖励取索引器最近 50 块的平均值。")}</li>
           <li>{t("电费 = 功耗 × 数量 × 24 h × 在线率 × 电价；租金和设备成本按各显卡算力占比分摊；折旧 = 设备成本 ÷ 折旧天数。")}</li>
           <li>{t("保本价 = 每日运行成本（电费或租金）÷ 每日产量，与你填写的价格无关；含折旧的保本价再加上每日折旧。回本时间 = 设备成本 ÷（每日收入 − 每日运行成本）。")}</li>
-          <li>{t("保本租金 = 每日产量 × QTC 价格 − 不含在租金里的运行成本：租整机时电费已含在租金里，所以就是全部产值；自有设备时先减掉电费。每小时 = 每天 ÷ 24，不含设备折旧。")}</li>
+          <li>{t("保本电价 = 每日产值 ÷ 每日用电；保本租金 = 每日产值 − 不含在租金里的运行成本，整机租用时电费已含在租金里，所以就是全部产值。两者都不含设备折旧。")}</li>
           <li>{t("忽略：出块时间和奖励的未来变化、矿池的最低起付额、孤块与拒绝份额、显卡以外的整机功耗、损耗与维护、税费和汇率。")}</li>
           <li>{t("显卡基准与费率取自 Quanpool 公开接口，只作为参考；不同驱动、超频和温度下的实际算力请以自己的矿机为准。")}</li>
-          <li>{t("QTC 价格取自 SafeTrade 的 QUAN/USDT 最新成交价，读取失败或被你改写时用你填的数字；其他金额按同一货币，不做汇率换算。")}</li>
+          <li>{t("QTC 价格取自 SafeTrade 公开接口的 QUAN/USDT 最新成交价，读取时交易所会看到你的 IP；QUAN 与 QTC 是同一资产。读取失败或被你改写时用你填的数字，其他金额按同一货币，不做汇率换算。")}</li>
         </ul>
       </div>
     </Fold>

@@ -1848,7 +1848,9 @@ button.account-type-notice {
 }
 /* Mining calculator. The answer sits at the top and stays there on wide
    screens; the short form is next; tables and assumptions are folded away.
-   One column on phones, form left and results right from 900px. */
+   One column on phones — network line, form, estimate — and from 900px the
+   form takes the left column while the line and the estimate stack up the
+   right, which keeps the two sides about the same height. */
 .mining-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2149,20 +2151,25 @@ button.account-type-notice {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mining-card > .mining-segmented {
-  margin-bottom: 4px;
-}
-.mining-card > .mining-segmented + .mining-fields,
-.mining-card > .mining-segmented + .field,
-.mining-card > .mining-segmented + .mining-device {
-  margin-top: 16px;
-}
 .mining-device {
   padding: 6px 0 18px;
   border-bottom: 1px solid var(--line);
 }
 .mining-device + .mining-device {
   padding-top: 16px;
+}
+.mining-card > .mining-total > .field:first-child {
+  margin-top: 0;
+}
+/* What the hours cost and what the output is worth, ruled off from the
+   cards above them. */
+.mining-costs {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.mining-costs > .field:first-child {
+  margin-top: 0;
 }
 .mining-device-head {
   display: flex;
@@ -2249,72 +2256,6 @@ button.account-type-notice {
   padding: 0 14px 14px;
 }
 
-/* The whole rig's rent budget, at the top of the result detail. */
-.mining-budget {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: var(--surface-soft);
-}
-.mining-budget-head strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-}
-.mining-budget-head small {
-  display: block;
-  margin-top: 3px;
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-.mining-budget-figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.mining-budget-figures strong {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
-}
-.mining-budget-figures strong.positive {
-  color: var(--green);
-}
-.mining-budget-figures strong.negative {
-  color: var(--danger);
-}
-.mining-budget-figures em {
-  margin-left: 4px;
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0;
-  color: var(--muted);
-}
-.mining-budget-figures span {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--faint);
-}
-.mining-budget-empty {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-.mining-budget-empty > span {
-  font-size: 20px;
-  color: var(--faint);
-}
-
 /* Where the price comes from. */
 .mining-market {
   display: flex;
@@ -2329,16 +2270,6 @@ button.account-type-notice {
 }
 .mining-market:hover {
   background: var(--surface-hover);
-}
-.mining-market-icon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--muted);
 }
 .mining-market-copy {
   flex: 1;
@@ -2356,37 +2287,20 @@ button.account-type-notice {
   line-height: 1.5;
   color: var(--muted);
 }
-.mining-market-price {
-  text-align: right;
+.mining-market-change {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 500;
 }
-.mining-market-price b {
-  font-size: 15px;
-  font-weight: 600;
-}
-.mining-market-price em {
-  margin-left: 3px;
-  font-style: normal;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted);
-}
-.mining-market-price small {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-}
-.mining-market-price .positive {
+.mining-market-change.positive {
   color: var(--green);
 }
-.mining-market-price .negative {
+.mining-market-change.negative {
   color: var(--danger);
 }
 .mining-market > svg:last-child {
   flex-shrink: 0;
   color: var(--muted);
-}
-.mining-market.quiet .mining-market-icon {
-  color: var(--faint);
 }
 
 .mining-table-wrap {
@@ -2475,12 +2389,6 @@ button.account-type-notice {
 .mining-method li + li {
   margin-top: 8px;
 }
-@media (max-width: 480px) {
-  /* The market name needs the room the decorative icon was taking. */
-  .mining-market-icon {
-    display: none;
-  }
-}
 @media (max-width: 700px) {
   .mining-fields {
     grid-template-columns: minmax(0, 1fr);
@@ -2513,7 +2421,24 @@ button.account-type-notice {
   }
   .mining-grid {
     grid-template-columns: minmax(0, 11fr) minmax(0, 12fr);
+    /* A third, empty row takes whatever the longer form column leaves over,
+       so the estimate stays under the network line instead of drifting. */
+    grid-template-rows: auto auto 1fr;
     align-items: start;
+  }
+  .mining-grid > .mining-network {
+    grid-column: 2;
+    grid-row: 1;
+    /* Lines up with the section heading that opens the other column. */
+    margin: 28px 0 0;
+  }
+  .mining-column-form {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .mining-column-results {
+    grid-column: 2;
+    grid-row: 2;
   }
   /* The answer follows the reader down the page. */
   .mining-summary {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useT } from "../../lib/i18n";
-import { formatFiat, formatHashrate, formatPercent, formatQtc } from "../../lib/mining/format";
+import { formatFiat, formatPercent, formatQtc } from "../../lib/mining/format";
 import type { Model } from "../../lib/mining/inputs";
 import type { Estimate } from "../../lib/mining/math";
 import { signClass } from "./MiningFields";
@@ -15,10 +15,11 @@ type Metric = {
 };
 
 /**
- * The four numbers that decide everything, kept above the fold: what the
- * rig makes, what it earns, the price below which it stops paying and the
- * rent it can carry. Everything further down is supporting detail. Figures
- * that need the QTC price say so instead of showing a zero.
+ * The four figures a miner decides on, and the only place any of them is
+ * printed: what the rig makes per day, what it earns, the QTC price below
+ * which it stops paying, and the price of the thing it burns — rent for a
+ * rented rig, electricity for one you own. Everything below explains these;
+ * nothing below repeats them.
  */
 export function MiningSummary({
   result,
@@ -38,6 +39,7 @@ export function MiningSummary({
   const price = model.assumptions.price;
   const priced = price > 0;
   const total = result?.total ?? null;
+  const rentMode = model.costs.mode === "rental";
   const bare = (value: number | null | undefined) =>
     value === null || value === undefined || !Number.isFinite(value) ? "—" : formatFiat(value, "");
   const perQtc = currency ? `${currency}/QTC` : "/ QTC";
@@ -47,6 +49,11 @@ export function MiningSummary({
     </button>
   );
   const waiting = !hasNetwork ? (loading ? t("正在读取网络状态…") : t("等待网络数据")) : t("填写算力后显示");
+  // Own hardware buys kilowatt-hours, not rent: the fourth decision is the
+  // highest electricity price the output still covers. Stating a rent budget
+  // there would print the profit a second time, since without a rent to pay
+  // the two are the same number.
+  const kwhCeiling = priced && total && total.qtcPerKwh !== null ? total.qtcPerKwh * price : null;
 
   const metrics: Metric[] = [
     {
@@ -54,7 +61,7 @@ export function MiningSummary({
       label: t("期望产量"),
       value: total ? formatQtc(total.qtcPerDay) : "—",
       unit: t("QTC / 天"),
-      hint: total ? `${formatHashrate(total.hashrate)} · ${t("占全网 {0}", formatPercent(total.share, 3))}` : waiting,
+      hint: total ? t("占全网 {0}", formatPercent(total.share, 3)) : waiting,
     },
     {
       key: "profit",
@@ -82,18 +89,22 @@ export function MiningSummary({
             ? t("没有运行成本")
             : t("低于此价即亏损"),
     },
-    {
-      key: "rent",
-      label: t("保本租金 / 天"),
-      value: priced && total ? bare(total.breakEvenRentPerDay) : "—",
-      unit: currency || undefined,
-      tone: priced && total ? signClass(total.breakEvenRentPerDay) : undefined,
-      hint: !priced
-        ? needPrice
-        : total && total.breakEvenRentPerHour !== null
-          ? t("{0} / 小时", bare(total.breakEvenRentPerHour))
-          : t("填写功耗后显示"),
-    },
+    rentMode
+      ? {
+          key: "rent",
+          label: t("保本租金 / 天"),
+          value: priced && total ? bare(total.breakEvenRentPerDay) : "—",
+          unit: currency || undefined,
+          tone: priced && total ? signClass(total.breakEvenRentPerDay) : undefined,
+          hint: !priced ? needPrice : t("租金已含电费，全部产值都能付租金"),
+        }
+      : {
+          key: "kwh",
+          label: t("保本电价"),
+          value: kwhCeiling === null ? "—" : bare(kwhCeiling),
+          unit: currency ? `${currency}/kWh` : undefined,
+          hint: !priced ? needPrice : kwhCeiling === null ? t("填写功耗后显示") : t("高于此电价即亏损"),
+        },
   ];
 
   return (
@@ -114,12 +125,14 @@ export function MiningSummary({
             </div>
           ))}
         </dl>
+        {/* Where the price came from, not what it is: the number itself has
+            one home, the field in the form. */}
         <p className="mining-summary-note">
           {model.priceSource === "market"
-            ? t("利润和保本租金按 SafeTrade 最新价 {0} 计算；产量和保本价与价格无关。", `${formatFiat(price, currency)}/QTC`)
+            ? t("金额按 SafeTrade 最新成交价计算；产量和保本价与价格无关。")
             : model.priceSource === "manual"
-              ? t("利润和保本租金按你填写的 {0} 计算；产量和保本价与价格无关。", `${formatFiat(price, currency)}/QTC`)
-              : t("填写 QTC 价格后才有利润和保本租金；产量和保本价与价格无关。")}
+              ? t("金额按你填写的 QTC 价格计算；产量和保本价与价格无关。")
+              : t("填写 QTC 价格后才有收入和利润；产量和保本价与价格无关。")}
         </p>
       </section>
     </div>
