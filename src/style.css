@@ -4487,3 +4487,52 @@ button.account-type-notice {
     transition: none;
   }
 }
+
+/* Paying into one's own encrypted account: the tab strip and the derived
+   address shown with its code and check phrase. */
+/* The strip stays put while the panel under it scrolls, so it needs its own
+   ground; without one the content would show through it. */
+.wormhole-tabs-row {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding-bottom: 0;
+  background: var(--bg);
+}
+.wormhole-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.wormhole-tabs > button {
+  flex: 1;
+  min-width: 0;
+}
+.wormhole-deposit-address {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+.wormhole-deposit-address > .label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+.wormhole-deposit-address .address-block {
+  margin: 0;
+  word-break: break-all;
+}
+.wormhole-deposit-address .check-phrase {
+  width: 100%;
+  margin: 0;
+}
+.wormhole-deposit-address .check-phrase-words {
+  justify-content: center;
+}
+.wormhole-points.compact > li {
+  align-items: flex-start;
+}

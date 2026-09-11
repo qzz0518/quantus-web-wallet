@@ -97,6 +97,23 @@ const defaultWorker: WormholeScanWorker = {
   computeNullifiers: computeWormholeNullifiers,
 };
 
+/**
+ * The first receiving index that has never taken a deposit, so a new deposit
+ * goes to an address nothing else points at: reusing one that already holds a
+ * deposit ties the two payments to the same account in public view. `after`
+ * asks for the next one beyond an index already offered.
+ */
+export function nextUnusedWormholeIndex(
+  snapshot: Pick<WormholeSnapshot, "branches">,
+  after = -1,
+): number {
+  const receiving = snapshot.branches.find((entry) => entry.branch === 0);
+  const used = new Set(receiving?.used ?? []);
+  let index = Math.max(0, Math.floor(after) + 1);
+  while (used.has(index)) index++;
+  return index;
+}
+
 /** Storage key of `Wormhole.UsedNullifiers[nullifier]` (Blake2_128Concat map). */
 export function usedNullifierKey(nullifier: string): string {
   const bytes = hexToU8a(hash32(nullifier));
