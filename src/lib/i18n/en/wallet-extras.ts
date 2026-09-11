@@ -6,8 +6,8 @@
 export const walletExtras: Record<string, string> = {
   总资产: "Total balance",
   部分余额未更新: "Some balances are out of date",
-  "不含 {0} 个加密账户": "Excludes {0} encrypted account(s)",
-  "不含 {0} 个待确认账户": "Excludes {0} unconfirmed account(s)",
+  "不含 {0} 个加密账户": "Encrypted accounts not counted: {0}",
+  "不含 {0} 个待确认账户": "Unconfirmed accounts not counted: {0}",
   校验短语: "Check phrase",
   "正在生成校验短语…": "Generating the check phrase…",
   "对方读出的五个词一致，地址就没抄错":
