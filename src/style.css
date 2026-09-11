@@ -4473,3 +4473,283 @@ button.account-type-notice {
     padding-right: 18px;
   }
 }
+
+
+/* ---------------------------------------------------------------------------
+   Wallet additions: the total across wallets, the check phrase, delayed
+   transfers and depositing into one's own encrypted account.
+   --------------------------------------------------------------------------- */
+
+/* What every wallet holds together, above the list that breaks it down. */
+.wallet-total {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.wallet-total-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wallet-total-fiat {
+  font-variant-numeric: tabular-nums;
+}
+.wallet-total-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wallet-total-amount > small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.wallet-total-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+/* The figure column of a wallet row: value over its dollar estimate. */
+.wallet-switcher-value {
+  flex-shrink: 0;
+  text-align: right;
+  max-width: 40%;
+}
+.wallet-switcher-value > b {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wallet-switcher-value > small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Five words that stand in for an address, read out to catch a wrong one. */
+.check-phrase {
+  margin: 4px 0 0;
+}
+.check-phrase.inset {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.check-phrase-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.check-phrase-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.check-phrase-words > span {
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.3;
+  color: var(--text);
+}
+/* The placeholder holds the row's height and rhythm while PBKDF2 runs. */
+.check-phrase-words > span.pending {
+  min-width: 62px;
+  height: 26px;
+  opacity: 0.55;
+}
+.check-phrase-words > span.pending:nth-child(2n) {
+  min-width: 78px;
+}
+.check-phrase-words > span.pending:nth-child(3n) {
+  min-width: 54px;
+}
+.check-phrase-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+/* The receive screen is centred around the code; the phrase follows it. */
+.receive-flow .check-phrase-words {
+  justify-content: center;
+}
+
+/* Delayed transfers: the picker in the send flow and the list of transfers
+   that are still waiting and can still be taken back. */
+.delivery-mode > span {
+  display: block;
+  margin-bottom: 8px;
+}
+.delivery-mode .segmented {
+  display: flex;
+  width: 100%;
+}
+.delivery-mode .segmented > button {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  white-space: normal;
+}
+.wallet-scheduled {
+  margin-top: 26px;
+}
+.scheduled-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.scheduled-row {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+}
+.scheduled-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.scheduled-target {
+  flex: 1;
+  min-width: 0;
+}
+.scheduled-target > strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+}
+.scheduled-phrase-toggle {
+  margin-top: 4px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.scheduled-head > b {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.scheduled-head > b small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+/* How much of the wait is behind it, so "two days" has a shape. */
+.scheduled-progress {
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.scheduled-progress > i {
+  display: block;
+  height: 100%;
+  width: calc(var(--progress, 0) * 100%);
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 300ms var(--motion-ease);
+}
+.scheduled-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.scheduled-foot > span {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  min-width: 0;
+}
+.scheduled-cancel {
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.scheduled-row .check-phrase {
+  margin-top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-progress > i {
+    transition: none;
+  }
+}
+
+/* Paying into one's own encrypted account: the tab strip and the derived
+   address shown with its code and check phrase. */
+/* The strip stays put while the panel under it scrolls, so it needs its own
+   ground; without one the content would show through it. */
+.wormhole-tabs-row {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding-bottom: 0;
+  background: var(--bg);
+}
+.wormhole-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.wormhole-tabs > button {
+  flex: 1;
+  min-width: 0;
+}
+.wormhole-deposit-address {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+.wormhole-deposit-address > .label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+.wormhole-deposit-address .address-block {
+  margin: 0;
+  word-break: break-all;
+}
+.wormhole-deposit-address .check-phrase {
+  width: 100%;
+  margin: 0;
+}
+.wormhole-deposit-address .check-phrase-words {
+  justify-content: center;
+}
+.wormhole-points.compact > li {
+  align-items: flex-start;
+}

@@ -14,6 +14,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { Modal } from "../Modal";
+import { CheckPhrase } from "../CheckPhrase";
 import { SwapIcon } from "../SwapIcon";
 import { FlowStatus } from "../FlowStatus";
 import { unlockVault, STORAGE_KEY, type Wallet } from "../../lib/vault";
@@ -237,6 +238,7 @@ export function ManageDialog({
                 <ArrowUpRight size={16} />
               </a>
             </div>
+            <CheckPhrase address={wallet.address} className="inset" />
           </div>
           <section className="settings-group" aria-label={t("管理钱包")}>
             <button

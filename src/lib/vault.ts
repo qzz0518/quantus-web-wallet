@@ -25,6 +25,12 @@ export type Pending = {
   createdAt: number;
   status: "pending" | "included" | "finalized" | "failed" | "unknown";
   error?: string;
+  /** Absent in vaults written before delayed transfers existed: those are immediate. */
+  kind?: "immediate" | "scheduled";
+  /** Delayed transfers only: the chosen delay, and what the chain answered. */
+  delay?: number;
+  txId?: string;
+  executeAt?: number;
 };
 export type VaultData = { version: 1; wallets: Wallet[]; pending: Pending[] };
 export type Envelope = {
@@ -59,6 +65,10 @@ function parseEnvelope(value: string): Envelope {
     throw new Error(t("无法识别此钱包备份"));
   return e;
 }
+/** An optional non-negative whole number, or nothing at all. */
+const optionalCount = (value: unknown) =>
+  value === undefined || (Number.isSafeInteger(value) && (value as number) >= 0);
+
 export function validateData(value: unknown): VaultData {
   const d = value as VaultData;
   if (
@@ -117,7 +127,11 @@ export function validateData(value: unknown): VaultData {
       !Number.isFinite(p.createdAt) ||
       !["pending", "included", "finalized", "failed", "unknown"].includes(
         p.status,
-      )
+      ) ||
+      (p.kind !== undefined && !["immediate", "scheduled"].includes(p.kind)) ||
+      !optionalCount(p.delay) ||
+      !optionalCount(p.executeAt) ||
+      (p.txId !== undefined && !/^0x[0-9a-f]{64}$/i.test(p.txId))
     )
       throw new Error(t("交易数据格式无效"));
   return d;

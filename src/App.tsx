@@ -5,10 +5,12 @@ import {
   readBalance,
   readHistory,
   readNetwork,
+  readScheduledReceipt,
+  readScheduledTransfers,
   trackTransfer,
   readWormholeInfo,
 } from "./lib/chain";
-import type { Transaction } from "./lib/chain";
+import type { ScheduledTransfers, Transaction } from "./lib/chain";
 import {
   STORAGE_KEY,
   encryptVault,
@@ -48,6 +50,7 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { ToolsPage } from "./components/tools/ToolsPage";
 import { applyTheme, readThemePreference } from "./lib/theme";
 import { ActivityPanel } from "./components/wallet/ActivityPanel";
+import { ScheduledPanel } from "./components/wallet/ScheduledPanel";
 import {
   WalletChooser,
   WalletSwitcher,
@@ -110,6 +113,7 @@ export default function App() {
     [wormholeInfo, setWormholeInfo] = useState<Awaited<
       ReturnType<typeof readWormholeInfo>
     > | null>(null),
+    [scheduled, setScheduled] = useState<ScheduledTransfers | null>(null),
     [trackingRetry, setTrackingRetry] = useState(0);
   const nextAction = useRef<"create" | "import" | "watch" | null>(null);
   const navigate = useCallback((next: WalletPage) => {
@@ -143,6 +147,7 @@ export default function App() {
     queue = useRef(Promise.resolve()),
     historyEpoch = useRef(0),
     balanceEpoch = useRef(0),
+    scheduledEpoch = useRef(0),
     tracking = useRef(new Map<string, AbortController>()),
     lastActivity = useRef(Date.now()),
     autoUnlocking = useRef(false),
@@ -174,6 +179,7 @@ export default function App() {
     setBalances({});
     setTransactions([]);
     setWormholeInfo(null);
+    setScheduled(null);
     setDialog(null);
     setBalanceError("");
     setHistoryError("");
@@ -345,6 +351,29 @@ export default function App() {
     const id = setInterval(() => void refreshBalances(), 20000);
     return () => clearInterval(id);
   }, [addresses, refreshBalances]);
+  // Scheduled transfers are chain state, not a local journal: they can be made
+  // from another device, and they disappear the moment the chain executes or
+  // cancels them. Reading them is cheap enough to repeat on a timer.
+  const refreshScheduled = useCallback(async (address: string) => {
+    const request = ++scheduledEpoch.current,
+      saved = epoch.current;
+    try {
+      const state = await readScheduledTransfers(address);
+      if (request !== scheduledEpoch.current || saved !== epoch.current) return;
+      setScheduled(state);
+    } catch {
+      // Advisory: the overview keeps the last known list rather than an error.
+    }
+  }, []);
+  useEffect(() => {
+    setScheduled(null);
+    scheduledEpoch.current++;
+    if (!wallet || !hasPublicBalance(wallet)) return;
+    const address = wallet.address;
+    void refreshScheduled(address);
+    const id = setInterval(() => void refreshScheduled(address), 30000);
+    return () => clearInterval(id);
+  }, [wallet?.address, wallet?.watchKind, wallet?.kind, refreshScheduled]);
   const loadHistory = useCallback(async (address: string, offset = 0) => {
     const request = ++historyEpoch.current,
       saved = epoch.current;
@@ -410,9 +439,31 @@ export default function App() {
               p.hash === tx.hash ? { ...p, status, error: state.error } : p,
             ),
           })).catch(() => {});
+          // The transaction id and the due block exist only in the event of the
+          // block that accepted the schedule; the storage item has neither.
+          if (
+            tx.kind === "scheduled" &&
+            !tx.txId &&
+            state.blockHash &&
+            (state.status === "included" || state.status === "finalized")
+          ) {
+            void readScheduledReceipt(tx.hash, state.blockHash)
+              .then((receipt) => {
+                if (!receipt || controller.signal.aborted) return;
+                void persist((d) => ({
+                  ...d,
+                  pending: d.pending.map((p) =>
+                    p.hash === tx.hash ? { ...p, ...receipt } : p,
+                  ),
+                })).catch(() => {});
+              })
+              .catch(() => {});
+          }
           if (state.status === "finalized" || state.status === "failed") {
             void refreshBalances();
             if (wallet?.address === tx.address) void loadHistory(tx.address);
+            if (tx.kind === "scheduled" && wallet?.address === tx.address)
+              void refreshScheduled(tx.address);
             notify(
               state.status === "finalized"
                 ? t("交易已获得最终确认")
@@ -429,6 +480,7 @@ export default function App() {
     persist,
     refreshBalances,
     loadHistory,
+    refreshScheduled,
     notify,
     wallet?.address,
     trackingRetry,
@@ -568,6 +620,7 @@ export default function App() {
     void refreshBalances();
     if (wallet) {
       void loadHistory(wallet.address);
+      if (hasPublicBalance(wallet)) void refreshScheduled(wallet.address);
       if (isWormhole(wallet))
         void readWormholeInfo(wallet.address)
           .then(setWormholeInfo)
@@ -649,6 +702,16 @@ export default function App() {
                 onCopyAddress={copyAddress}
               />
             )}
+            {page === "overview" && scheduled && (
+              <ScheduledPanel
+                wallet={wallet}
+                block={scheduled.block}
+                transfers={scheduled.transfers}
+                hidden={hidden}
+                onNotify={notify}
+                onSubmitted={() => void refreshScheduled(wallet.address)}
+              />
+            )}
             <ActivityPanel
               page={page}
               wallet={wallet}
@@ -676,6 +739,8 @@ export default function App() {
         <WalletSwitcher
           wallets={wallets}
           wallet={wallet}
+          balances={balances}
+          hidden={hidden}
           onSelect={chooseWallet}
           onClose={closeDialog}
           onAdd={() => setDialog("choose")}

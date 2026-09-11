@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Modal } from "../Modal";
 import { Select } from "../Select";
+import { WormholeDeposit } from "./WormholeDeposit";
 import type { Wallet } from "../../lib/vault";
 import {
   DEFAULT_SCHEME,
@@ -53,6 +54,8 @@ import type {
 } from "../../lib/wormhole/types";
 
 type Step = "intro" | "input" | "scanning" | "results" | "exit";
+/** The two things one does with an encrypted account: pay into it, or take out of it. */
+type Tab = "deposit" | "recover";
 type ExitStage = "form" | "working" | "done";
 type ScanFailure = { code: WormholeScanError["code"] | "other"; message: string };
 
@@ -153,14 +156,24 @@ export function WormholeRecoveryDialog({
   onClose,
   onBack,
   initialSnapshot,
+  initialTab,
+  onDeposit,
+  onWatch,
 }: {
   wallets: Wallet[];
   onClose: () => void;
   onBack?: () => void;
+  /** Opens on the deposit tab (used by tests and by a host that links to it). */
+  initialTab?: Tab;
+  /** Opens the send flow with the derived address filled in. */
+  onDeposit?: (address: string, index: number) => void;
+  /** Saves the derived address as a watch-only record. */
+  onWatch?: (address: string, index: number) => Promise<void>;
   /** Opens directly on the results step for a completed scan (used by tests). */
   initialSnapshot?: WormholeScanSnapshot;
 }) {
   const t = useT();
+  const [tab, setTab] = useState<Tab>(initialTab ?? "recover");
   const [step, setStep] = useState<Step>(initialSnapshot ? "results" : "intro");
   const [phrase, setPhrase] = useState("");
   const [expectedAddress, setExpectedAddress] = useState("");
@@ -425,19 +438,50 @@ export function WormholeRecoveryDialog({
   const scanStage = progress.stage;
   const canCancelExit = ["rules", "merkle", "circuit", "prove", "verify"].includes(exitProgress.stage);
 
+  const tabs = (
+    <div className="segmented wormhole-tabs" role="tablist" aria-label={t("加密账户（Wormhole）")}>
+      {[
+        { value: "deposit" as const, label: t("存入") },
+        { value: "recover" as const, label: t("扫描与取回") },
+      ].map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="tab"
+          aria-checked={tab === option.value}
+          aria-selected={tab === option.value}
+          onClick={() => {
+            setError("");
+            setTab(option.value);
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Modal
-      title={t("加密账户恢复")}
+      title={tab === "deposit" ? t("存入隐私账户") : t("加密账户恢复")}
       variant="flow"
       wide
-      stepKey={stepKey}
+      stepKey={tab === "deposit" ? "deposit" : stepKey}
       busy={busy}
       onBack={back}
       onClose={close}
     >
+      {tab === "deposit" ? (
+        <>
+          <div className="flow-body wormhole-tabs-row">{tabs}</div>
+          <WormholeDeposit wallets={wallets} onDeposit={onDeposit} onWatch={onWatch} />
+        </>
+      ) : (
+        <>
       {step === "intro" && (
         <div className="flow-form">
           <div className="flow-body">
+            <div className="wormhole-tabs-row">{tabs}</div>
             <div className="flow-heading">
               <span className="flow-symbol">
                 <LifeBuoy size={29} />
@@ -1001,6 +1045,8 @@ export function WormholeRecoveryDialog({
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
     </Modal>
   );

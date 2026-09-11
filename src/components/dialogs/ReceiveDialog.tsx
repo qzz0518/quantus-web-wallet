@@ -10,6 +10,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { SwapIcon } from "../SwapIcon";
 import { Modal } from "../Modal";
+import { CheckPhrase } from "../CheckPhrase";
 import { FlowStatus } from "../FlowStatus";
 import type { Wallet } from "../../lib/vault";
 import { copyText, download } from "../../lib/browser";
@@ -133,6 +134,7 @@ export function ReceiveDialog({
             {wallet.address}
           </button>
         </div>
+        <CheckPhrase address={wallet.address} />
         <div className="receive-secondary-actions">
           <button
             className="text-button"
