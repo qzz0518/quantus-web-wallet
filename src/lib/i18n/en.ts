@@ -1,6 +1,7 @@
 import { activity } from "./en/activity";
 import { autoUnlock } from "./en/auto-unlock";
 import { lib } from "./en/lib";
+import { miner } from "./en/miner";
 import { mining } from "./en/mining";
 import { mldsa65 } from "./en/mldsa65";
 import { network } from "./en/network";
@@ -15,6 +16,7 @@ export const en: Record<string, string> = {
   ...activity,
   ...autoUnlock,
   ...lib,
+  ...miner,
   ...mining,
   ...mldsa65,
   ...network,

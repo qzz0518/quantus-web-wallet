@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Activity, ChevronRight, LifeBuoy, Pickaxe } from "lucide-react";
+import { Activity, ChevronRight, Hammer, LifeBuoy, Pickaxe } from "lucide-react";
 import type { Wallet } from "../../lib/vault";
 import { useT } from "../../lib/i18n";
 import { WormholeRecoveryDialog } from "../dialogs/WormholeRecoveryDialog";
 import { MiningCalculator } from "./MiningCalculator";
+import { MinerPage } from "./MinerPage";
 import { NetworkPage } from "./NetworkPage";
 
-type Tool = "recovery" | "mining" | "network";
+type Tool = "recovery" | "mining" | "network" | "miner";
 
 /**
  * Auxiliary tools live on their own tab so the wallet's main screens stay
@@ -25,6 +26,7 @@ export function ToolsPage({
   const [tool, setTool] = useState<Tool | null>(null);
   if (tool === "mining") return <MiningCalculator onBack={() => setTool(null)} />;
   if (tool === "network") return <NetworkPage onBack={() => setTool(null)} />;
+  if (tool === "miner") return <MinerPage wallets={wallets} onBack={() => setTool(null)} />;
   const tools: { id: Tool; Icon: typeof LifeBuoy; title: string; description: string }[] = [
     {
       id: "mining",
@@ -37,6 +39,12 @@ export function ToolsPage({
       Icon: Activity,
       title: t("网络状态"),
       description: t("算力、出块、发行进度和区块奖励的衰减曲线"),
+    },
+    {
+      id: "miner",
+      Icon: Hammer,
+      title: t("矿工看板"),
+      description: t("查一个地址近 30 天的出块、收益、实际算力和转入来源"),
     },
     {
       id: "recovery",

@@ -4357,7 +4357,7 @@ button.account-type-notice {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  margin: 0 0 4px;
+  margin: 18px 0 0;
 }
 .miner-form > .field {
   flex: 1;
