@@ -1,76 +1,67 @@
-# Quantus Web Wallet
+<div align="center">
+  <img src="./public/icons/icon-192.png" alt="Quantus Web Wallet" width="96" height="96">
+  <h1>Quantus Web Wallet</h1>
+  <p><strong>A browser wallet for the Quantus network — no server, no fee, keys stay on your device</strong></p>
 
-[Open wallet](https://qtc.zezn.dev) · English | [简体中文](README.zh-CN.md)
+  <p>
+    <a href="https://qtc.zezn.dev"><img src="https://img.shields.io/badge/open-qtc.zezn.dev-1f6f4a" alt="Open wallet"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License"></a>
+  </p>
 
-A browser wallet for the Quantus network. Keys never leave your device, there is no server and no fee, and the app installs as a PWA on phones and desktops.
+  English | <a href="README.zh-CN.md">简体中文</a>
+</div>
+
+Open [qtc.zezn.dev](https://qtc.zezn.dev), create or import a wallet, and it
+works like an app: install it to your home screen, unlock with a password or
+your device's biometrics, and send QTC with post-quantum ML-DSA signatures.
+The page talks only to the official Quantus node, the public indexer, and
+SafeTrade's price ticker; nothing is collected.
 
 ## Features
 
-- **Accounts.** Create, import and manage multiple wallets. Both signature schemes the network uses are supported: ML-DSA-65 (the official wallet's default, path `m/44'/189189'/n'/0'/1'`) and ML-DSA-87 (`…/0'/0'`). Imports show the derived address first so you can compare it with the official wallet before saving. Watch-only accounts, including Wormhole addresses, show public balances and deposits. Under the balance the wallet shows its dollar value at SafeTrade's QUANTUS/USDT price (the last trade, or the middle of the book while there has been none; USDT counted as USD); hover for the unit price. The wallet switcher opens with the total across every account that has a public balance, in QTC and dollars, with each wallet's own figure beside it; encrypted and unconfirmed accounts are listed but left out of the total, and a balance that has not arrived keeps the total from being shown at all rather than making it too low.
-- **Transfers.** Send QTC, receive with a QR code, and follow every transaction from submission to finality. Before the amount step the wallet checks the recipient on the public indexer: an address that only ever received mining rewards and never sent anything is almost certainly an encrypted (Wormhole) account, so the wallet explains the consequences and asks for confirmation; an address with no on-chain history gets a hint.
-- **Delayed transfers you can take back.** On the amount step you can choose *Delayed, cancellable* instead of immediate delivery and pick how long the chain should wait — ten minutes, an hour, a day (the runtime's own default of 7,200 blocks) or a number of blocks you type. The amount is held on your account until then, the review step shows the block and the time it is expected to arrive, and everything still waiting appears above the activity list with how far the wait has run and a **Cancel** button. Cancelling returns the amount to your account; the chain charges nothing for it, only the network fee of the cancellation transaction itself. An account can have at most sixteen transfers waiting, which is the runtime's limit, and watch-only accounts can see the list but not cancel.
-- **Check phrase.** Every address also reads as five words — the official Quantus check phrase ([qp-human-checkphrase](https://github.com/Quantus-Network/qp-human-checkphrase), MIT). They are shown on the receive screen, in the wallet details and on the recipient step of a transfer, so both sides can read five words to each other instead of comparing fifty characters: an address that differs by a single character produces a completely unrelated phrase, which is what defeats lookalike addresses. The phrase is derived in your browser with PBKDF2 and never leaves it.
-- **History.** Incoming, outgoing and mining-reward activity with search and filters, linked to the Quantus explorer.
-- **Backup and security.** Wallets are encrypted locally with a password of at least 6 characters; encrypted backups can be exported and restored; recovery words can be downloaded and are confirmed with a word-selection check. Unlock with your device's fingerprint, face or screen lock on browsers that support WebAuthn PRF. The wallet locks itself after 10 minutes without interaction.
-- **Password-free mode.** Opt in from Settings on a private computer: after verifying the password once, the wallet opens by itself on every page load and the idle lock is off; a manual lock holds until the page is loaded again. The unlock key is wrapped with a non-extractable key kept in this browser, so anyone who can open the browser on that computer can open the wallet. Device unlock and the password stay available, and the mode turns itself off when the password changes or a backup is restored.
-- **Encrypted accounts (Wormhole).** Two tabs under Tools. *Deposit* derives a receiving address from one of your own wallets' seed phrases that has never been paid into — reusing one that already holds a deposit would tie the two payments together in public view — and shows it with its code and its check phrase, plus what withdrawing it later will cost. *Scan and withdraw* scans an official wallet's encrypted account with its seed phrase to see the real unspent balance and withdraw deposits to a regular account. See [below](#encrypted-account-recovery).
-- **Mining calculator.** Under Tools. The page opens with the four figures that decide a rig — expected QTC per day, profit per day, the break-even QTC price and the break-even rent — and keeps them in view while you edit. Pick your GPUs (or enter a total hashrate), quantity and miner software; uptime, pool and miner-software fees, electricity price or rig rent, an optional hardware cost and the currency label sit behind *More settings*, and the difficulty sensitivity, the GPU comparison, the network state and the method fold open only when you want them. Break-even rent — how much a machine can cost per hour and per day and still pay for itself — is shown under each GPU row, for the whole rig, and as a column in the comparison: the daily output valued at the QTC price, less the running costs the rent does not already cover (renting a whole rig includes the electricity; on your own hardware the electricity comes off first). Difficulty and measured block time come from the chain RPC, recent block rewards from the public indexer, GPU benchmarks, fee terms and measured pool luck from Quanpool's public API (with a built-in snapshot as fallback), topped up with hashrates observed on rigs for cards the pool has not benchmarked, and the QTC price from SafeTrade's public QUANTUS/USDT ticker (the last trade, or the middle of the book while there has been none) — that request tells the exchange your IP address, the exchange turns some visitors away, and either way you can type a price of your own, which is what the page then uses. Everything is an expectation, and inputs stay in your browser.
-- **Network dashboard.** Under Tools. Block height, network hashrate, measured block time and the current block reward, then the answer to the question the reward keeps raising: there is no halving. `pallet-mining-rewards` mints `(MaxSupply − TotalIssuance) / EmissionDivisor` to every block's miner, so with a 21,000,000 QTC cap and a divisor of 50,000,000 (mainnet runtime 152) the reward shrinks by one fifty-millionth of the remainder per block — a smooth decay whose half-life is `ln2 × 50,000,000` blocks, about 13 years at the 12-second target. The page shows how much of the supply exists, how much is minted per day, and a table of the reward and the yearly emission now and one, two and five years out. Below that, the indexer's daily block, transaction and active-address counters as hand-drawn charts, the running totals, and a hashrate cross-check against the blocks actually produced in the last 24 hours. Readings are cached for ten minutes and refresh on demand.
-- **Miner dashboard.** Under Tools. Enter any address (the open wallet's, by default; the last five are remembered locally) to see what it earned from mining over the last 30 days: QTC and blocks over the last 24 hours, 7 days and 30 days with their dollar value, the lifetime totals, a bar per day, and the hashrate those blocks imply — your blocks divided by the network's blocks over the same window, times the network hashrate. If the mining calculator has inputs saved on this device, the page puts its expected hashrate and block count beside the real ones so the luck is visible. Below that, who paid the address: the chain credits a block reward as transfers too, so those are matched against each block's reward and taken out first, and the largest remaining senders are listed. Mark one as a pool and it gets its own earnings card with the same daily bars and windows; the mark is stored in this browser and no pool address is built in.
-- **Interface.** Chinese and English (follows the browser on first use, switchable in settings), light, dark and system themes, a layout for phones and desktops, and installation as a PWA with offline startup.
+- **Wallets** — create, import and manage ML-DSA-65 / ML-DSA-87 accounts;
+  watch-only addresses; encrypted local backups and seed phrase export
+- **Send and receive** — QR codes, live fee quotes, delivery tracking to
+  finality, and a five-word check phrase so both sides can confirm an
+  address by voice
+- **Delayed, reversible transfers** — hold a transfer for 10 minutes, an
+  hour or a day and take it back before it lands
+- **Encrypted account (Wormhole)** — deposit to your own private address,
+  or scan an official-wallet seed and withdraw its unspent funds in the
+  browser
+- **Balance in dollars** — every wallet and the total across wallets, from
+  the live QUANTUS/USDT market
+- **Tools** — mining calculator with break-even price and rent, network
+  status with the reward decay curve, and a miner dashboard for any address
+- **Password-free mode** — on a private computer, unlock once and the wallet
+  opens by itself
+- **Chinese and English**, light and dark, phone and desktop
 
-## Security model
+## Install
 
-- Seed phrases and keys are stored only in this browser, encrypted with your password. Derivation and signing run inside a disposable Web Worker with the vendored Rust/WASM module; the phrase is never written to storage in clear text, never uploaded, and never shown to any server.
-- The wallet screens talk only to the official Quantus RPC node and indexer, plus SafeTrade's public QUANTUS/USDT ticker once a minute for the dollar value of the balance; the mining calculator additionally reads Quanpool's public API, and the network and miner dashboards read `Balances.TotalIssuance` from the same RPC node and the indexer's public statistics tables (daily counters, global totals, block counts, an address's mining rewards and incoming transfers). Looking up an address on the miner dashboard tells the indexer that address and your IP, the same as opening any wallet screen does. The Content Security Policy served with the site allows no other host. There is no telemetry, no analytics and no service fee.
-- Signing is pinned to the mainnet runtime (`specVersion` 152, `transactionVersion` 6). When the network upgrades, the wallet refuses to sign until it has been reviewed and updated.
-- The deployment can be verified: `node scripts/verify-deployment.mjs` compares every file on the site with a local build and checks the security headers.
-- This project has not been independently audited. Keep a backup of your seed phrase outside the browser.
-
-## Encrypted account recovery
-
-**What it is.** The official Quantus wallet has an "Encrypted Account" (Wormhole). Its addresses look like ordinary addresses but are derived from the seed phrase at `m/44'/189189189'/0'/<branch>'/<index>'`. Every transfer into such an address becomes a deposit in the privacy pool, and only the holder of the seed phrase can tell which deposits are still unspent; a watch-only view can only show "unknown". Many users have received funds on these addresses by mistake.
-
-**Depositing into your own.** The *Deposit* tab scans the receiving branch of a wallet you already hold, finds the first index that has never taken a deposit and shows that address with a QR code and its check phrase. The fee and the 0.01 QTC granularity quoted alongside it are read from the chain, not written down. Anything sent there can only be taken out with that wallet's seed phrase.
-
-**What the tool does.** Under *Tools → Encrypted account (Wormhole) → Scan and withdraw* you can scan an encrypted account with the official wallet's seed phrase. The scan is read-only: it derives the receiving and change addresses locally in a disposable worker, asks the official indexer for deposits to those addresses, derives each deposit's nullifier locally and checks on the official RPC node whether it has been spent. Unspent deposits can then be withdrawn to a regular account: a zero-knowledge proof is generated in the browser, verified locally, and submitted once.
-
-**Steps.**
-
-1. Open *Tools → Encrypted account (Wormhole) → Scan and withdraw* and read the introduction.
-2. Enter the official wallet's 24-word seed phrase. Optionally paste the encrypted account address shown by the official wallet; the result will say whether it is among the derived addresses.
-3. Confirm the network notice and start the scan. The progress view shows the stage, the branch, the number of addresses scanned and the deposits found; the scan can be cancelled.
-4. Review the results: withdrawable balance, spent deposits, the snapshot block and a list of unspent deposits with checkboxes.
-5. Select up to 7 deposits, choose the receiving account (one of this wallet's signing accounts, or the regular account derived from the same phrase), check the fee preview and submit. The receipt shows the transaction hash, its phase and an explorer link; previous receipts are listed on the tool's start page.
-
-**Costs.** The chain charges a 0.04% volume fee on the withdrawn amount. Amounts are rounded down to 0.01 QTC first, and the remainder below 0.01 QTC of each deposit is lost. Half of the fee is burned and half goes to the block producer; there is no rebate. Proof generation needs about 1.5 GB of memory and roughly a minute; use a desktop browser and keep the page open.
-
-**Limits.** The scan snapshots one finalized block that the RPC node and the indexer agree on; deposits after that block are not included. It stops after 20 consecutive unused addresses per branch and refuses to report a balance when an account exceeds 1000 addresses per branch or 10 000 deposits, so an incomplete scan is shown as an error rather than a smaller balance. One withdrawal takes at most 7 deposits; larger accounts are withdrawn in several rounds. A deposit below 0.02 QTC cannot be withdrawn on its own because the fee would consume it. The seed phrase stays in the page and the local signing module, but the official indexer and RPC node see the derived addresses and your IP address.
-
-## Installation
-
-Open the [web wallet](https://qtc.zezn.dev) and choose **Install app** or **Add to Home Screen** in your browser. On iPhone, use Safari → Share → Add to Home Screen. Balance updates and transfers require an internet connection.
+Open the [wallet](https://qtc.zezn.dev) and choose **Install app** or
+**Add to Home Screen** in your browser. On iPhone: Safari → Share → Add to
+Home Screen.
 
 ## Development
 
-Requires [Bun](https://bun.sh) 1.4.0. [mise](https://mise.jdx.dev) can install the pinned tools with `mise install`.
+Requires [Bun](https://bun.sh) 1.4.
 
-```sh
+```bash
 git clone https://github.com/qzz0518/quantus-web-wallet.git
 cd quantus-web-wallet
-bun install --frozen-lockfile
+bun install
 bun run dev        # http://127.0.0.1:5189
-bun run check      # TypeScript
-bun run test       # unit tests, including the English dictionary check
-bun run build && bun run preview
+bun run test
+bun run build
 ```
 
-Browser fixtures for layout checks live under `tests/browser/`. The end-to-end withdrawal test runs only against an isolated local dev chain and only when `QUANTUS_DEV_TEST=1` is set. The signing module and the Wormhole prover are checked in as compiled WASM; Rust is needed only to [rebuild them](vendor/PROVENANCE.md#rebuild) with `scripts/build-wasm.sh` and `scripts/build-prover.sh`.
-
-## Deployment
-
-Deploy `dist/` to a static host with HTTPS. The `_headers` file carries the Content Security Policy, HSTS and the other security headers for hosts that support it; `wrangler.jsonc` configures the Cloudflare deployment used by qtc.zezn.dev (`bun run deploy`). After deploying, run `node scripts/verify-deployment.mjs [origin]` to confirm that the site matches the local build and serves the expected headers.
+The signing module and the Wormhole prover are checked in as compiled WASM;
+Rust is needed only to [rebuild them](vendor/PROVENANCE.md). `bun run deploy`
+publishes to Cloudflare, and `node scripts/verify-deployment.mjs` checks that
+the live site matches the local build.
 
 ## License
 
-GPL-3.0-only. The vendored cryptography carries its own licenses; see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
+[GPL-3.0](LICENSE). Vendored cryptography carries its own licenses; see
+[vendor/PROVENANCE.md](vendor/PROVENANCE.md).
