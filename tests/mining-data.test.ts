@@ -196,7 +196,7 @@ describe("pool terms", () => {
   });
 });
 
-// The shape SafeTrade answers with for the QUAN/USDT market.
+// The shape SafeTrade answers with for the QTC/USDT market.
 const TICKER = {
   at: "1789049651",
   ticker: {

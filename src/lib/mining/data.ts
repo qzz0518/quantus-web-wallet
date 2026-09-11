@@ -13,15 +13,15 @@ import { BUILT_IN_TERMS, OBSERVED_GPUS, gpuId, shortName, typicalPower, type Gpu
  */
 export const QUANPOOL_URL = "https://quanpool.com";
 /**
- * Where QTC trades: SafeTrade lists it as QUAN/USDT — QUAN and QTC are the
- * same asset, and the quote asset is USDT, so every market figure is in
- * USDT. The ticker endpoint answers cross-origin, but the exchange sits
+ * Where QTC trades: SafeTrade's QTC/USDT market. The quote asset is USDT,
+ * so every market figure is in USDT. The ticker endpoint answers
+ * cross-origin, but the exchange sits
  * behind a bot challenge that turns some visitors away, so the calculator
  * treats a live price as a bonus and always keeps manual entry working.
  */
-export const SAFETRADE_MARKET_URL = "https://safetrade.com/exchange/QUAN-USDT?type=basic";
-export const SAFETRADE_TICKER_URL = "https://safetrade.com/api/v2/peatio/public/markets/quanusdt/tickers";
-export const MARKET_PAIR = "QUAN/USDT";
+export const SAFETRADE_MARKET_URL = "https://safetrade.com/exchange/QTC-USDT?type=basic";
+export const SAFETRADE_TICKER_URL = "https://safetrade.com/api/v2/peatio/public/markets/qtcusdt/tickers";
+export const MARKET_PAIR = "QTC/USDT";
 export const MARKET_QUOTE = "USDT";
 export const REQUEST_TIMEOUT_MS = 15_000;
 /** The exchange is optional data, so it waits shorter than the chain does. */
@@ -295,7 +295,7 @@ function decimal(value: unknown, { positive }: { positive: boolean }): number | 
 }
 
 /**
- * The last traded price of QUAN/USDT on SafeTrade. Only the reader's browser
+ * The last traded price of QTC/USDT on SafeTrade. Only the reader's browser
  * asks, and only from the calculator, so the exchange learns nothing but that
  * one visit; the answer is validated field by field and a malformed or
  * unreachable market simply leaves the price to the user. Prices are in USDT

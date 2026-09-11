@@ -100,8 +100,8 @@ describe("mining calculator page", () => {
   });
   test("names the market, links to it and stays usable when the quote is out of reach", () => {
     const html = renderToStaticMarkup(<MiningCalculator onBack={() => {}} />);
-    expect(html).toContain("SafeTrade · QUAN/USDT");
-    expect(html).toContain('href="https://safetrade.com/exchange/QUAN-USDT?type=basic"');
+    expect(html).toContain("SafeTrade · QTC/USDT");
+    expect(html).toContain('href="https://safetrade.com/exchange/QTC-USDT?type=basic"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain("暂时取不到市场价，请手动填写");
     expect(html).not.toContain("尚未上市");
