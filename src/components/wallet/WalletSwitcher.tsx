@@ -7,13 +7,25 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import type { Wallet } from "../../lib/vault";
-import { shortAddress } from "../../lib/amount";
+import { formatAmount, shortAddress } from "../../lib/amount";
 import { useT } from "../../lib/i18n";
+import { fiatValue, formatUsd, useMarketPrice } from "../../lib/market";
+import {
+  sumPublicBalances,
+  walletBalanceKind,
+  type PublicBalance,
+} from "../../lib/wallet";
 import { Modal } from "../Modal";
+
+const HIDDEN = "••••";
+/** Enough precision to tell the wallets apart without a column of long numbers. */
+const LIST_DECIMALS = 4;
 
 type WalletSwitcherProps = {
   wallets: Wallet[];
   wallet?: Wallet;
+  balances: Record<string, PublicBalance | undefined>;
+  hidden: boolean;
   onSelect: (id: string) => void;
   onClose: () => void;
   onAdd: () => void;
@@ -22,38 +34,94 @@ type WalletSwitcherProps = {
 export function WalletSwitcher({
   wallets,
   wallet,
+  balances,
+  hidden,
   onSelect,
   onClose,
   onAdd,
 }: WalletSwitcherProps) {
   const t = useT();
+  const price = useMarketPrice();
+  const totals = sumPublicBalances(wallets, balances);
+  // A figure is only shown once every wallet that should have one reported it;
+  // a partial sum would read as the whole and is worse than no number.
+  const complete = totals.missing === 0 && totals.counted > 0;
+  const notes = [
+    totals.missing > 0 ? t("部分余额未更新") : "",
+    totals.encrypted > 0 ? t("不含 {0} 个加密账户", totals.encrypted) : "",
+    totals.unclassified > 0
+      ? t("不含 {0} 个待确认账户", totals.unclassified)
+      : "",
+  ].filter(Boolean);
   return (
     <Modal title={t("切换钱包")} variant="flow" onClose={onClose}>
       <div className="flow-body">
+        <div className="wallet-total" aria-label={t("总资产")}>
+          <div className="wallet-total-head">
+            <span>{t("总资产")}</span>
+            {complete && price && !hidden && (
+              <span className="wallet-total-fiat">
+                ≈ {formatUsd(fiatValue(totals.total, price.last))}
+              </span>
+            )}
+          </div>
+          <strong className="wallet-total-amount">
+            {hidden
+              ? HIDDEN
+              : complete
+                ? formatAmount(totals.total, LIST_DECIMALS)
+                : "—"}
+            <small>QTC</small>
+          </strong>
+          {notes.length > 0 && (
+            <p className="wallet-total-note">{notes.join(" · ")}</p>
+          )}
+        </div>
         <div className="wallet-switcher-list">
-          {wallets.map((w, i) => (
-            <button
-              key={w.id}
-              className={`wallet-switcher-item ${wallet?.id === w.id ? "selected" : ""}`}
-              onClick={() => {
-                onSelect(w.id);
-                onClose();
-              }}
-            >
-              <span className={`wallet-avatar color-${i % 4}`}>
-                {w.kind === "watch" ? (
-                  <Eye size={19} />
-                ) : (
-                  <WalletIcon size={19} />
-                )}
-              </span>
-              <span>
-                <strong>{w.name}</strong>
-                <small>{shortAddress(w.address, 7)}</small>
-              </span>
-              {wallet?.id === w.id && <Check size={18} />}
-            </button>
-          ))}
+          {wallets.map((w, i) => {
+            const balance =
+              walletBalanceKind(w) === "standard"
+                ? balances[w.address]
+                : undefined;
+            const amount = balance
+              ? BigInt(balance.free) + BigInt(balance.reserved)
+              : null;
+            return (
+              <button
+                key={w.id}
+                className={`wallet-switcher-item ${wallet?.id === w.id ? "selected" : ""}`}
+                onClick={() => {
+                  onSelect(w.id);
+                  onClose();
+                }}
+              >
+                <span className={`wallet-avatar color-${i % 4}`}>
+                  {w.kind === "watch" ? (
+                    <Eye size={19} />
+                  ) : (
+                    <WalletIcon size={19} />
+                  )}
+                </span>
+                <span>
+                  <strong>{w.name}</strong>
+                  <small>{shortAddress(w.address, 7)}</small>
+                </span>
+                <span className="wallet-switcher-value">
+                  <b>
+                    {hidden
+                      ? HIDDEN
+                      : amount === null
+                        ? "—"
+                        : formatAmount(amount, LIST_DECIMALS)}
+                  </b>
+                  {!hidden && amount !== null && price && (
+                    <small>≈ {formatUsd(fiatValue(amount, price.last))}</small>
+                  )}
+                </span>
+                {wallet?.id === w.id && <Check size={18} />}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="flow-footer">

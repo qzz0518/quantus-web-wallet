@@ -6,6 +6,7 @@ import { mldsa65 } from "./en/mldsa65";
 import { settings } from "./en/settings";
 import { setup } from "./en/setup";
 import { wallet } from "./en/wallet";
+import { walletExtras } from "./en/wallet-extras";
 import { wormhole } from "./en/wormhole";
 import { wormholeExit } from "./en/wormhole-exit";
 
@@ -19,6 +20,7 @@ export const en: Record<string, string> = {
   ...settings,
   ...setup,
   ...wallet,
+  ...walletExtras,
   ...wormhole,
   ...wormholeExit,
   外观模式: "Appearance",

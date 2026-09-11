@@ -676,6 +676,8 @@ export default function App() {
         <WalletSwitcher
           wallets={wallets}
           wallet={wallet}
+          balances={balances}
+          hidden={hidden}
           onSelect={chooseWallet}
           onClose={closeDialog}
           onAdd={() => setDialog("choose")}

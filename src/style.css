@@ -4257,3 +4257,70 @@ button.account-type-notice {
     opacity: 0.5;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Wallet additions: the total across wallets, the check phrase, delayed
+   transfers and depositing into one's own encrypted account.
+   --------------------------------------------------------------------------- */
+
+/* What every wallet holds together, above the list that breaks it down. */
+.wallet-total {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.wallet-total-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wallet-total-fiat {
+  font-variant-numeric: tabular-nums;
+}
+.wallet-total-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wallet-total-amount > small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.wallet-total-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+/* The figure column of a wallet row: value over its dollar estimate. */
+.wallet-switcher-value {
+  flex-shrink: 0;
+  text-align: right;
+  max-width: 40%;
+}
+.wallet-switcher-value > b {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wallet-switcher-value > small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
