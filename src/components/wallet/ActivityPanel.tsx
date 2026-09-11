@@ -28,10 +28,22 @@ const txLabel = (type: string) =>
     MINER_REWARD: "挖矿奖励",
     REWARD: "挖矿奖励",
     WORMHOLE: "Wormhole",
-    SCHEDULED_REVERSIBLE: "待执行转账",
-    EXECUTED_REVERSIBLE: "已执行转账",
-    CANCELLED_REVERSIBLE: "已取消转账",
+    SCHEDULED_REVERSIBLE: "延时转账",
+    EXECUTED_REVERSIBLE: "延时转账已到账",
+    CANCELLED_REVERSIBLE: "延时转账已撤回",
   })[type] || type.replaceAll("_", " ").toLowerCase();
+
+/** Delayed transfers read differently from each side, and a cancelled one from both. */
+const reversibleLabel = (type: string, incoming: boolean) =>
+  type === "CANCELLED_REVERSIBLE"
+    ? "已撤回"
+    : type === "EXECUTED_REVERSIBLE"
+      ? incoming
+        ? "延时到账"
+        : "延时转出已到账"
+      : incoming
+        ? "对方延时转入"
+        : "延时转出";
 
 /** Colour tone of a transaction status, so a failure reads as a failure. */
 const statusTone = (status: string) =>
@@ -187,14 +199,20 @@ export function ActivityPanel({
                 )}
               </span>
               <div>
-                <strong>{t("发送至 {0}", shortAddress(p.to))}</strong>
+                <strong>
+                  {p.kind === "scheduled"
+                    ? t("延时发送至 {0}", shortAddress(p.to))
+                    : t("发送至 {0}", shortAddress(p.to))}
+                </strong>
                 <small>
                   {p.status === "pending"
                     ? t("已提交，等待入块")
                     : p.status === "included"
                       ? t("已入块，等待最终确认")
                       : p.status === "finalized"
-                        ? t("已最终确认")
+                        ? p.kind === "scheduled"
+                          ? t("已安排，到期前可在待到账中撤回")
+                          : t("已最终确认")
                         : p.status === "failed"
                           ? t("执行失败")
                           : p.error || t("状态待核实，请在 Explorer 中确认")}
@@ -254,11 +272,13 @@ export function ActivityPanel({
                       ? t("挖矿奖励")
                       : tx.type === "NETWORK_REWARD"
                         ? t("网络奖励")
-                        : incoming
-                          ? t("收到转账")
-                          : tx.from === wallet?.address
-                            ? t("发送转账")
-                            : t(txLabel(tx.type))}
+                        : /_REVERSIBLE$/.test(tx.type)
+                          ? t(reversibleLabel(tx.type, incoming))
+                          : incoming
+                            ? t("收到转账")
+                            : tx.from === wallet?.address
+                              ? t("发送转账")
+                              : t(txLabel(tx.type))}
                   </strong>
                   <small title={other || ""}>
                     {other ? shortAddress(other, 4) : t(txLabel(tx.type))}

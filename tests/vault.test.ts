@@ -122,3 +122,55 @@ describe("QTC amount precision", () => {
       expect(() => parseAmount(value)).toThrow();
   });
 });
+
+describe("delayed transfers in the journal", () => {
+  const record = (extra: Record<string, unknown> = {}) => ({
+    version: 1 as const,
+    wallets: [],
+    pending: [
+      {
+        hash: "0x" + "ab".repeat(32),
+        address: "qzfrom",
+        to: "qzto",
+        amount: "1000000000000",
+        fee: "8000000000",
+        startBlock: 100,
+        createdAt: 1757600000000,
+        status: "pending" as const,
+        ...extra,
+      },
+    ],
+  });
+
+  it("reads a journal written before delayed transfers existed", () => {
+    const old = record();
+    expect(validateData(old).pending[0].kind).toBeUndefined();
+  });
+
+  it("keeps what the chain answered about a scheduled transfer", () => {
+    const scheduled = record({
+      kind: "scheduled",
+      delay: 7200,
+      txId: "0x" + "cd".repeat(32),
+      executeAt: 7300,
+    });
+    expect(validateData(scheduled).pending[0]).toMatchObject({
+      kind: "scheduled",
+      delay: 7200,
+      executeAt: 7300,
+    });
+  });
+
+  it("rejects a record whose delayed-transfer fields are not what they claim", () => {
+    for (const bad of [
+      { kind: "later" },
+      { delay: -1 },
+      { delay: 1.5 },
+      { executeAt: "7300" },
+      { txId: "0xnothex" },
+      { txId: "0x1234" },
+    ]) {
+      expect(() => validateData(record(bad))).toThrow();
+    }
+  });
+});

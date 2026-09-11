@@ -87,6 +87,30 @@ export interface PreparedTransfer {
   existentialDeposit: string;
 }
 
+/** A transfer the chain holds and executes later, until the sender cancels it. */
+export interface ScheduledTransfer {
+  txId: string;
+  from: string;
+  to: string;
+  amount: string;
+  /** Block the chain will execute it in, when a source knows it. */
+  executeAt: number | null;
+  /** Block it was submitted in. */
+  submittedAt: number | null;
+  timestamp: string | null;
+}
+
+export interface ScheduledTransfers {
+  block: number;
+  transfers: ScheduledTransfer[];
+}
+
+/** What the chain assigned to a scheduled transfer at the moment it accepted it. */
+export interface ScheduledReceipt {
+  txId: string;
+  executeAt: number;
+}
+
 export type TransferStatus = 'pending' | 'included' | 'finalized' | 'failed' | 'retracted' | 'unknown' | 'expired';
 
 export interface TransferState {
@@ -132,6 +156,28 @@ interface AccountData {
 const HEX_32 = /^0x[\da-f]{64}$/i;
 const U128_MAX = (1n << 128n) - 1n;
 const HISTORY_PAGE_SIZE = 25;
+const REVERSIBLE_PALLET = 'ReversibleTransfers';
+/** `MinDelayPeriodBlocks` in the mainnet runtime; a shorter delay is rejected. */
+export const MIN_DELAY_BLOCKS = 2;
+/** A year of blocks: beyond this the wallet refuses rather than scheduling a transfer nobody will see through. */
+export const MAX_DELAY_BLOCKS = 2_600_000;
+
+type Decorated = Awaited<ReturnType<ApiPromise['at']>>;
+type CallArguments = { callIndex: Uint8Array; args: Record<string, unknown> };
+
+/**
+ * The two-byte call index of `pallet.call` in the given metadata. Indices are
+ * looked up by name every time: a runtime that renumbers its pallets must not
+ * be handed a call built for the old numbering.
+ */
+export function findCall(at: Pick<Decorated, 'registry'>, palletName: string, callName: string, unsupported: string): Uint8Array {
+  const pallet = at.registry.metadata.pallets.find((entry) => entry.name.toString() === palletName);
+  const calls = pallet?.calls.isSome ? pallet.calls.unwrap() : undefined;
+  const variant = calls && at.registry.lookup.getSiType(calls.type).def.asVariant.variants
+    .find((entry) => entry.name.toString() === callName);
+  if (!pallet || !variant) throw new Error(unsupported);
+  return new Uint8Array([pallet.index.toNumber(), variant.index.toNumber()]);
+}
 
 export function validateAddress(address: string): string {
   const trimmed = address.trim();
@@ -357,11 +403,13 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     };
   }
 
-  async function prepareTransfer(address: string, to: string, amount: string): Promise<PreparedTransfer> {
+  /**
+   * Signing context plus one call built from the checkpoint's own metadata.
+   * `build` receives that metadata so pallet and call indices are always the
+   * ones the runtime at the checkpoint uses; nothing here is written down.
+   */
+  async function prepareCall(address: string, build: (at: Decorated) => CallArguments): Promise<PreparedTransfer> {
     const from = validateAddress(address);
-    const recipient = validateAddress(to);
-    const planck = BigInt(integerAmount(amount));
-    if (planck <= 0n || planck > U128_MAX) throw new Error(t('转账金额必须大于 0 且在有效范围内。'));
     const [api, version, nonce, blockHash] = await Promise.all([
       getApi(), assertNetwork(true), rpc<number | string>('system_accountNextIndex', [from]), rpc<string>('chain_getBlockHash'),
     ]);
@@ -372,20 +420,143 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const [at, checkpointVersion] = await Promise.all([api.at(checkpoint), rpc<RuntimeVersion>('state_getRuntimeVersion', [checkpoint])]);
     if (checkpointVersion.specVersion !== version.specVersion ||
         checkpointVersion.transactionVersion !== version.transactionVersion) throw new Error(t('网络正在升级，请稍后重新准备交易。'));
-    const balances = at.registry.metadata.pallets.find((pallet) => pallet.name.toString() === 'Balances');
-    const calls = balances?.calls.unwrap();
-    const transfer = calls && at.registry.lookup.getSiType(calls.type).def.asVariant.variants.find((variant) => variant.name.toString() === 'transfer_keep_alive');
-    if (!balances || !transfer) throw new Error(t('当前网络不支持所需的保留账户转账。'));
     // Build only the Call: Polkadot.js ExtrinsicV4 cannot represent Quantus’s
     // 7,219-byte signature field. The official WASM creates the signed envelope.
-    const call = at.registry.createType('Call', { callIndex: new Uint8Array([balances.index.toNumber(), transfer.index.toNumber()]),
-      args: { dest: recipient, value: planck.toString() } });
+    const call = at.registry.createType('Call', build(at));
     const existentialDeposit = integerAmount(at.consts.balances.existentialDeposit.toString());
     return { callHex: call.toHex(), existentialDeposit, ctx: {
       nonce: safeInteger(nonce, t('账户序号 无效。')), genesisHash: config.genesisHash, blockHash: checkpoint,
       blockNumber: safeInteger(head.number, t('区块高度 无效。')), period: 64,
       ...version, tip: '0',
     } };
+  }
+
+  function transferAmount(amount: string): bigint {
+    const planck = BigInt(integerAmount(amount));
+    if (planck <= 0n || planck > U128_MAX) throw new Error(t('转账金额必须大于 0 且在有效范围内。'));
+    return planck;
+  }
+
+  async function prepareTransfer(address: string, to: string, amount: string): Promise<PreparedTransfer> {
+    const recipient = validateAddress(to);
+    const planck = transferAmount(amount);
+    return prepareCall(address, (at) => ({
+      callIndex: findCall(at, 'Balances', 'transfer_keep_alive', t('当前网络不支持所需的保留账户转账。')),
+      args: { dest: recipient, value: planck.toString() },
+    }));
+  }
+
+  /**
+   * A transfer the chain executes only after `delayBlocks` blocks. Until then
+   * the amount is held on the sender's account and the sender can cancel it.
+   */
+  async function prepareScheduledTransfer(address: string, to: string, amount: string, delayBlocks: number): Promise<PreparedTransfer> {
+    const recipient = validateAddress(to);
+    const planck = transferAmount(amount);
+    const delay = safeInteger(delayBlocks, t('延迟区块数 无效。'));
+    if (delay < MIN_DELAY_BLOCKS || delay > MAX_DELAY_BLOCKS) throw new Error(t('延迟区块数必须在 {0} 和 {1} 之间。', MIN_DELAY_BLOCKS, MAX_DELAY_BLOCKS));
+    return prepareCall(address, (at) => ({
+      callIndex: findCall(at, REVERSIBLE_PALLET, 'schedule_transfer_with_delay', t('当前网络不支持延时转账。')),
+      // The delay is an enum in the runtime; its variant name comes from the
+      // metadata type, and only the block-number form is used here.
+      args: { dest: recipient, amount: planck.toString(), delay: { BlockNumber: delay } },
+    }));
+  }
+
+  /** Takes back a scheduled transfer that has not executed yet; the chain charges no fee for it. */
+  async function prepareCancelScheduled(address: string, txId: string): Promise<PreparedTransfer> {
+    const id = hash32(txId);
+    return prepareCall(address, (at) => ({
+      callIndex: findCall(at, REVERSIBLE_PALLET, 'cancel', t('当前网络不支持撤回延时转账。')),
+      args: { tx_id: id },
+    }));
+  }
+
+  /**
+   * The scheduled transfers this account can still cancel. The chain is the
+   * truth about which ones exist; the indexer only adds when each was
+   * submitted and when it is due, which the storage item does not carry.
+   */
+  async function readScheduledTransfers(address: string): Promise<ScheduledTransfers> {
+    const canonical = validateAddress(address);
+    const api = await getApi();
+    const headHash = hash32(await rpc<string>('chain_getBlockHash'));
+    const [head, at] = await Promise.all([rpc<RpcHeader>('chain_getHeader', [headHash]), api.at(headHash)]);
+    const block = safeInteger(head.number, t('区块高度 无效。'));
+    const ids = (await at.query.reversibleTransfers.pendingTransfersBySender(canonical)).toJSON() as unknown;
+    const txIds = (Array.isArray(ids) ? ids : []).map((id) => hash32(id as string));
+    if (!txIds.length) return { block, transfers: [] };
+    const details = await at.query.reversibleTransfers.pendingTransfers.multi(txIds);
+    const schedule = await readScheduleTimes(txIds);
+    const transfers = txIds.flatMap((txId, position): ScheduledTransfer[] => {
+      const detail = details[position].toJSON() as { from?: string; to?: string; amount?: string | number } | null;
+      if (!detail?.to || detail.amount === undefined) return [];
+      const timing = schedule.get(txId);
+      return [{
+        txId,
+        from: encodeAddress(decodeAddress(detail.from ?? canonical), MAINNET.ss58Prefix),
+        to: encodeAddress(decodeAddress(detail.to), MAINNET.ss58Prefix),
+        amount: BigInt(detail.amount).toString(),
+        executeAt: timing?.executeAt ?? null,
+        submittedAt: timing?.submittedAt ?? null,
+        timestamp: timing?.timestamp ?? null,
+      }];
+    });
+    return { block, transfers };
+  }
+
+  /** Submission and due block per transaction id, as far as the indexer knows them. */
+  async function readScheduleTimes(txIds: string[]): Promise<Map<string, { executeAt: number | null; submittedAt: number | null; timestamp: string | null }>> {
+    type Row = { tx_id: string; scheduled_at: number | string | null; timestamp: string | null; block: { height: number } | null };
+    const result = await request<{ data?: { rows: Row[] }; errors?: unknown[] }>(config.indexerUrl, {
+      query: `query ScheduledReversibleTransfers($ids: [String!]!, $limit: Int!) {
+        rows: scheduled_reversible_transfer(limit: $limit, where: {tx_id: {_in: $ids}}) {
+          tx_id scheduled_at timestamp block { height }
+        }
+      }`, variables: { ids: txIds, limit: txIds.length },
+    }).catch(() => ({ data: undefined, errors: [1] }));
+    const map = new Map<string, { executeAt: number | null; submittedAt: number | null; timestamp: string | null }>();
+    if (result.errors?.length || !Array.isArray(result.data?.rows)) return map;
+    for (const row of result.data.rows) {
+      if (typeof row.tx_id !== 'string' || !HEX_32.test(row.tx_id)) continue;
+      const submittedAt = typeof row.block?.height === 'number' && Number.isSafeInteger(row.block.height) ? row.block.height : null;
+      const due = typeof row.scheduled_at === 'string' || typeof row.scheduled_at === 'number' ? Number(row.scheduled_at) : NaN;
+      map.set(row.tx_id.toLowerCase(), {
+        // A due block at or before submission would be a misread field, not a transfer.
+        executeAt: Number.isSafeInteger(due) && (submittedAt === null || due > submittedAt) ? due : null,
+        submittedAt,
+        timestamp: typeof row.timestamp === 'string' && Number.isFinite(Date.parse(row.timestamp)) ? row.timestamp : null,
+      });
+    }
+    return map;
+  }
+
+  /**
+   * The transaction id and due block the chain assigned to a scheduled
+   * transfer, read from the events of the block that included it. This is the
+   * only place both are known immediately; the storage item carries neither.
+   */
+  async function readScheduledReceipt(transactionHash: string, blockHash: string): Promise<ScheduledReceipt | null> {
+    const wanted = hash32(transactionHash);
+    const at = hash32(blockHash);
+    const api = await getApi();
+    const block = await rpc<RawBlock>('chain_getBlock', [at]);
+    const extrinsicIndex = block.block.extrinsics.findIndex((bytes) => blake2AsHex(hexToU8a(bytes)) === wanted);
+    if (extrinsicIndex < 0) return null;
+    const decorated = await api.at(at);
+    const events = await decorated.query.system.events() as unknown as EventRecord[];
+    const scheduled = events.find(({ phase, event }) => phase.isApplyExtrinsic &&
+      phase.asApplyExtrinsic.toNumber() === extrinsicIndex &&
+      event.section === 'reversibleTransfers' && event.method === 'TransactionScheduled');
+    if (!scheduled) return null;
+    const data = scheduled.event.data.toJSON() as unknown[];
+    const names = scheduled.event.meta.fields.map((field) => field.name.toString());
+    const value = (name: string) => data[names.indexOf(name)];
+    const txId = value('tx_id');
+    const executeAt = value('execute_at') as { blockNumber?: number } | number | null;
+    const height = typeof executeAt === 'number' ? executeAt : executeAt?.blockNumber;
+    if (typeof txId !== 'string' || !HEX_32.test(txId) || !Number.isSafeInteger(height)) return null;
+    return { txId: txId.toLowerCase(), executeAt: height as number };
   }
 
   async function estimateFee(signedHex: string): Promise<string> {
@@ -515,11 +686,13 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     if (api) await (await api).disconnect();
   }
 
-  return { readNetwork, readBalance, readHistory, readWormholeInfo, prepareTransfer, estimateFee, submitTransfer, trackTransfer, disconnect };
+  return { readNetwork, readBalance, readHistory, readWormholeInfo, prepareTransfer, prepareScheduledTransfer,
+    prepareCancelScheduled, readScheduledTransfers, readScheduledReceipt, estimateFee, submitTransfer, trackTransfer, disconnect };
 }
 
 const mainnetClient = createChainClient();
-export const { readNetwork, readBalance, readHistory, readWormholeInfo, prepareTransfer, estimateFee, submitTransfer, trackTransfer } = mainnetClient;
+export const { readNetwork, readBalance, readHistory, readWormholeInfo, prepareTransfer, prepareScheduledTransfer,
+  prepareCancelScheduled, readScheduledTransfers, readScheduledReceipt, estimateFee, submitTransfer, trackTransfer } = mainnetClient;
 
 export function explorerAccountUrl(address: string): string {
   return `${MAINNET.explorerUrl}/accounts/${encodeURIComponent(validateAddress(address))}`;

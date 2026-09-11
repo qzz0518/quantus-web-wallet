@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
@@ -10,6 +11,7 @@ import {
   ArrowUpRight,
   Check,
   CircleHelp,
+  Clock,
   Copy,
   Wallet as WalletIcon,
   LoaderCircle,
@@ -28,22 +30,35 @@ import {
 } from "../lib/amount";
 import {
   prepareTransfer,
+  prepareScheduledTransfer,
   estimateFee,
   readBalance,
   submitTransfer,
   validateAddress,
   SubmissionError,
 } from "../lib/chain";
+import {
+  DELAY_CHOICES,
+  DEFAULT_DELAY_BLOCKS,
+  MAX_PENDING_PER_ACCOUNT,
+  MIN_DELAY_BLOCKS,
+  TARGET_BLOCK_SECONDS,
+  executeAtEstimate,
+  executeAtTime,
+  formatBlockSpan,
+  parseDelayBlocks,
+} from "../lib/reversible";
 import { blake2AsHex } from "@polkadot/util-crypto";
 import { hexToU8a } from "@polkadot/util";
 import { signCall } from "../crypto";
 import { copyText } from "../lib/browser";
-import { useT } from "../lib/i18n";
+import { localeTag, useT } from "../lib/i18n";
 import { readRecipientProfile, type RecipientProfile } from "../lib/recipient";
 import { Select } from "./Select";
 import { CheckPhrase } from "./CheckPhrase";
 const mainnetServices = {
   prepareTransfer,
+  prepareScheduledTransfer,
   estimateFee,
   readBalance,
   submitTransfer,
@@ -59,7 +74,11 @@ type Quote = {
   block: number;
   nonce: number;
   at: number;
+  /** A delayed transfer carries the delay it was built with; immediate ones do not. */
+  delay?: number;
 };
+/** `custom` keeps the picker on the free-entry row while the field is edited. */
+type DelayChoice = (typeof DELAY_CHOICES)[number] | "custom";
 export function SendDialog({
   wallet,
   wallets,
@@ -75,6 +94,7 @@ export function SendDialog({
   services?: TransferServices;
 }) {
   const t = useT();
+  const deliveryId = useId();
   const active = useRef(true);
   const processing = useRef(false);
   useEffect(() => {
@@ -96,7 +116,10 @@ export function SendDialog({
     [expired, setExpired] = useState(false),
     [profile, setProfile] = useState<{ address: string; data: RecipientProfile | null } | null>(null),
     [checking, setChecking] = useState(false),
-    [riskAck, setRiskAck] = useState(false);
+    [riskAck, setRiskAck] = useState(false),
+    [delayed, setDelayed] = useState(false),
+    [delayChoice, setDelayChoice] = useState<DelayChoice>(DEFAULT_DELAY_BLOCKS),
+    [customDelay, setCustomDelay] = useState("");
   useEffect(() => {
     if (!quote) return;
     const id = setInterval(() => {
@@ -104,6 +127,12 @@ export function SendDialog({
     }, 1000);
     return () => clearInterval(id);
   }, [quote]);
+  /** The delay in blocks the picker currently stands for; throws on a bad entry. */
+  function chosenDelay(): number {
+    return delayChoice === "custom"
+      ? parseDelayBlocks(customDelay)
+      : delayChoice;
+  }
   async function review(e?: FormEvent) {
     e?.preventDefault();
     if (processing.current) return;
@@ -116,11 +145,10 @@ export function SendDialog({
       const to = validateAddress(recipient.trim()),
         atomic = parseAmount(amount).toString();
       if (to === wallet.address) throw new Error(t("收款地址与当前钱包相同"));
-      const prepared = await services.prepareTransfer(
-        wallet.address,
-        to,
-        atomic,
-      );
+      const delay = delayed ? chosenDelay() : undefined;
+      const prepared = delay
+        ? await services.prepareScheduledTransfer(wallet.address, to, atomic, delay)
+        : await services.prepareTransfer(wallet.address, to, atomic);
       const hex = await signCall(
         wallet.kind,
         wallet.mnemonic,
@@ -152,6 +180,7 @@ export function SendDialog({
         block: prepared.ctx.blockNumber,
         nonce: prepared.ctx.nonce,
         at: Date.now(),
+        delay,
       });
       setExpired(false);
       setAck(false);
@@ -173,11 +202,18 @@ export function SendDialog({
         setExpired(true);
         throw new Error(t("费用报价已过期，请更新费用后重新确认"));
       }
-      const prepared = await services.prepareTransfer(
-        wallet.address,
-        quote.recipient,
-        quote.amount,
-      );
+      const prepared = quote.delay
+        ? await services.prepareScheduledTransfer(
+            wallet.address,
+            quote.recipient,
+            quote.amount,
+            quote.delay,
+          )
+        : await services.prepareTransfer(
+            wallet.address,
+            quote.recipient,
+            quote.amount,
+          );
       if (
         prepared.ctx.nonce !== quote.nonce ||
         prepared.ctx.blockNumber - quote.block >= 48
@@ -206,6 +242,8 @@ export function SendDialog({
         startBlock: quote.block,
         createdAt: Date.now(),
         status: "pending",
+        kind: quote.delay ? "scheduled" : "immediate",
+        ...(quote.delay ? { delay: quote.delay } : {}),
       };
       // A reload or connection loss after broadcasting must not lose the hash.
       await onSubmitted(journal);
@@ -226,6 +264,8 @@ export function SendDialog({
             startBlock: quote.block,
             createdAt: Date.now(),
             status: "unknown",
+            kind: quote.delay ? "scheduled" : "immediate",
+            ...(quote.delay ? { delay: quote.delay } : {}),
             error: t("提交结果待确认，请核对链上状态"),
           });
         } catch {
@@ -299,6 +339,14 @@ export function SendDialog({
   }
   const checked = profile?.address === recipient.trim() ? profile.data : null;
   const risk = !!checked && (checked.ownWormhole || checked.minerDepositOnly);
+  // null while a custom entry is empty or not yet a delay the chain accepts.
+  const delayPreview = (() => {
+    try {
+      return chosenDelay();
+    } catch {
+      return null;
+    }
+  })();
   return (
     <Modal
       title={
@@ -307,7 +355,9 @@ export function SendDialog({
             ? t("交易状态待确认")
             : t("交易已提交")
           : quote
-            ? t("确认转账")
+            ? quote.delay !== undefined
+              ? t("确认延时转账")
+              : t("确认转账")
             : step === "amount"
               ? t("发送金额")
               : t("发送 {0}", services.symbol)
@@ -330,7 +380,9 @@ export function SendDialog({
               <p>
                 {error
                   ? t("请核对链上状态，暂勿重复发送。")
-                  : t("交易正在等待确认，可在活动记录中查看进度。")}
+                  : quote?.delay !== undefined
+                    ? t("交易正在等待确认。确认后这笔会出现在待到账列表，到期前可以撤回。")
+                    : t("交易正在等待确认，可在活动记录中查看进度。")}
               </p>
             </div>
             <p className="label">{t("交易哈希")}</p>
@@ -408,6 +460,29 @@ export function SendDialog({
                   {formatAmount(quote.fee)} {services.symbol}
                 </dd>
               </div>
+              {quote.delay !== undefined && (
+                <div>
+                  <dt>{t("预计到账")}</dt>
+                  <dd>
+                    {t(
+                      "约 {0}（第 {1} 块）",
+                      executeAtTime(
+                        executeAtEstimate(quote.block, quote.delay),
+                        quote.block,
+                      ).toLocaleString(localeTag(), {
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                      executeAtEstimate(quote.block, quote.delay).toLocaleString(
+                        "en-US",
+                      ),
+                    )}
+                    <small>{t("以链上执行为准，到期前可随时撤回")}</small>
+                  </dd>
+                </div>
+              )}
               <div className="review-total">
                 <dt>{t("预计总支出")}</dt>
                 <dd>
@@ -602,6 +677,94 @@ export function SendDialog({
                     <span className="amount-unit">{services.symbol}</span>
                   </div>
                 </label>
+                <div className="field delivery-mode">
+                  <span id={deliveryId}>{t("到账方式")}</span>
+                  <div
+                    className="segmented"
+                    role="radiogroup"
+                    aria-labelledby={deliveryId}
+                  >
+                    {[
+                      { value: false, label: t("立即到账") },
+                      { value: true, label: t("延时到账，可撤回") },
+                    ].map((option) => (
+                      <button
+                        key={String(option.value)}
+                        type="button"
+                        role="radio"
+                        aria-checked={delayed === option.value}
+                        disabled={busy}
+                        onClick={() => {
+                          setDelayed(option.value);
+                          setError("");
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {delayed && (
+                  <>
+                    <label className="field">
+                      {t("延迟")}
+                      <Select
+                        aria-label={t("延迟")}
+                        disabled={busy}
+                        value={String(delayChoice)}
+                        onChange={(value) => {
+                          setDelayChoice(
+                            value === "custom" ? "custom" : (Number(value) as DelayChoice),
+                          );
+                          setError("");
+                        }}
+                        options={[
+                          ...DELAY_CHOICES.map((blocks) => ({
+                            value: String(blocks),
+                            label: t("{0}（{1} 块）", formatBlockSpan(blocks), blocks),
+                            description:
+                              blocks === DEFAULT_DELAY_BLOCKS ? t("链上默认") : undefined,
+                          })),
+                          { value: "custom", label: t("自定义区块数") },
+                        ]}
+                      />
+                    </label>
+                    {delayChoice === "custom" && (
+                      <label className="field">
+                        {t("区块数")}
+                        <input
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder={String(MIN_DELAY_BLOCKS)}
+                          value={customDelay}
+                          disabled={busy}
+                          onChange={(event) => {
+                            setCustomDelay(event.target.value);
+                            setError("");
+                          }}
+                        />
+                      </label>
+                    )}
+                    <p className="field-hint">
+                      {delayPreview === null
+                        ? t("最少 {0} 个区块", MIN_DELAY_BLOCKS)
+                        : t(
+                            "{0}，按目标出块 {1} 秒估算",
+                            formatBlockSpan(delayPreview),
+                            TARGET_BLOCK_SECONDS,
+                          )}
+                    </p>
+                    <div className="soft-note">
+                      <Clock size={17} />
+                      <p>
+                        {t(
+                          "到期前你可以随时撤回，资金退回本账户，撤回不收费。到期后由链上自动转出；在那之前这笔金额会被冻结，不能再花。每个账户最多 {0} 笔待到账。",
+                          MAX_PENDING_PER_ACCOUNT,
+                        )}
+                      </p>
+                    </div>
+                  </>
+                )}
                 <p className="flow-note centered">
                   {t("下一步预览网络手续费与总支出。")}
                 </p>

@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { afterAll, describe, expect, test } from 'bun:test';
 import { encodeAddress } from '@polkadot/util-crypto';
-import { MAINNET, SubmissionError, createChainClient, explorerTransactionUrl, validateAddress } from './chain';
+import { MAINNET, MAX_DELAY_BLOCKS, MIN_DELAY_BLOCKS, SubmissionError, createChainClient, explorerTransactionUrl, findCall, validateAddress } from './chain';
 import type { TransferState } from './chain';
 
 // Synthetic SS58 account used only by the local mock server.
@@ -119,6 +119,73 @@ describe('Quantus chain boundaries', () => {
         expect((error as SubmissionError).submissionStatus).toBe(status);
         expect((error as SubmissionError).transactionHash).toMatch(/^0x[\da-f]{64}$/);
       }
+    }
+  });
+});
+
+/**
+ * Just enough of a metadata decoration for the call lookup: pallets and their
+ * call variants, each with the index the runtime gave it.
+ */
+function stubMetadata(pallets: { name: string; index: number; calls?: { name: string; index: number }[] }[]) {
+  const types = new Map<number, { def: { asVariant: { variants: { name: { toString(): string }; index: { toNumber(): number } }[] } } }>();
+  const registry = {
+    metadata: {
+      pallets: pallets.map((pallet, position) => {
+        if (pallet.calls) {
+          types.set(position, { def: { asVariant: { variants: pallet.calls.map((call) => ({
+            name: { toString: () => call.name }, index: { toNumber: () => call.index },
+          })) } } });
+        }
+        return {
+          name: { toString: () => pallet.name },
+          index: { toNumber: () => pallet.index },
+          calls: { isSome: !!pallet.calls, unwrap: () => ({ type: position }) },
+        };
+      }),
+    },
+    lookup: { getSiType: (type: number) => types.get(type)! },
+  };
+  return { registry } as unknown as Parameters<typeof findCall>[0];
+}
+
+describe('Delayed (reversible) transfers', () => {
+  const at = stubMetadata([
+    { name: 'System', index: 0, calls: [{ name: 'remark', index: 0 }] },
+    { name: 'Balances', index: 10, calls: [{ name: 'transfer_keep_alive', index: 3 }] },
+    { name: 'ReversibleTransfers', index: 11, calls: [
+      { name: 'set_high_security', index: 0 }, { name: 'cancel', index: 1 },
+      { name: 'schedule_transfer_with_delay', index: 4 },
+    ] },
+    { name: 'Sudo', index: 99 },
+  ]);
+
+  test('takes both call indices from the metadata instead of a written-down number', () => {
+    expect([...findCall(at, 'ReversibleTransfers', 'schedule_transfer_with_delay', 'x')]).toEqual([11, 4]);
+    expect([...findCall(at, 'ReversibleTransfers', 'cancel', 'x')]).toEqual([11, 1]);
+    expect([...findCall(at, 'Balances', 'transfer_keep_alive', 'x')]).toEqual([10, 3]);
+  });
+
+  test('refuses a runtime without the pallet, without the call, or with no calls at all', () => {
+    expect(() => findCall(at, 'Reversible', 'cancel', 'no pallet')).toThrow('no pallet');
+    expect(() => findCall(at, 'ReversibleTransfers', 'schedule_transfer', 'no call')).toThrow('no call');
+    expect(() => findCall(at, 'Sudo', 'sudo', 'no calls')).toThrow('no calls');
+  });
+
+  test('rejects a delay the chain would not accept before any network access', async () => {
+    const client = mockClient(() => { throw new Error('An invalid delay must not access the network'); });
+    for (const delay of [0, 1, MIN_DELAY_BLOCKS - 1, -5, 2.5, Number.NaN, MAX_DELAY_BLOCKS + 1]) {
+      await expect(client.prepareScheduledTransfer(ADDRESS, ADDRESS, '1000', delay)).rejects.toThrow();
+    }
+    for (const amount of ['0', '-1', '1.5']) {
+      await expect(client.prepareScheduledTransfer(ADDRESS, ADDRESS, amount, 300)).rejects.toThrow();
+    }
+  });
+
+  test('rejects a cancellation whose transaction id is not a 32-byte hash', async () => {
+    const client = mockClient(() => { throw new Error('An invalid id must not access the network'); });
+    for (const id of ['', '0x12', ADDRESS, '0x' + 'zz'.repeat(32)]) {
+      await expect(client.prepareCancelScheduled(ADDRESS, id)).rejects.toThrow();
     }
   });
 });

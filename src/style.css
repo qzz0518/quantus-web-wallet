@@ -4379,3 +4379,111 @@ button.account-type-notice {
 .receive-flow .check-phrase-words {
   justify-content: center;
 }
+
+/* Delayed transfers: the picker in the send flow and the list of transfers
+   that are still waiting and can still be taken back. */
+.delivery-mode > span {
+  display: block;
+  margin-bottom: 8px;
+}
+.delivery-mode .segmented {
+  display: flex;
+  width: 100%;
+}
+.delivery-mode .segmented > button {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  white-space: normal;
+}
+.wallet-scheduled {
+  margin-top: 26px;
+}
+.scheduled-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.scheduled-row {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+}
+.scheduled-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.scheduled-target {
+  flex: 1;
+  min-width: 0;
+}
+.scheduled-target > strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+}
+.scheduled-phrase-toggle {
+  margin-top: 4px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.scheduled-head > b {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.scheduled-head > b small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+/* How much of the wait is behind it, so "two days" has a shape. */
+.scheduled-progress {
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.scheduled-progress > i {
+  display: block;
+  height: 100%;
+  width: calc(var(--progress, 0) * 100%);
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 300ms var(--motion-ease);
+}
+.scheduled-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.scheduled-foot > span {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  min-width: 0;
+}
+.scheduled-cancel {
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.scheduled-row .check-phrase {
+  margin-top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-progress > i {
+    transition: none;
+  }
+}
