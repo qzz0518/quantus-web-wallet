@@ -32,7 +32,7 @@ export type DataState = {
   reward: RewardStats | null;
   pool: PoolStats | null;
   luck: PoolLuck | null;
-  /** Last price of the QTC/USDT market; null while it has never been read. */
+  /** Price of the QUANTUS/USDT market; null while it has never been read. */
   market: MarketPrice | null;
   terms: PoolTerms;
   errors: { chain?: string; reward?: string; terms?: string; market?: string };

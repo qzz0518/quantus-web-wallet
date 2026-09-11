@@ -100,8 +100,8 @@ describe("mining calculator page", () => {
   });
   test("names the market, links to it and stays usable when the quote is out of reach", () => {
     const html = renderToStaticMarkup(<MiningCalculator onBack={() => {}} />);
-    expect(html).toContain("SafeTrade · QTC/USDT");
-    expect(html).toContain('href="https://safetrade.com/exchange/QTC-USDT?type=basic"');
+    expect(html).toContain("SafeTrade · QUANTUS/USDT");
+    expect(html).toContain('href="https://safetrade.com/exchange/QUANTUS-USDT?type=basic"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain("暂时取不到市场价，请手动填写");
     expect(html).not.toContain("尚未上市");
@@ -171,7 +171,7 @@ describe("mining results", () => {
 describe("headline figures", () => {
   test("says where the price came from and keeps break-even independent of it", () => {
     const market = summary(model(null, "", 47));
-    expect(market).toContain("SafeTrade 最新成交价");
+    expect(market).toContain("SafeTrade 市场价");
     expect(market).toContain("8.02");
     const manual = summary(model("20"));
     expect(manual).toContain("你填写的 QTC 价格");

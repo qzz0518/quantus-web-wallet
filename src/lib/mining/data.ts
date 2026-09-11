@@ -13,15 +13,16 @@ import { BUILT_IN_TERMS, OBSERVED_GPUS, gpuId, shortName, typicalPower, type Gpu
  */
 export const QUANPOOL_URL = "https://quanpool.com";
 /**
- * Where QTC trades: SafeTrade's QTC/USDT market. The quote asset is USDT,
- * so every market figure is in USDT. The ticker endpoint answers
- * cross-origin, but the exchange sits
+ * Where QTC trades: SafeTrade's QUANTUS/USDT market (the exchange's
+ * QTC/USDT market is a different token). The quote asset is USDT, so every
+ * market figure is in USDT. The ticker endpoint answers cross-origin, but
+ * the exchange sits
  * behind a bot challenge that turns some visitors away, so the calculator
  * treats a live price as a bonus and always keeps manual entry working.
  */
-export const SAFETRADE_MARKET_URL = "https://safetrade.com/exchange/QTC-USDT?type=basic";
-export const SAFETRADE_TICKER_URL = "https://safetrade.com/api/v2/peatio/public/markets/qtcusdt/tickers";
-export const MARKET_PAIR = "QTC/USDT";
+export const SAFETRADE_MARKET_URL = "https://safetrade.com/exchange/QUANTUS-USDT?type=basic";
+export const SAFETRADE_TICKER_URL = "https://safetrade.com/api/v2/peatio/public/markets/quantususdt/tickers";
+export const MARKET_PAIR = "QUANTUS/USDT";
 export const MARKET_QUOTE = "USDT";
 export const REQUEST_TIMEOUT_MS = 15_000;
 /** The exchange is optional data, so it waits shorter than the chain does. */
@@ -51,11 +52,13 @@ export type RewardStats = {
 };
 
 export type MarketPrice = {
-  /** Last traded price in the quote asset. */
+  /** Price in the quote asset: the last trade, or the middle of the book. */
   last: number;
   /** The exchange's own digits, so the price field shows exactly what it said. */
   lastText: string;
-  /** Best bid and ask; null when the book is empty or the field is malformed. */
+  /** Whether `last` is a trade or, while the market has had none, the middle of the book. */
+  source: "last" | "book";
+  /** The exchange's buy and sell quotes; null when the book is empty or the field is malformed. */
   bid: number | null;
   ask: number | null;
   /** 24 h change, formatted by the exchange, e.g. "+56.67%". */
@@ -295,7 +298,8 @@ function decimal(value: unknown, { positive }: { positive: boolean }): number | 
 }
 
 /**
- * The last traded price of QTC/USDT on SafeTrade. Only the reader's browser
+ * The QUANTUS/USDT price on SafeTrade: the last trade, or the middle of the
+ * book while the market has had no trade in its window. Only the reader's browser
  * asks, and only from the calculator, so the exchange learns nothing but that
  * one visit; the answer is validated field by field and a malformed or
  * unreachable market simply leaves the price to the user. Prices are in USDT
@@ -311,15 +315,29 @@ export async function fetchMarketPrice(options: Options & { url?: string } = {})
   );
   const ticker = reply && typeof reply === "object" ? reply.ticker : null;
   if (!ticker || typeof ticker !== "object") throw new Error(t("行情接口返回的数据无效。"));
-  const lastText = typeof ticker.last === "string" ? ticker.last.trim() : "";
-  const last = decimal(lastText, { positive: true });
-  if (last === null) throw new Error(t("行情接口返回的数据无效。"));
+  const bid = decimal(ticker.buy, { positive: true });
+  const ask = decimal(ticker.sell, { positive: true });
+  let lastText = typeof ticker.last === "string" ? ticker.last.trim() : "";
+  let last = decimal(lastText, { positive: true });
+  let source: MarketPrice["source"] = "last";
+  // A market with no trade in its window reports exactly 0 (anything else
+  // malformed is a broken answer); the book still says what the coin is
+  // worth, so quote its middle instead.
+  if (last === null && !/^0(\.0+)?$/.test(lastText)) throw new Error(t("行情接口返回的数据无效。"));
+  if (last === null) {
+    const mid = bid !== null && ask !== null ? (bid + ask) / 2 : (bid ?? ask);
+    if (mid === null) throw new Error(t("行情接口返回的数据无效。"));
+    last = mid;
+    lastText = mid.toFixed(8).replace(/\.?0+$/, "");
+    source = "book";
+  }
   const change = typeof ticker.price_change_percent === "string" ? ticker.price_change_percent.trim() : "";
   return {
     last,
     lastText,
-    bid: decimal(ticker.buy, { positive: true }),
-    ask: decimal(ticker.sell, { positive: true }),
+    source,
+    bid,
+    ask,
     changePercent: CHANGE.test(change) ? change : null,
     quoteVolume: decimal(ticker.vol ?? ticker.volume, { positive: false }),
     fetchedAt: Date.now(),

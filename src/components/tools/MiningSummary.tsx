@@ -133,7 +133,7 @@ export function MiningSummary({
             one home, the field in the form. */}
         <p className="mining-summary-note">
           {model.priceSource === "market"
-            ? t("金额按 SafeTrade 最新成交价计算；产量和保本价与价格无关。")
+            ? t("金额按 SafeTrade 市场价计算；产量和保本价与价格无关。")
             : model.priceSource === "manual"
               ? t("金额按你填写的 QTC 价格计算；产量和保本价与价格无关。")
               : t("填写 QTC 价格后才有收入和利润；产量和保本价与价格无关。")}

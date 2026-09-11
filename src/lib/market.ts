@@ -9,7 +9,7 @@ let quote: MarketPrice | null = null;
 let inflight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
-/** Fetch the QTC/USDT quote once for every reader; a failure keeps the last good quote. */
+/** Fetch the QUANTUS/USDT quote once for every reader; a failure keeps the last good quote. */
 export function refreshMarketPrice(): Promise<void> {
   if (inflight) return inflight;
   inflight = fetchMarketPrice()

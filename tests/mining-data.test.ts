@@ -196,7 +196,7 @@ describe("pool terms", () => {
   });
 });
 
-// The shape SafeTrade answers with for the QTC/USDT market.
+// The shape SafeTrade answers with for the QUANTUS/USDT market.
 const TICKER = {
   at: "1789049651",
   ticker: {
@@ -220,6 +220,7 @@ describe("market price", () => {
     const market = await fetchMarketPrice({ fetcher: jsonFetcher(TICKER) });
     expect(market.last).toBe(47);
     expect(market.lastText).toBe("47");
+    expect(market.source).toBe("last");
     expect(market.bid).toBe(47);
     expect(market.ask).toBe(44.88);
     expect(market.changePercent).toBe("+56.67%");
@@ -232,12 +233,24 @@ describe("market price", () => {
     expect(market.last).toBe(0.0045);
   });
   test("refuses a price that is not a positive decimal string", async () => {
-    for (const last of [47, "0", "-3", "", "abc", "1e3", null, "1,5", "9999999999"]) {
+    for (const last of [47, "-3", "", "abc", "1e3", null, "1,5", "9999999999"]) {
       await expect(fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...TICKER.ticker, last } }) })).rejects.toThrow();
     }
     await expect(fetchMarketPrice({ fetcher: jsonFetcher({}) })).rejects.toThrow();
     await expect(fetchMarketPrice({ fetcher: jsonFetcher({ ticker: "nope" }) })).rejects.toThrow();
     await expect(fetchMarketPrice({ fetcher: jsonFetcher(TICKER, 403) })).rejects.toThrow("403");
+  });
+  test("quotes the middle of the book while the market has had no trade", async () => {
+    const fresh = { ...TICKER.ticker, last: "0", buy: "51.86", sell: "49.51", high: "0", low: "0", open: "0", volume: "0", vol: "0" };
+    const market = await fetchMarketPrice({ fetcher: jsonFetcher({ ticker: fresh }) });
+    expect(market.source).toBe("book");
+    expect(market.last).toBeCloseTo(50.685, 9);
+    expect(market.lastText).toBe("50.685");
+    expect((await fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...fresh, last: "0.00" } }) })).source).toBe("book");
+    const oneSided = await fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...fresh, buy: "0" } }) });
+    expect(oneSided.last).toBe(49.51);
+    expect(oneSided.source).toBe("book");
+    await expect(fetchMarketPrice({ fetcher: jsonFetcher({ ticker: { ...fresh, buy: "0", sell: "0" } }) })).rejects.toThrow();
   });
   test("drops the extras it cannot trust but keeps the price", async () => {
     const market = await fetchMarketPrice({

@@ -481,7 +481,9 @@ export function MiningInputs({
                 <strong>{`SafeTrade · ${MARKET_PAIR}`}</strong>
                 <small>
                   {market
-                    ? t("最新成交价 · 更新于 {0}", clock(market.fetchedAt))
+                    ? market.source === "book"
+                      ? t("买卖中间价 · 更新于 {0}", clock(market.fetchedAt))
+                      : t("最新成交价 · 更新于 {0}", clock(market.fetchedAt))
                     : loading
                       ? t("正在读取市场价…")
                       : t("暂时取不到市场价，请手动填写")}

@@ -17,8 +17,8 @@ export const mining: Record<string, string> = {
   "填写 QTC 价格": "Enter a QTC price",
   "等待网络数据": "Waiting for network data",
   "填写算力后显示": "Enter a hashrate to see it",
-  "金额按 SafeTrade 最新成交价计算；产量和保本价与价格无关。":
-    "Amounts use SafeTrade's last trade; output and the break-even price do not follow it.",
+  "金额按 SafeTrade 市场价计算；产量和保本价与价格无关。":
+    "Amounts use SafeTrade's market price; output and the break-even price do not follow it.",
   "金额按你填写的 QTC 价格计算；产量和保本价与价格无关。":
     "Amounts use the QTC price you entered; output and the break-even price do not follow it.",
   "填写 QTC 价格后才有收入和利润；产量和保本价与价格无关。":
@@ -115,6 +115,7 @@ export const mining: Record<string, string> = {
   "正在读取市场价…": "Reading the market price…",
   "暂时取不到市场价，请手动填写": "The market price is out of reach; enter one yourself",
   "最新成交价 · 更新于 {0}": "Last trade · updated {0}",
+  "买卖中间价 · 更新于 {0}": "Mid of bid and ask · updated {0}",
   "市场价以 USDT 计，而你的货币标签是 {0}；不一致时请自行填写价格。":
     "The market price is in USDT while your currency label says {0}; enter your own price if they differ.",
 
@@ -209,6 +210,6 @@ export const mining: Record<string, string> = {
     "Ignored: future changes in block time and reward, the pool's payout threshold, orphaned blocks and rejected shares, system power beyond the GPUs, wear and maintenance, taxes and exchange rates.",
   "显卡基准与费率取自 Quanpool 公开接口，只作为参考；不同驱动、超频和温度下的实际算力请以自己的矿机为准。":
     "GPU benchmarks and fees come from Quanpool's public API and are only a reference; actual hashrate depends on drivers, overclocking and temperature, so trust your own rig.",
-  "QTC 价格取自 SafeTrade 公开接口的 QTC/USDT 最新成交价，读取时交易所会看到你的 IP。读取失败或被你改写时用你填的数字，其他金额按同一货币，不做汇率换算。":
-    "The QTC price is the last QTC/USDT trade from SafeTrade's public API, so the exchange sees your IP when it is read. When that read fails or you overwrite it, your own figure is used, and every other amount is in the same currency with no conversion.",
+  "QTC 价格取自 SafeTrade 公开接口的 QUANTUS/USDT 最新成交价，没有成交时取买一卖一的中间价；读取时交易所会看到你的 IP。读取失败或被你改写时用你填的数字，其他金额按同一货币，不做汇率换算。":
+    "The QTC price is the last QUANTUS/USDT trade from SafeTrade's public API, or the middle of the order book while there has been no trade, so the exchange sees your IP when it is read. When that read fails or you overwrite it, your own figure is used, and every other amount is in the same currency with no conversion.",
 };

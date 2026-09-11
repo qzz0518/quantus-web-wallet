@@ -111,7 +111,12 @@ export function WalletOverview({
             className="hero-fiat"
             title={
               price
-                ? t("1 QTC ≈ {0}，行情来自 SafeTrade QTC/USDT", formatUsd(price.last, true))
+                ? t(
+                    price.source === "book"
+                      ? "1 QTC ≈ {0}，SafeTrade QUANTUS/USDT 买卖中间价"
+                      : "1 QTC ≈ {0}，SafeTrade QUANTUS/USDT 最新成交价",
+                    formatUsd(price.last, true),
+                  )
                 : undefined
             }
           >
