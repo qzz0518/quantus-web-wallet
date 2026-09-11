@@ -3,6 +3,13 @@ export const wormhole: Record<string, string> = {
   // SettingsPage
   "工具": "Tools",
   "加密账户恢复": "Encrypted account recovery",
+  "加密账户（Wormhole）": "Encrypted account (Wormhole)",
+  "存入自己的隐私地址，或扫描并取回其中的资产": "Deposit to your own private address, or scan one and withdraw what it holds",
+  "隐私账户 #{0}": "Private account #{0}",
+  "这是你自己的隐私地址：转入的资产进入隐私池，只有本钱包的助记词能取回。": "This is your own private address: what you send enters the privacy pool, and only this wallet's recovery phrase can withdraw it.",
+  "这是你自己的隐私地址。": "This is your own private address.",
+  "{0}，按实测出块 {1} 秒估算": "{0}, at the measured block time of {1} s",
+  "到账时间按实测出块 {0} 秒估算，以链上执行为准": "Arrival times use the measured block time of {0} s; the chain decides",
   "查看并取回转入 Wormhole 加密账户的资产": "See and withdraw funds sent to a Wormhole encrypted account",
 
   // Stage and phase labels
@@ -159,7 +166,7 @@ export const wormhole: Record<string, string> = {
   "取消": "Cancel",
   "交易正在提交，请勿关闭页面。": "The transaction is being submitted; do not close the page.",
   "取回已提交": "Withdrawal submitted",
-  "状态会自动更新；也可以稍后在“加密账户恢复”首页的取回记录中查看。":
+  "状态会自动更新；也可以稍后在“加密账户（Wormhole）”首页的取回记录中查看。":
     "The status updates automatically; you can also check it later under previous withdrawals on the recovery start page.",
 
   // scan.ts

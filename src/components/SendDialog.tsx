@@ -45,6 +45,7 @@ import {
   TARGET_BLOCK_SECONDS,
   executeAtEstimate,
   executeAtTime,
+  useBlockSeconds,
   formatBlockSpan,
   parseDelayBlocks,
 } from "../lib/reversible";
@@ -79,12 +80,17 @@ type Quote = {
 };
 /** `custom` keeps the picker on the free-entry row while the field is edited. */
 type DelayChoice = (typeof DELAY_CHOICES)[number] | "custom";
+/** The reader's own encrypted account: known, deliberate, and not a mistake to warn about. */
+const OWN_WORMHOLE_PROFILE: RecipientProfile = { unknown: false, minerDepositOnly: false, ownWormhole: false, minedBlocks: 0 };
+
 export function SendDialog({
   wallet,
   wallets,
   onClose,
   onSubmitted,
   services = mainnetServices,
+  initialRecipient,
+  recipientHint,
 }: {
   wallet: Wallet;
   wallets: Wallet[];
@@ -92,6 +98,10 @@ export function SendDialog({
   /** Persist the deterministic transaction hash BEFORE network submission. */
   onSubmitted: (tx: Pending) => Promise<void>;
   services?: TransferServices;
+  /** An address the host already knows, filled in for the reader to confirm. */
+  initialRecipient?: string;
+  /** Why the host filled it in; the sender's own encrypted account needs no warning. */
+  recipientHint?: "ownWormhole";
 }) {
   const t = useT();
   const deliveryId = useId();
@@ -103,7 +113,7 @@ export function SendDialog({
       active.current = false;
     };
   }, []);
-  const [recipient, setRecipient] = useState(""),
+  const [recipient, setRecipient] = useState(initialRecipient ?? ""),
     [amount, setAmount] = useState(""),
     [step, setStep] = useState<"recipient" | "amount">("recipient"),
     [quote, setQuote] = useState<Quote | null>(null),
@@ -120,6 +130,8 @@ export function SendDialog({
     [delayed, setDelayed] = useState(false),
     [delayChoice, setDelayChoice] = useState<DelayChoice>(DEFAULT_DELAY_BLOCKS),
     [customDelay, setCustomDelay] = useState("");
+  const timing = useBlockSeconds(delayed);
+  const ownRecipient = recipientHint === "ownWormhole" && initialRecipient !== undefined && recipient.trim() === initialRecipient;
   useEffect(() => {
     if (!quote) return;
     const id = setInterval(() => {
@@ -320,7 +332,9 @@ export function SendDialog({
       return;
     }
     setRecipient(to);
-    let checked = profile?.address === to ? profile.data : undefined;
+    const own = recipientHint === "ownWormhole" && initialRecipient === to;
+    let checked = own ? OWN_WORMHOLE_PROFILE : profile?.address === to ? profile.data : undefined;
+    if (own) setProfile({ address: to, data: OWN_WORMHOLE_PROFILE });
     if (checked === undefined) {
       setChecking(true);
       try {
@@ -469,6 +483,7 @@ export function SendDialog({
                       executeAtTime(
                         executeAtEstimate(quote.block, quote.delay),
                         quote.block,
+                        timing.seconds,
                       ).toLocaleString(localeTag(), {
                         month: "2-digit",
                         day: "2-digit",
@@ -614,9 +629,11 @@ export function SendDialog({
                   <div className="soft-note">
                     <ShieldCheck size={17} />
                     <p>
-                      {t(
-                        "请确认对方使用 Quantus 主网。下一步输入金额，再核对手续费。",
-                      )}
+                      {ownRecipient
+                        ? t("这是你自己的隐私地址：转入的资产进入隐私池，只有本钱包的助记词能取回。")
+                        : t(
+                            "请确认对方使用 Quantus 主网。下一步输入金额，再核对手续费。",
+                          )}
                     </p>
                   </div>
                 )}
@@ -641,11 +658,13 @@ export function SendDialog({
                   address={recipient}
                   hint={t("让对方核对这五个词，确认地址没抄错")}
                 />
-                {checked?.unknown && (
+                {ownRecipient ? (
+                  <p className="field-hint">{t("这是你自己的隐私地址。")}</p>
+                ) : checked?.unknown ? (
                   <p className="field-hint">
                     {t("该地址在链上还没有任何记录。新账户属正常情况，否则请再核对一遍。")}
                   </p>
-                )}
+                ) : null}
                 <label className="field">
                   <span className="sr-only">{t("发送金额")}</span>
                   <div
@@ -748,11 +767,17 @@ export function SendDialog({
                     <p className="field-hint">
                       {delayPreview === null
                         ? t("最少 {0} 个区块", MIN_DELAY_BLOCKS)
-                        : t(
-                            "{0}，按目标出块 {1} 秒估算",
-                            formatBlockSpan(delayPreview),
-                            TARGET_BLOCK_SECONDS,
-                          )}
+                        : timing.measured
+                          ? t(
+                              "{0}，按实测出块 {1} 秒估算",
+                              formatBlockSpan(delayPreview, timing.seconds),
+                              timing.seconds.toFixed(1),
+                            )
+                          : t(
+                              "{0}，按目标出块 {1} 秒估算",
+                              formatBlockSpan(delayPreview),
+                              TARGET_BLOCK_SECONDS,
+                            )}
                     </p>
                     <div className="soft-note">
                       <Clock size={17} />

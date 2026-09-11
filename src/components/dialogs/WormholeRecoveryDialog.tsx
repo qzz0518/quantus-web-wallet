@@ -166,7 +166,7 @@ export function WormholeRecoveryDialog({
   /** Opens on the deposit tab (used by tests and by a host that links to it). */
   initialTab?: Tab;
   /** Opens the send flow with the derived address filled in. */
-  onDeposit?: (address: string, index: number) => void;
+  onDeposit?: (address: string, index: number, walletId: string) => void;
   /** Saves the derived address as a watch-only record. */
   onWatch?: (address: string, index: number) => Promise<void>;
   /** Opens directly on the results step for a completed scan (used by tests). */
@@ -1035,7 +1035,7 @@ export function WormholeRecoveryDialog({
                 <Check size={29} />
               </span>
               <h3>{t("取回已提交")}</h3>
-              <p>{t("状态会自动更新；也可以稍后在“加密账户恢复”首页的取回记录中查看。")}</p>
+              <p>{t("状态会自动更新；也可以稍后在“加密账户（Wormhole）”首页的取回记录中查看。")}</p>
             </div>
             <ReceiptCard receipt={receipt} detailed />
           </div>

@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { MIN_DELAY_BLOCKS, type ScheduledTransfer } from "./chain";
+import { fetchChainStats } from "./mining/data";
 import { t } from "./i18n";
 
 /**
@@ -90,4 +92,50 @@ export function parseDelayBlocks(value: string): number {
   const blocks = Number(text);
   if (blocks < MIN_DELAY_BLOCKS) throw new Error(t("延迟至少 {0} 个区块", MIN_DELAY_BLOCKS));
   return blocks;
+}
+
+const BLOCK_SECONDS_TTL_MS = 10 * 60_000;
+let measuredBlockTime: { seconds: number; at: number } | null = null;
+let measuring: Promise<number | null> | null = null;
+
+/** The block time measured over recent blocks, cached ten minutes; null while unknown. */
+export function measureBlockSeconds(): Promise<number | null> {
+  if (measuredBlockTime && Date.now() - measuredBlockTime.at < BLOCK_SECONDS_TTL_MS) {
+    return Promise.resolve(measuredBlockTime.seconds);
+  }
+  if (measuring) return measuring;
+  measuring = fetchChainStats()
+    .then((stats) => {
+      const seconds = stats.blockTimeSeconds;
+      if (!Number.isFinite(seconds) || seconds <= 0) return null;
+      measuredBlockTime = { seconds, at: Date.now() };
+      return seconds;
+    })
+    .catch(() => null)
+    .finally(() => {
+      measuring = null;
+    });
+  return measuring;
+}
+
+/**
+ * Block time for arrival estimates: the measured value once a reader has it,
+ * the network target until then. `enabled` defers the measurement until the
+ * estimate is actually on screen.
+ */
+export function useBlockSeconds(enabled = true): { seconds: number; measured: boolean } {
+  const [value, setValue] = useState<number | null>(() =>
+    measuredBlockTime && Date.now() - measuredBlockTime.at < BLOCK_SECONDS_TTL_MS ? measuredBlockTime.seconds : null,
+  );
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    void measureBlockSeconds().then((seconds) => {
+      if (live && seconds !== null) setValue(seconds);
+    });
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+  return value === null ? { seconds: TARGET_BLOCK_SECONDS, measured: false } : { seconds: value, measured: true };
 }

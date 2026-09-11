@@ -12,7 +12,7 @@ import { signCall } from "../../crypto";
 import { errorText, formatAmount, shortAddress } from "../../lib/amount";
 import { localeTag, useT } from "../../lib/i18n";
 import {
-  TARGET_BLOCK_SECONDS,
+  useBlockSeconds,
   executeAtTime,
   formatSpan,
   scheduleProgress,
@@ -49,7 +49,7 @@ type Props = {
 export function ScheduledPanel({
   wallet,
   block,
-  blockSeconds = TARGET_BLOCK_SECONDS,
+  blockSeconds: fixedBlockSeconds,
   transfers,
   hidden,
   onNotify,
@@ -57,6 +57,9 @@ export function ScheduledPanel({
   services = cancelServices,
 }: Props) {
   const t = useT();
+  const timing = useBlockSeconds(fixedBlockSeconds === undefined);
+  const blockSeconds = fixedBlockSeconds ?? timing.seconds;
+  const measured = fixedBlockSeconds === undefined && timing.measured;
   const [phrase, setPhrase] = useState("");
   const [cancelling, setCancelling] = useState<ScheduledTransfer | null>(null);
   const [submitted, setSubmitted] = useState<string[]>([]);
@@ -157,7 +160,9 @@ export function ScheduledPanel({
       </div>
       <div className="wallet-indexer-note">
         <span className="status-dot" />
-        {t("到账时间按目标出块 {0} 秒估算，以链上执行为准", TARGET_BLOCK_SECONDS)}
+        {measured
+          ? t("到账时间按实测出块 {0} 秒估算，以链上执行为准", blockSeconds.toFixed(1))
+          : t("到账时间按目标出块 {0} 秒估算，以链上执行为准", blockSeconds)}
       </div>
       {cancelling && (
         <CancelDialog

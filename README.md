@@ -33,11 +33,11 @@ A browser wallet for the Quantus network. Keys never leave your device, there is
 
 **Depositing into your own.** The *Deposit* tab scans the receiving branch of a wallet you already hold, finds the first index that has never taken a deposit and shows that address with a QR code and its check phrase. The fee and the 0.01 QTC granularity quoted alongside it are read from the chain, not written down. Anything sent there can only be taken out with that wallet's seed phrase.
 
-**What the tool does.** Under *Settings → Tools → Encrypted account recovery* you can scan an encrypted account with the official wallet's seed phrase. The scan is read-only: it derives the receiving and change addresses locally in a disposable worker, asks the official indexer for deposits to those addresses, derives each deposit's nullifier locally and checks on the official RPC node whether it has been spent. Unspent deposits can then be withdrawn to a regular account: a zero-knowledge proof is generated in the browser, verified locally, and submitted once.
+**What the tool does.** Under *Tools → Encrypted account (Wormhole) → Scan and withdraw* you can scan an encrypted account with the official wallet's seed phrase. The scan is read-only: it derives the receiving and change addresses locally in a disposable worker, asks the official indexer for deposits to those addresses, derives each deposit's nullifier locally and checks on the official RPC node whether it has been spent. Unspent deposits can then be withdrawn to a regular account: a zero-knowledge proof is generated in the browser, verified locally, and submitted once.
 
 **Steps.**
 
-1. Open *Settings → Tools → Encrypted account recovery* and read the introduction.
+1. Open *Tools → Encrypted account (Wormhole) → Scan and withdraw* and read the introduction.
 2. Enter the official wallet's 24-word seed phrase. Optionally paste the encrypted account address shown by the official wallet; the result will say whether it is among the derived addresses.
 3. Confirm the network notice and start the scan. The progress view shows the stage, the branch, the number of addresses scanned and the deposits found; the scan can be cancelled.
 4. Review the results: withdrawable balance, spent deposits, the snapshot block and a list of unspent deposits with checkboxes.

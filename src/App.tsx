@@ -86,6 +86,7 @@ export default function App() {
     }),
     [selected, setSelected] = useState(rememberedWallet),
     [dialog, setDialog] = useState<WalletDialog>(null),
+    [sendPrefill, setSendPrefill] = useState<string | null>(null),
     [page, setPage] = useState<WalletPage>(() =>
       location.hash === "#settings"
         ? "settings"
@@ -501,7 +502,10 @@ export default function App() {
   const closeDialog = () => {
     const generation = epoch.current;
     dismissModal(() => {
-      if (epoch.current === generation) setDialog(null);
+      if (epoch.current === generation) {
+        setDialog(null);
+        setSendPrefill(null);
+      }
     });
   };
   const open = (target: WalletDialog) => {
@@ -671,6 +675,28 @@ export default function App() {
             wallets={wallets}
             unlocked={!!session}
             onUnlock={() => open("unlock")}
+            onDeposit={(address, _index, walletId) => {
+              chooseWallet(walletId);
+              setSendPrefill(address);
+              setPage("overview");
+              open("send");
+            }}
+            onWatch={async (address, index) => {
+              await persist((d) => {
+                if (d.wallets.some((v) => v.address === address))
+                  throw new Error(t("这个地址已经存在"));
+                const record: Wallet = {
+                  id: crypto.randomUUID(),
+                  name: t("隐私账户 #{0}", index),
+                  address,
+                  kind: "watch",
+                  watchKind: "wormhole",
+                  index: 0,
+                  createdAt: Date.now(),
+                };
+                return { ...d, wallets: [...d.wallets, record] };
+              });
+            }}
           />
         ) : booting ? (
           <div className="wallet-booting" role="status" aria-live="polite">
@@ -814,9 +840,11 @@ export default function App() {
       )}
       {dialog === "send" && wallet && wallet.kind !== "watch" && (
         <SendDialog
-          key={wallet.id}
+          key={`${wallet.id}:${sendPrefill ?? ""}`}
           wallet={wallet}
           wallets={wallets}
+          initialRecipient={sendPrefill ?? undefined}
+          recipientHint={sendPrefill ? "ownWormhole" : undefined}
           onClose={closeDialog}
           onSubmitted={(tx) =>
             persist((d) => ({

@@ -53,7 +53,7 @@ export function WormholeDeposit({
 }: {
   wallets: Wallet[];
   /** Opens the send flow with this address filled in; absent when the host cannot. */
-  onDeposit?: (address: string, index: number) => void;
+  onDeposit?: (address: string, index: number, walletId: string) => void;
   /** Saves the address as a watch-only record; absent when the host cannot. */
   onWatch?: (address: string, index: number) => Promise<void>;
   /** Opens on a finished scan (used by tests). */
@@ -260,7 +260,7 @@ export function WormholeDeposit({
                 <button
                   className="button primary full"
                   disabled={busy}
-                  onClick={() => onDeposit(address, state?.index ?? 0)}
+                  onClick={() => onDeposit(address, state?.index ?? 0, walletId)}
                 >
                   {t("从本钱包转入")}
                   <ArrowRight size={17} />

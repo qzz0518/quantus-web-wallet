@@ -17,10 +17,16 @@ export function ToolsPage({
   wallets,
   unlocked,
   onUnlock,
+  onDeposit,
+  onWatch,
 }: {
   wallets: Wallet[];
   unlocked: boolean;
   onUnlock: () => void;
+  /** Opens the send flow to one's own encrypted address from the wallet that derived it. */
+  onDeposit?: (address: string, index: number, walletId: string) => void;
+  /** Keeps a derived encrypted address as a watch-only record. */
+  onWatch?: (address: string, index: number) => Promise<void>;
 }) {
   const t = useT();
   const [tool, setTool] = useState<Tool | null>(null);
@@ -49,8 +55,8 @@ export function ToolsPage({
     {
       id: "recovery",
       Icon: LifeBuoy,
-      title: t("加密账户恢复"),
-      description: t("查看并取回转入 Wormhole 加密账户的资产"),
+      title: t("加密账户（Wormhole）"),
+      description: t("存入自己的隐私地址，或扫描并取回其中的资产"),
     },
   ];
   return (
@@ -86,6 +92,8 @@ export function ToolsPage({
           wallets={wallets}
           onClose={() => setTool(null)}
           onBack={() => setTool(null)}
+          onDeposit={onDeposit}
+          onWatch={onWatch}
         />
       )}
     </section>
