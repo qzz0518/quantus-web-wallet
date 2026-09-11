@@ -104,6 +104,14 @@ QUANTUS_DEV_TEST=1 bun test src/lib/wormhole/exit.dev.test.ts   # needs the loca
 
 `[profile.test]` uses `opt-level = 3` because the prover tests run the real circuits.
 
+## Check phrase word list (`human-checkphrase/`)
+
+- Source: [Quantus-Network/qp-human-checkphrase](https://github.com/Quantus-Network/qp-human-checkphrase), MIT, commit `390919beb017894e4646de7581defd9bd00017f6` (fetched 2026-09-12). `LICENSE` is the upstream file verbatim.
+- `wordlist.json` is `final_wordlist.txt` from that commit converted to a JSON array, in file order, nothing else changed: 2,048 unique lowercase words, index 0 = `ability`, index 2047 = `zoo`. The conversion is checked by `tests/checkphrase.test.ts`.
+- `src/lib/checkphrase.ts` reimplements the algorithm on Web Crypto instead of vendoring the upstream npm package (which depends on a Node `pbkdf2` polyfill): `PBKDF2-HMAC-SHA256(password = the address string as UTF-8, salt = "human-readable-checksum", iterations = 40,000, 7 bytes)`, the 7 bytes read as one big-endian integer, shifted right by `(8 × 7) mod 11 = 1` bit, then five 11-bit indices taken from the top.
+- Verified against the official vectors: `tests/fixtures/checkphrase-vectors.json` holds 28 cases sampled from `test-vectors/checksums.json` at the same commit — the three named Quantus addresses, fifteen further `qz…` addresses and ten addresses from the other chains, including Satoshi's address and its poisoned lookalike. The `README.md` example table upstream predates the current word list and does not match the vectors; the vectors are authoritative.
+- The phrase is derived locally and never sent anywhere. It is a display aid for comparing addresses, not a checksum the chain knows about.
+
 ## Licenses
 
 The upstream `quantus-wasm` and `qp-dilithium-crypto` wrapper sources use MIT licenses. The **linked** `qp-rusty-crystals-dilithium` and `qp-rusty-crystals-hdwallet` crates declare **GPL-3.0**. Their license is preserved at `licenses/qp-rusty-crystals-GPL-3.0.txt`; the wrapper's MIT license does not replace dependency licenses. Retain corresponding source, build instructions and license notices when redistributing the compiled crypto module. All other Cargo dependency licenses remain governed by their source packages.

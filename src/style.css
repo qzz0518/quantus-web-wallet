@@ -4324,3 +4324,58 @@ button.account-type-notice {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Five words that stand in for an address, read out to catch a wrong one. */
+.check-phrase {
+  margin: 4px 0 0;
+}
+.check-phrase.inset {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.check-phrase-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.check-phrase-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.check-phrase-words > span {
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.3;
+  color: var(--text);
+}
+/* The placeholder holds the row's height and rhythm while PBKDF2 runs. */
+.check-phrase-words > span.pending {
+  min-width: 62px;
+  height: 26px;
+  opacity: 0.55;
+}
+.check-phrase-words > span.pending:nth-child(2n) {
+  min-width: 78px;
+}
+.check-phrase-words > span.pending:nth-child(3n) {
+  min-width: 54px;
+}
+.check-phrase-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+/* The receive screen is centred around the code; the phrase follows it. */
+.receive-flow .check-phrase-words {
+  justify-content: center;
+}

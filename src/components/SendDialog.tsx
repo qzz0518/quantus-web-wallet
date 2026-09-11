@@ -41,6 +41,7 @@ import { copyText } from "../lib/browser";
 import { useT } from "../lib/i18n";
 import { readRecipientProfile, type RecipientProfile } from "../lib/recipient";
 import { Select } from "./Select";
+import { CheckPhrase } from "./CheckPhrase";
 const mainnetServices = {
   prepareTransfer,
   estimateFee,
@@ -561,6 +562,10 @@ export function SendDialog({
                     {t("修改")}
                   </button>
                 </div>
+                <CheckPhrase
+                  address={recipient}
+                  hint={t("让对方核对这五个词，确认地址没抄错")}
+                />
                 {checked?.unknown && (
                   <p className="field-hint">
                     {t("该地址在链上还没有任何记录。新账户属正常情况，否则请再核对一遍。")}

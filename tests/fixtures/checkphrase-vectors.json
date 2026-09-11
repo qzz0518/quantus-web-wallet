@@ -1,0 +1,320 @@
+{
+  "source": "Quantus-Network/qp-human-checkphrase, test-vectors/checksums.json",
+  "commit": "390919beb017894e4646de7581defd9bd00017f6",
+  "constants": {
+    "salt": "human-readable-checksum",
+    "iterations": 40000,
+    "checksumLength": 5
+  },
+  "note": "A fixed sample of the official vectors: the three named Quantus addresses, more qz addresses and other chains.",
+  "cases": [
+    {
+      "address": "qzk7h3xH4Fmv2RqKpN8sT5jW9cY6gB1dL3mX0vQwEaUoZrJtS",
+      "description": "Quantus 1",
+      "expected": [
+        "until",
+        "business",
+        "amazing",
+        "silk",
+        "satoshi"
+      ]
+    },
+    {
+      "address": "qzkABCDEF123456789abcdefGHIJKLMNOPQRSTUVWXYZ000001",
+      "description": "Quantus 2",
+      "expected": [
+        "parade",
+        "invest",
+        "spice",
+        "supply",
+        "devote"
+      ]
+    },
+    {
+      "address": "qzkXyZ987654321FeDcBaAbCdEfGhIjKlMnOpQrStUvWxYz99",
+      "description": "Quantus 3",
+      "expected": [
+        "impeccable",
+        "extend",
+        "bar",
+        "click",
+        "tennis"
+      ]
+    },
+    {
+      "address": "qzkh5esM2wleOV911xCZkwPRQeNHpCq5QnuVdYXye4JSnE2NiiUHUAKw9iEU1jjQ",
+      "description": "Generated test vector #11",
+      "expected": [
+        "skill",
+        "differ",
+        "thumb",
+        "analyst",
+        "elf"
+      ]
+    },
+    {
+      "address": "qzkfFlK3HyubC332fuOSkTfRNfRT8LjIcku21kiVdtT7rl37aVaEEYLEnO",
+      "description": "Generated test vector #116",
+      "expected": [
+        "knee",
+        "canyon",
+        "matrix",
+        "formidable",
+        "volcano"
+      ]
+    },
+    {
+      "address": "qzkulgKeWmJNpASBpXdtB7Ut2WjtvwaKQdFZ1Amm4WvPR8LuJ7MzkCWcnanoMoT",
+      "description": "Generated test vector #171",
+      "expected": [
+        "noodle",
+        "lifesaver",
+        "nurse",
+        "rabbit",
+        "outer"
+      ]
+    },
+    {
+      "address": "qzkxHx6hyngr1V98Ivn3rVNPQNNFHnzUr5j2yaZVOQgJz",
+      "description": "Generated test vector #254",
+      "expected": [
+        "electric",
+        "square",
+        "hallmark",
+        "feature",
+        "thought"
+      ]
+    },
+    {
+      "address": "qzkjWFEnryukDC7sOYz5X0PnCRcd2j9hSrutoDz5PPTsR3",
+      "description": "Generated test vector #313",
+      "expected": [
+        "alive",
+        "party",
+        "pond",
+        "seek",
+        "tiger"
+      ]
+    },
+    {
+      "address": "qzkIrkMBSfAKzi1G6gt7j2NaR1cdbw47IVBAWMwKWvr0",
+      "description": "Generated test vector #355",
+      "expected": [
+        "vigor",
+        "affection",
+        "oyster",
+        "privilege",
+        "snappy"
+      ]
+    },
+    {
+      "address": "qzki7IaXnClWOkfmYJUDeyihXp1SrzgEJH9eZCsz8ins1",
+      "description": "Generated test vector #429",
+      "expected": [
+        "pinnacle",
+        "invaluable",
+        "stimulate",
+        "vigilant",
+        "effort"
+      ]
+    },
+    {
+      "address": "qzksX0RyTvNwrfMq55hdaakkFfJeZr9oVZPx3RpIRYr",
+      "description": "Generated test vector #493",
+      "expected": [
+        "mountain",
+        "item",
+        "food",
+        "profit",
+        "shine"
+      ]
+    },
+    {
+      "address": "qzkYzwWiyu1KkSPrcc2PiHPfPxbfbVrZEh7mdN",
+      "description": "Generated test vector #529",
+      "expected": [
+        "seek",
+        "more",
+        "multiply",
+        "prowess",
+        "desert"
+      ]
+    },
+    {
+      "address": "qzkHNks2vldYieHaHl4HX4zt2v1uyoARsG",
+      "description": "Generated test vector #634",
+      "expected": [
+        "news",
+        "snow",
+        "record",
+        "gem",
+        "phone"
+      ]
+    },
+    {
+      "address": "qzkdXrvSxk9pbgX2zG1CKm35COq8W31Up074mWMqujd",
+      "description": "Generated test vector #682",
+      "expected": [
+        "list",
+        "often",
+        "discover",
+        "wood",
+        "exemplar"
+      ]
+    },
+    {
+      "address": "qzkKYS10zJO9Fuua2dNrwcRLjL89Vbf5LSQjwBjrouse",
+      "description": "Generated test vector #815",
+      "expected": [
+        "profit",
+        "cable",
+        "filter",
+        "volume",
+        "glamorous"
+      ]
+    },
+    {
+      "address": "qzkq7LK015lwLca1YoqMii4EVdusQAkMUTqRpWfGahOvzrg71gMVww8j",
+      "description": "Generated test vector #888",
+      "expected": [
+        "moment",
+        "solid",
+        "walk",
+        "affection",
+        "confirm"
+      ]
+    },
+    {
+      "address": "qzkfagQBWsYxZH81GLB9nzVD9mNWy6HnFfN",
+      "description": "Generated test vector #941",
+      "expected": [
+        "resemble",
+        "enlightened",
+        "reward",
+        "pioneer",
+        "shimmering"
+      ]
+    },
+    {
+      "address": "qzkSZOedAu7yWnRVS3qefelcpRbCGzCdCXonN8XX",
+      "description": "Generated test vector #1007",
+      "expected": [
+        "someone",
+        "census",
+        "cousin",
+        "awake",
+        "dad"
+      ]
+    },
+    {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      "description": "Bitcoin - Satoshi's address",
+      "expected": [
+        "ahead",
+        "aware",
+        "sea",
+        "blockbuster",
+        "hedgehog"
+      ]
+    },
+    {
+      "address": "osmo1G9viIGNElLR8abMh0X9zuINamrWtFuaQvSMbkuuP4",
+      "description": "Generated test vector #118",
+      "expected": [
+        "excellent",
+        "forget",
+        "hail",
+        "suggest",
+        "slot"
+      ]
+    },
+    {
+      "address": "jaKPCtkSrVoEcGGF5rxU7c62TAr2tvkrEnk",
+      "description": "Generated test vector #235",
+      "expected": [
+        "film",
+        "finish",
+        "captain",
+        "ship",
+        "glide"
+      ]
+    },
+    {
+      "address": "EmyhmbAv1PBRKEmIu9XWLjY65Z3Bjvdoi0bdqzg7MbehBEC",
+      "description": "Generated test vector #357",
+      "expected": [
+        "word",
+        "jar",
+        "beauty",
+        "inspire",
+        "elbow"
+      ]
+    },
+    {
+      "address": "cosmos13hrbVLWHlXbmxVVTcF4Hy6MQbBHjtLu8xQRmmoSidl9",
+      "description": "Generated test vector #472",
+      "expected": [
+        "liking",
+        "sunset",
+        "change",
+        "airport",
+        "almost"
+      ]
+    },
+    {
+      "address": "3Xu8z98wXD16INByQcS6kpeD3f84I756WPHDGE5GmXeXXJXkYDPysAoVHFDbecG",
+      "description": "Generated test vector #590",
+      "expected": [
+        "polished",
+        "lavender",
+        "balcony",
+        "panel",
+        "renaissance"
+      ]
+    },
+    {
+      "address": "1dtigy2V3olpSah225y6DfpWaipZUpoAXYDbVMTONO",
+      "description": "Generated test vector #710",
+      "expected": [
+        "bounty",
+        "ride",
+        "cash",
+        "carry",
+        "salute"
+      ]
+    },
+    {
+      "address": "3874g3oMsLQIwgpqz9wojvAhyFyVkU2vEUKtr",
+      "description": "Generated test vector #821",
+      "expected": [
+        "crawl",
+        "visual",
+        "discover",
+        "artist",
+        "laugh"
+      ]
+    },
+    {
+      "address": "bc1qrMvKN8rCrhRxuUnmcLugegyhHB2OvIkJ6Pp5jePC7",
+      "description": "Generated test vector #940",
+      "expected": [
+        "pioneer",
+        "water",
+        "dance",
+        "joyful",
+        "notable"
+      ]
+    },
+    {
+      "address": "3fMg2e51lohKJj8YR9CduSRcux9hBEqyZEuh9lmS415XZ54INJ",
+      "description": "Generated test vector #1060",
+      "expected": [
+        "monumental",
+        "truth",
+        "quality",
+        "motion",
+        "accurate"
+      ]
+    }
+  ]
+}
