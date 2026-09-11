@@ -111,7 +111,8 @@ function withTimeout(signal?: AbortSignal, ms = REQUEST_TIMEOUT_MS): AbortSignal
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
-async function post<T>(fetcher: Fetcher, url: string, body: unknown, signal?: AbortSignal): Promise<T> {
+/** A JSON POST that sends nothing but the query: no cookies, no referrer, no cache. */
+export async function postJson<T>(fetcher: Fetcher, url: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetcher(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -139,9 +140,10 @@ async function get<T>(fetcher: Fetcher, url: string, signal?: AbortSignal, timeo
 }
 
 let requestId = 0;
-async function rpc<T>(fetcher: Fetcher, url: string, method: string, params: unknown[], signal?: AbortSignal): Promise<T> {
+/** One JSON-RPC call against a node, with the reply checked back to its own id. */
+export async function rpcCall<T>(fetcher: Fetcher, url: string, method: string, params: unknown[], signal?: AbortSignal): Promise<T> {
   const id = ++requestId;
-  const reply = await post<{ id?: number; result?: T; error?: { message?: string } }>(
+  const reply = await postJson<{ id?: number; result?: T; error?: { message?: string } }>(
     fetcher,
     url,
     { jsonrpc: "2.0", id, method, params },
@@ -176,7 +178,7 @@ export async function fetchChainStats(
 ): Promise<ChainStats> {
   const fetcher = options.fetcher ?? fetch;
   const url = options.rpcUrl ?? MAINNET.rpcUrl;
-  const call = <T>(method: string, params: unknown[] = []) => rpc<T>(fetcher, url, method, params, options.signal);
+  const call = <T>(method: string, params: unknown[] = []) => rpcCall<T>(fetcher, url, method, params, options.signal);
 
   const headHash = hash32(await call<string>("chain_getBlockHash", []));
   const height = blockNumber(await call<unknown>("chain_getHeader", [headHash]));
@@ -212,7 +214,7 @@ export async function fetchBlockReward(
 ): Promise<RewardStats> {
   const fetcher = options.fetcher ?? fetch;
   const sample = Math.max(1, Math.min(options.sample ?? REWARD_SAMPLE, 500));
-  const reply = await post<{ data?: { miner_reward?: unknown }; errors?: unknown[] }>(
+  const reply = await postJson<{ data?: { miner_reward?: unknown }; errors?: unknown[] }>(
     fetcher,
     options.indexerUrl ?? MAINNET.indexerUrl,
     { query: REWARD_QUERY, variables: { limit: sample } },

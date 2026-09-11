@@ -3,6 +3,7 @@ import { autoUnlock } from "./en/auto-unlock";
 import { lib } from "./en/lib";
 import { mining } from "./en/mining";
 import { mldsa65 } from "./en/mldsa65";
+import { network } from "./en/network";
 import { settings } from "./en/settings";
 import { setup } from "./en/setup";
 import { wallet } from "./en/wallet";
@@ -16,6 +17,7 @@ export const en: Record<string, string> = {
   ...lib,
   ...mining,
   ...mldsa65,
+  ...network,
   ...settings,
   ...setup,
   ...wallet,

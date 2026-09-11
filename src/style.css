@@ -4257,3 +4257,219 @@ button.account-type-notice {
     opacity: 0.5;
   }
 }
+
+/* Network and miner dashboards. Both reuse the calculator's cards, folds and
+   stat grids; only the things those do not have live here — a supply bar, the
+   hand-drawn charts, the address form and the payout list. Charts are scaled
+   to their container and keep their stroke weight through `vector-effect`,
+   so one rule set serves a phone and a desktop. */
+.network-page .page-heading,
+.miner-page .page-heading {
+  margin-bottom: 4px;
+}
+.tools-heading > .network-refresh {
+  margin-left: auto;
+}
+.network-page .mining-summary,
+.miner-page .mining-summary {
+  margin-top: 12px;
+}
+
+/* How much of the supply exists. */
+.supply-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.supply-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+}
+.supply-stats {
+  margin-top: 18px;
+}
+
+/* Charts. */
+.chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.chart-block {
+  min-width: 0;
+}
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.chart-title {
+  font-size: 12px;
+  color: var(--muted);
+}
+.chart-value {
+  font-size: 15px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.chart {
+  display: block;
+  width: 100%;
+  height: 58px;
+  overflow: visible;
+}
+.chart-stroke {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chart-area {
+  fill: var(--green);
+  opacity: 0.12;
+  stroke: none;
+}
+.chart-dot {
+  fill: var(--green);
+}
+.chart-bar {
+  fill: var(--green);
+}
+.chart-bar.empty {
+  fill: var(--line);
+}
+.chart-meta {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+/* The miner dashboard's address form. */
+.miner-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 0 0 4px;
+}
+.miner-form > .field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.miner-form input {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.miner-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.miner-recent > button {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.miner-recent > button[aria-current="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Where the money came from. */
+.miner-sources {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+}
+.miner-source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.miner-source:last-child {
+  border-bottom: 0;
+}
+.miner-source-copy {
+  flex: 1;
+  min-width: 0;
+}
+.miner-source-copy > strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.miner-source-copy > small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.miner-source-amount {
+  text-align: right;
+  font-size: 14px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.miner-source-amount > small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--faint);
+}
+.miner-source .text-button {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.miner-windows {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 460px) {
+  .miner-windows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 700px) {
+  .chart-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+@media (min-width: 900px) {
+  .settings-page.network-page,
+  .settings-page.miner-page {
+    max-width: 760px;
+  }
+  .network-page .mining-metrics,
+  .miner-page .mining-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+  .network-page .mining-metric + .mining-metric,
+  .miner-page .mining-metric + .mining-metric {
+    padding-left: 18px;
+    border-left: 1px solid var(--line);
+  }
+  .network-page .mining-metric:not(:last-child),
+  .miner-page .mining-metric:not(:last-child) {
+    padding-right: 18px;
+  }
+}
