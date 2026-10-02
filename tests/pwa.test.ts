@@ -13,7 +13,10 @@ function worker(revision: string, store: Store = new Map()) {
   const events = new Map<string, (event: Record<string, unknown>) => void>();
   const requests: string[] = [];
   let offline = false;
+  let hanging = false;
+  let networkRevision = revision;
   let invalidAsset = "";
+  const timers: Array<() => void> = [];
   let skipWaiting = 0;
   let claim = 0;
   const caches = {
@@ -26,19 +29,24 @@ function worker(revision: string, store: Store = new Map()) {
       };
     },
     async keys() { return [...store.keys()]; },
+    async match(url: string) {
+      for (const entries of store.values()) if (entries.has(url)) return entries.get(url)!.clone();
+      return undefined;
+    },
     async delete(name: string) { return store.delete(name); },
   };
   const fetch = async (input: string | FetchRequest) => {
     const url = typeof input === "string" ? input : input.url;
     requests.push(url);
     if (offline) throw new TypeError("Network unavailable");
+    if (hanging) return new Promise<Response>(() => {});
     const pathname = new URL(url).pathname;
     const type = pathname === invalidAsset ? "text/html"
       : pathname.endsWith(".js") ? "text/javascript"
       : pathname.endsWith(".css") ? "text/css"
       : pathname.endsWith(".wasm") ? "application/wasm"
       : "text/html";
-    const response = new Response(`${revision}:${pathname}`, {
+    const response = new Response(`${networkRevision}:${pathname}`, {
       headers: { "content-type": type },
     });
     Object.defineProperties(response, {
@@ -52,6 +60,7 @@ function worker(revision: string, store: Store = new Map()) {
     Response,
     fetch,
     caches,
+    setTimeout: (callback: () => void) => { timers.push(callback); return timers.length; },
     self: {
       location: { origin },
       addEventListener: (name: string, handler: (event: Record<string, unknown>) => void) => events.set(name, handler),
@@ -63,6 +72,9 @@ function worker(revision: string, store: Store = new Map()) {
     store,
     requests,
     setOffline: () => { offline = true; },
+    setHanging: () => { hanging = true; },
+    deploy: (next: string) => { networkRevision = next; },
+    expireTimers: () => { for (const timer of timers.splice(0)) timer(); },
     failAsset: (path: string) => { invalidAsset = path; },
     takeovers: () => ({ skipWaiting, claim }),
     async lifecycle(name: "install" | "activate") {
@@ -99,7 +111,31 @@ describe("PWA app shell", () => {
     const entries = w.store.get(`${prefix}offline`)!;
     expect(entries.get(`${origin}/index.html`)!.redirected).toBe(false);
     expect([...entries.keys()].some(key => key.includes("?"))).toBe(false);
-    expect(w.requests.length).toBe(paths.length);
+    // Offline, only the shell was tried on the network; code came from the cache.
+    expect(w.requests.slice(paths.length)).toEqual([`${origin}/`, `${origin}/`, `${origin}/`]);
+  });
+
+  it("loads the deployed shell from the network so a release shows on the next load", async () => {
+    const w = worker("installed");
+    await w.lifecycle("install");
+    await w.lifecycle("activate");
+    w.deploy("deployed");
+    const response = await w.route(`${origin}/?source=homescreen`, "GET", "navigate");
+    expect(await response!.text()).toBe("deployed:/");
+    expect(response!.redirected).toBe(false);
+    // Code of this release still comes from its cache.
+    expect(await (await w.route(`${origin}/assets/app.js`))!.text()).toBe("installed:/assets/app.js");
+  });
+
+  it("falls back to the cached shell when the network hangs", async () => {
+    const w = worker("cached");
+    await w.lifecycle("install");
+    await w.lifecycle("activate");
+    w.setHanging();
+    const pending = w.route(`${origin}/`, "GET", "navigate")!;
+    await Promise.resolve();
+    w.expireTimers();
+    expect(await (await pending).text()).toBe("cached:/");
   });
 
   it("never intercepts RPC, indexer, transactions, wallet data or unlisted URLs", async () => {
@@ -122,22 +158,31 @@ describe("PWA app shell", () => {
     expect(w.requests.length).toBe(paths.length);
   });
 
-  it("stages an update without taking over or removing the running version", async () => {
+  it("takes over as soon as a release is cached and keeps the previous release for open pages", async () => {
     const store: Store = new Map([["another-app-cache", new Map()]]);
-    const current = worker("current", store);
-    await current.lifecycle("install");
-    await current.lifecycle("activate");
-    const update = worker("next", store);
-    await update.lifecycle("install");
-    expect(update.takeovers()).toEqual({ skipWaiting: 0, claim: 0 });
-    expect(store.has(`${prefix}current`)).toBe(true);
-    expect(await (await current.route(`${origin}/`, "GET", "navigate"))!.text()).toBe("current:/");
-    // Activation is dispatched only after the browser releases the old clients.
-    await update.lifecycle("activate");
-    expect(store.has(`${prefix}current`)).toBe(false);
+    const first = worker("first", store);
+    await first.lifecycle("install");
+    await first.lifecycle("activate");
+    // A code-split file only the first release has, still wanted by a page opened on it.
+    store.get(`${prefix}first`)!.set(`${origin}/assets/lazy-old.js`, new Response("first:/assets/lazy-old.js"));
+    const second = worker("second", store);
+    await second.lifecycle("install");
+    expect(second.takeovers()).toEqual({ skipWaiting: 1, claim: 0 });
+    await second.lifecycle("activate");
+    expect(store.has(`${prefix}first`)).toBe(true);
     expect(store.has("another-app-cache")).toBe(true);
-    expect(update.takeovers()).toEqual({ skipWaiting: 0, claim: 0 });
-    expect(await (await update.route(`${origin}/`, "GET", "navigate"))!.text()).toBe("next:/");
+    const before = second.requests.length;
+    expect(await (await second.route(`${origin}/assets/lazy-old.js`))!.text()).toBe("first:/assets/lazy-old.js");
+    expect(second.requests.length).toBe(before);
+    expect(await (await second.route(`${origin}/`, "GET", "navigate"))!.text()).toBe("second:/");
+    // One release later the first is gone, the second is kept, other apps are untouched.
+    const third = worker("third", store);
+    await third.lifecycle("install");
+    await third.lifecycle("activate");
+    expect(store.has(`${prefix}first`)).toBe(false);
+    expect(store.has(`${prefix}second`)).toBe(true);
+    expect(store.has(`${prefix}third`)).toBe(true);
+    expect(store.has("another-app-cache")).toBe(true);
   });
 
   it("rejects an incomplete release while retaining the usable previous cache", async () => {

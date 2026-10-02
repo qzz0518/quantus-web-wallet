@@ -27,7 +27,7 @@ export function renderServiceWorker(revision: string, paths: string[]) {
     )
       throw new Error("Precache paths must be exact same-origin asset paths");
   }
-  return `/* Generated at build time. Only this release's static files are cached. */
+  return `/* Generated at build time. Only static release files are cached: this release and the one before it. */
 const CACHE_PREFIX = "quantus-web-wallet-shell-v1-";
 const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(revision)};
 const PATHS = ${JSON.stringify([...new Set(paths)].sort())};
@@ -73,33 +73,58 @@ async function precache() {
   }
 }
 
+// A release takes over as soon as it is cached, so the next page load runs it.
 self.addEventListener("install", event => {
-  event.waitUntil(precache());
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
+// Keep the release that ran before this one: a page opened on it may still
+// load its own code-split files. Older wallet caches go; other caches stay.
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(names => Promise.all(
-    names.filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-      .map(name => caches.delete(name))
-  )));
+  event.waitUntil(caches.keys().then(names => {
+    const older = names.filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME);
+    return Promise.all(older.slice(0, -1).map(name => caches.delete(name)));
+  }));
 });
+
+const SHELL_TIMEOUT_MS = 4000;
+
+// The shell comes from the network so a deploy shows on the next load; the
+// cached copy of this release is the fallback when offline or slow.
+async function shell(request) {
+  const network = fetch(SHELL_URL, { cache: "no-store", credentials: "omit" })
+    .then(response => {
+      const type = (response.headers.get("content-type") || "").split(";")[0].trim();
+      return response.status === 200 && type === "text/html" && !response.redirected ? response : null;
+    })
+    .catch(() => null);
+  const timeout = new Promise(resolve => setTimeout(() => resolve(null), SHELL_TIMEOUT_MS));
+  const fresh = await Promise.race([network, timeout]);
+  if (fresh) return fresh;
+  const cached = await (await caches.open(CACHE_NAME)).match(SHELL_URL);
+  return cached || fetch(request);
+}
 
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== ORIGIN) return;
-  const isShell = request.mode === "navigate" &&
-    (url.pathname === "/" || url.pathname === "/index.html");
-  if (!isShell && !STATIC_URLS.has(url.href)) return;
   // A navigation can contain a query, but the query is never used as a cache key.
-  const key = isShell ? SHELL_URL : url.href;
-  event.respondWith(caches.open(CACHE_NAME).then(async cache => {
-    const cached = await cache.match(key);
-    if (cached) return cached;
-    // No runtime writes: RPC, indexer, transaction and wallet data stay out.
-    return fetch(request);
-  }));
+  if (request.mode === "navigate" && (url.pathname === "/" || url.pathname === "/index.html")) {
+    event.respondWith(shell(request));
+    return;
+  }
+  // No runtime writes: RPC, indexer, transaction and wallet data stay out.
+  if (STATIC_URLS.has(url.href)) {
+    event.respondWith(caches.open(CACHE_NAME).then(async cache => (await cache.match(url.href)) || fetch(request)));
+    return;
+  }
+  // A code-split file of the previous release, asked for by a page still running it.
+  const asset = url.pathname.startsWith("/assets/") ? url.pathname.slice("/assets/".length) : "";
+  if (asset && !asset.includes("/") && !url.search && !url.hash) {
+    event.respondWith(caches.match(url.href).then(cached => cached || fetch(request)));
+  }
 });
 `;
 }
