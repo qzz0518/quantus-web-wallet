@@ -52,7 +52,7 @@ describe("network dashboard", () => {
     const html = render(STATE);
     expect(html).toContain("27.04%");
     expect(html).toContain("21,000,000");
-    expect(html).toContain("runtime 152");
+    expect(html).toContain("runtime 153");
   });
 
   test("draws one bar per indexed day and says so when there are fewer than 30", () => {

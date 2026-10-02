@@ -9,7 +9,9 @@ export const MAINNET = Object.freeze({
   indexerUrl: 'https://subsquid-mainnet-app-1.quantus.com/v1/graphql',
   explorerUrl: 'https://explorer.quantus.com',
   genesisHash: '0xfb5487c0be6ae4ade2d41d16e50465129861636c2b8d61fa94d7a19631626fba',
-  specVersion: 152,
+  /** Last runtime checked by hand (153 = 152 with flat fees cut tenfold); the Wormhole exit is pinned to it. */
+  specVersion: 153,
+  /** Transfers are signed for any runtime that keeps this transaction format. */
   transactionVersion: 6,
   ss58Prefix: 189,
   decimals: 12,
@@ -170,6 +172,24 @@ type CallArguments = { callIndex: Uint8Array; args: Record<string, unknown> };
  * looked up by name every time: a runtime that renumbers its pallets must not
  * be handed a call built for the old numbering.
  */
+/**
+ * The transaction extensions, in order, that the official signing module puts
+ * in every envelope. A runtime upgrade that keeps these and the transaction
+ * version (the chain bumps it whenever the format changes) is safe to sign
+ * for; anything else is refused until the wallet is updated.
+ */
+export const TRANSACTION_EXTENSIONS = Object.freeze([
+  'CheckNonZeroSender', 'CheckSpecVersion', 'CheckTxVersion', 'CheckGenesis', 'CheckMortality', 'CheckNonce',
+  'CheckWeight', 'ReversibleTransactionExtension', 'WormholeProofRecorderExtension', 'ChargeTransactionPayment',
+  'CheckMetadataHash', 'WeightReclaim',
+]);
+
+export function assertTransactionFormat(extensions: readonly string[]): void {
+  if (extensions.length !== TRANSACTION_EXTENSIONS.length || extensions.some((name, i) => name !== TRANSACTION_EXTENSIONS[i])) {
+    throw new Error(t('主网交易格式已变更，请更新钱包后转账。'));
+  }
+}
+
 export function findCall(at: Pick<Decorated, 'registry'>, palletName: string, callName: string, unsupported: string): Uint8Array {
   const pallet = at.registry.metadata.pallets.find((entry) => entry.name.toString() === palletName);
   const calls = pallet?.calls.isSome ? pallet.calls.unwrap() : undefined;
@@ -282,7 +302,9 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     if (hash32(genesis) !== config.genesisHash.toLowerCase()) throw new Error(t('RPC 网络不匹配，已停止操作。'));
     const specVersion = safeInteger(version.specVersion, t('运行时版本 无效。'));
     const transactionVersion = safeInteger(version.transactionVersion, t('交易版本 无效。'));
-    if (forSigning && (specVersion !== config.specVersion || transactionVersion !== config.transactionVersion)) {
+    // A runtime upgrade that keeps the transaction version (e.g. 152 -> 153, fees only) keeps signing working;
+    // the extension list is checked against the checkpoint metadata in prepareCall.
+    if (forSigning && transactionVersion !== config.transactionVersion) {
       throw new Error(t('主网运行时已变更（{0}/{1}），请更新钱包后转账。', specVersion, transactionVersion));
     }
     return { specVersion, transactionVersion };
@@ -420,6 +442,7 @@ export function createChainClient(config: ChainConfig = MAINNET) {
     const [at, checkpointVersion] = await Promise.all([api.at(checkpoint), rpc<RuntimeVersion>('state_getRuntimeVersion', [checkpoint])]);
     if (checkpointVersion.specVersion !== version.specVersion ||
         checkpointVersion.transactionVersion !== version.transactionVersion) throw new Error(t('网络正在升级，请稍后重新准备交易。'));
+    assertTransactionFormat(at.registry.signedExtensions);
     // Build only the Call: Polkadot.js ExtrinsicV4 cannot represent Quantus’s
     // 7,219-byte signature field. The official WASM creates the signed envelope.
     const call = at.registry.createType('Call', build(at));

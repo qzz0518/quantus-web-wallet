@@ -36,7 +36,8 @@ export { WORMHOLE_EXIT_STORAGE_KEY } from "./receipts";
  * and cannot run inside a 4 GiB wasm32 module, so its aggregator rebate is not
  * available here.
  *
- * Rules confirmed from `pallets/wormhole` at chain commit f5828f0 (runtime 152):
+ * Rules confirmed from `pallets/wormhole` at chain commit f5828f0 (runtime 152;
+ * runtime 153 only scales flat fees and leaves the pallet, circuit and bps alone):
  * - amounts are committed in quanta of `SCALE_DOWN_FACTOR = 10^10` planck
  *   (equal to `Vesting.PayoutQuantum`); the remainder of a deposit below one
  *   quantum can never be withdrawn;

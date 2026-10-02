@@ -5,7 +5,7 @@ import { PLANCK, planckToQtc } from "../mining/math";
  *
  * `pallet-mining-rewards` mints `(MaxSupply − TotalIssuance) / EmissionDivisor`
  * to the miner of every block. The mainnet runtime (`quantus-runtime`, spec
- * 152) sets MaxSupply to 21,000,000 QTC and EmissionDivisor to 50,000,000, so
+ * 153; unchanged since 152) sets MaxSupply to 21,000,000 QTC and EmissionDivisor to 50,000,000, so
  * every block mints one fifty-millionth of whatever is left. That is a smooth
  * exponential decay with no halving step in it: the reward simply shrinks by
  * a factor of `1 − 1/50,000,000` per block, and the point where it has fallen
@@ -16,7 +16,7 @@ import { PLANCK, planckToQtc } from "../mining/math";
  */
 
 /** Mainnet runtime the constants below were read from. */
-export const RUNTIME_SPEC = 152;
+export const RUNTIME_SPEC = 153;
 export const MAX_SUPPLY_QTC = 21_000_000;
 export const MAX_SUPPLY_PLANCK = BigInt(MAX_SUPPLY_QTC) * PLANCK;
 export const EMISSION_DIVISOR = 50_000_000;

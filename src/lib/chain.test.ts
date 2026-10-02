@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { afterAll, describe, expect, test } from 'bun:test';
 import { encodeAddress } from '@polkadot/util-crypto';
-import { MAINNET, MAX_DELAY_BLOCKS, MIN_DELAY_BLOCKS, SubmissionError, createChainClient, explorerTransactionUrl, findCall, validateAddress } from './chain';
+import { MAINNET, MAX_DELAY_BLOCKS, MIN_DELAY_BLOCKS, SubmissionError, TRANSACTION_EXTENSIONS, assertTransactionFormat, createChainClient, explorerTransactionUrl, findCall, validateAddress } from './chain';
 import type { TransferState } from './chain';
 
 // Synthetic SS58 account used only by the local mock server.
@@ -27,19 +27,43 @@ describe('Quantus chain boundaries', () => {
     expect(() => validateAddress(HASH)).toThrow();
   });
 
-  test('refuses to sign on an unexpected genesis or upgraded runtime', async () => {
+  test('refuses to sign on an unexpected genesis or a changed transaction format', async () => {
     for (const kind of ['genesis', 'version']) {
       let submitted = false;
       const client = mockClient(({ id, method }) => {
         submitted ||= method === 'author_submitExtrinsic';
         const result = method === 'chain_getBlockHash'
           ? (kind === 'genesis' ? HASH : MAINNET.genesisHash)
-          : { specVersion: kind === 'version' ? 153 : 152, transactionVersion: 6 };
+          : { specVersion: MAINNET.specVersion, transactionVersion: kind === 'version' ? 7 : 6 };
         return { jsonrpc: '2.0', id, result };
       });
       await expect(client.submitTransfer('0x1234')).rejects.toThrow(kind === 'genesis' ? '网络不匹配' : '运行时已变更');
       expect(submitted).toBe(false);
     }
+  });
+
+  test('keeps signing across a runtime upgrade that keeps the transaction format', async () => {
+    for (const specVersion of [152, 153, 160]) {
+      let submitted = false;
+      const client = mockClient(({ id, method }) => {
+        submitted ||= method === 'author_submitExtrinsic';
+        const result = method === 'chain_getBlockHash' ? MAINNET.genesisHash
+          : method === 'author_submitExtrinsic' ? HASH
+          : { specVersion, transactionVersion: 6 };
+        return { jsonrpc: '2.0', id, result };
+      });
+      await client.submitTransfer('0x1234').catch(() => undefined);
+      expect(submitted).toBe(true);
+    }
+  });
+
+  test('accepts only the transaction extensions the signing module writes', () => {
+    expect(() => assertTransactionFormat([...TRANSACTION_EXTENSIONS])).not.toThrow();
+    expect(() => assertTransactionFormat(TRANSACTION_EXTENSIONS.slice(0, -1))).toThrow('交易格式已变更');
+    expect(() => assertTransactionFormat([...TRANSACTION_EXTENSIONS, 'CheckSomethingNew'])).toThrow('交易格式已变更');
+    const swapped = [...TRANSACTION_EXTENSIONS];
+    [swapped[5], swapped[6]] = [swapped[6], swapped[5]];
+    expect(() => assertTransactionFormat(swapped)).toThrow('交易格式已变更');
   });
 
   test('preserves amounts above Number.MAX_SAFE_INTEGER and reward rows without transaction hashes', async () => {

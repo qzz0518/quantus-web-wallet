@@ -107,4 +107,5 @@ export const lib: Record<string, string> = {
   "无效的链或区块哈希": "Invalid chain or block hash",
   "无效的小费": "Invalid tip",
   "钱包加密操作失败，请检查助记词和交易信息": "The wallet cryptography operation failed. Check the seed phrase and transaction details",
+  "主网交易格式已变更，请更新钱包后转账。": "The mainnet transaction format has changed. Update the wallet before sending.",
 };
