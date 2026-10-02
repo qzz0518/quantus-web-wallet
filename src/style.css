@@ -3044,6 +3044,40 @@ button.account-type-notice {
 .amount-input:focus-within .amount-field::after {
   opacity: 1;
 }
+/* What can be sent, and the one-tap way to send all of it. */
+.amount-available {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: -18px 0 26px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.amount-max {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms var(--motion-ease), scale 150ms var(--motion-ease);
+}
+.amount-max:active:not(:disabled) {
+  scale: 0.96;
+}
+.amount-max:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 .amount-unit {
   flex-shrink: 0;
   white-space: nowrap;

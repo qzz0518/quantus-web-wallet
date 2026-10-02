@@ -108,4 +108,8 @@ export const lib: Record<string, string> = {
   "无效的小费": "Invalid tip",
   "钱包加密操作失败，请检查助记词和交易信息": "The wallet cryptography operation failed. Check the seed phrase and transaction details",
   "主网交易格式已变更，请更新钱包后转账。": "The mainnet transaction format has changed. Update the wallet before sending.",
+  "最大": "Max",
+  "正在读取余额…": "Reading balance…",
+  "余额不足以支付手续费和账户需保留的余额": "The balance does not cover the fee and the amount the account must keep",
+  "金额不能为负": "The amount cannot be negative",
 };

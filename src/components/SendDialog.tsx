@@ -27,7 +27,10 @@ import {
   formatAmount,
   errorText,
   shortAddress,
+  maxSendable,
+  plainAmount,
 } from "../lib/amount";
+import type { Balance } from "../lib/chain";
 import {
   prepareTransfer,
   prepareScheduledTransfer,
@@ -129,7 +132,11 @@ export function SendDialog({
     [riskAck, setRiskAck] = useState(false),
     [delayed, setDelayed] = useState(false),
     [delayChoice, setDelayChoice] = useState<DelayChoice>(DEFAULT_DELAY_BLOCKS),
-    [customDelay, setCustomDelay] = useState("");
+    [customDelay, setCustomDelay] = useState(""),
+    [available, setAvailable] = useState<Balance | null>(null),
+    [maxing, setMaxing] = useState(false),
+    /** The delivery mode the amount was maxed for; a change of mode re-runs Max. */
+    [maxedFor, setMaxedFor] = useState<boolean | null>(null);
   const timing = useBlockSeconds(delayed);
   const ownRecipient = recipientHint === "ownWormhole" && initialRecipient !== undefined && recipient.trim() === initialRecipient;
   useEffect(() => {
@@ -144,6 +151,50 @@ export function SendDialog({
     return delayChoice === "custom"
       ? parseDelayBlocks(customDelay)
       : delayChoice;
+  }
+  // The amount step shows what can be sent and offers to fill it in.
+  useEffect(() => {
+    if (step !== "amount") return;
+    let live = true;
+    services.readBalance(wallet.address).then(
+      (balance) => { if (live) setAvailable(balance); },
+      () => { /* Advisory: the review step reads the balance again. */ },
+    );
+    return () => { live = false; };
+  }, [step, wallet.address, services]);
+  /**
+   * Fill in everything that can be sent: the fee comes from signing the same
+   * kind of transfer for the whole balance, as the review step would.
+   */
+  async function fillMax(forDelayed = delayed) {
+    if (processing.current) return;
+    processing.current = true;
+    setMaxing(true);
+    setError("");
+    try {
+      if (!wallet.mnemonic || wallet.kind === "watch") throw new Error(t("观察钱包不能签名"));
+      const to = validateAddress(recipient.trim());
+      const balance = await services.readBalance(wallet.address);
+      if (active.current) setAvailable(balance);
+      const probe = BigInt(balance.spendable) > 0n ? balance.spendable : "1";
+      let delay = DEFAULT_DELAY_BLOCKS;
+      try { delay = chosenDelay(); } catch { /* an unfinished custom delay costs the same fee */ }
+      const prepared = forDelayed
+        ? await services.prepareScheduledTransfer(wallet.address, to, probe, delay)
+        : await services.prepareTransfer(wallet.address, to, probe);
+      const hex = await signCall(wallet.kind, wallet.mnemonic, wallet.index, prepared.callHex, prepared.ctx);
+      const fee = await services.estimateFee(hex);
+      const max = maxSendable(balance, fee, prepared.existentialDeposit);
+      if (max === null) throw new Error(t("余额不足以支付手续费和账户需保留的余额"));
+      if (!active.current) return;
+      setAmount(plainAmount(max));
+      setMaxedFor(forDelayed);
+    } catch (e) {
+      if (active.current) setError(errorText(e));
+    } finally {
+      processing.current = false;
+      if (active.current) setMaxing(false);
+    }
   }
   async function review(e?: FormEvent) {
     e?.preventDefault();
@@ -688,6 +739,7 @@ export function SendDialog({
                         disabled={busy}
                         onChange={(event) => {
                           setAmount(event.target.value);
+                          setMaxedFor(null);
                           setError("");
                         }}
                         autoFocus
@@ -696,6 +748,23 @@ export function SendDialog({
                     <span className="amount-unit">{services.symbol}</span>
                   </div>
                 </label>
+                <div className="amount-available">
+                  <span>
+                    {available
+                      ? t("可用 {0} QTC", formatAmount(available.spendable))
+                      : t("正在读取余额…")}
+                  </span>
+                  <button
+                    type="button"
+                    className="amount-max"
+                    disabled={busy || maxing}
+                    aria-busy={maxing}
+                    onClick={() => void fillMax()}
+                  >
+                    {maxing && <LoaderCircle size={14} className="spin" aria-hidden="true" />}
+                    {t("最大")}
+                  </button>
+                </div>
                 <div className="field delivery-mode">
                   <span id={deliveryId}>{t("到账方式")}</span>
                   <div
@@ -716,6 +785,8 @@ export function SendDialog({
                         onClick={() => {
                           setDelayed(option.value);
                           setError("");
+                          // The two kinds of transfer cost slightly different fees.
+                          if (maxedFor !== null && maxedFor !== option.value) void fillMax(option.value);
                         }}
                       >
                         {option.label}

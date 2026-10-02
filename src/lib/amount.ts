@@ -25,6 +25,26 @@ export function formatAmount(value: string | bigint, maxDecimals = 12): string {
     (fraction ? "." + fraction : "")
   );
 }
+/** A planck amount as the plain decimal the amount field accepts: no grouping, no trailing zeros. */
+export function plainAmount(value: bigint): string {
+  if (value < 0n) throw new Error(t("金额不能为负"));
+  const fraction = (value % UNIT).toString().padStart(12, "0").replace(/0+$/, "");
+  return (value / UNIT).toString() + (fraction ? "." + fraction : "");
+}
+/** The amount "Max" fills in: rounded down to this many planck (0.000001 QTC). */
+export const MAX_AMOUNT_STEP = 1_000_000n;
+/**
+ * The most a transfer can send: free balance minus what must stay (the larger
+ * of the frozen amount and the existential deposit) minus the fee, rounded
+ * down to a readable step. Null when nothing is left to send.
+ */
+export function maxSendable(balance: { free: string; frozen: string }, fee: string, existentialDeposit: string): bigint | null {
+  const free = BigInt(balance.free), frozen = BigInt(balance.frozen), ed = BigInt(existentialDeposit);
+  const keep = frozen > ed ? frozen : ed;
+  const left = free - keep - BigInt(fee);
+  const rounded = left - (left % MAX_AMOUNT_STEP);
+  return rounded > 0n ? rounded : null;
+}
 export const shortAddress = (address: string, size = 7) =>
   address.slice(0, size) + "…" + address.slice(-size);
 export function errorText(error: unknown) {
